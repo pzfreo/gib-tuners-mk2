@@ -39,24 +39,28 @@ class TestFrameParams:
         assert abs(params.box_inner - expected) < 0.01
 
     def test_housing_centers(self):
-        """Test housing center positions from spec."""
+        """Test housing center positions are symmetric."""
         params = FrameParams()
         centers = params.housing_centers
         assert len(centers) == 5
-        # From spec: 15.1, 42.3, 69.5, 96.7, 123.9
-        assert abs(centers[0] - 15.1) < 0.01
-        assert abs(centers[1] - 42.3) < 0.01
-        assert abs(centers[2] - 69.5) < 0.01
-        assert abs(centers[3] - 96.7) < 0.01
-        assert abs(centers[4] - 123.9) < 0.01
+        # Symmetric positions: 18.1, 45.3, 72.5, 99.7, 126.9
+        assert abs(centers[0] - 18.1) < 0.01
+        assert abs(centers[1] - 45.3) < 0.01
+        assert abs(centers[2] - 72.5) < 0.01  # Frame center
+        assert abs(centers[3] - 99.7) < 0.01
+        assert abs(centers[4] - 126.9) < 0.01
+        # Verify symmetry: first and last are equidistant from ends
+        end1 = centers[0] - params.housing_length / 2
+        end2 = params.total_length - (centers[-1] + params.housing_length / 2)
+        assert abs(end1 - end2) < 0.01, "Frame ends must be symmetric"
 
     def test_mounting_hole_positions(self):
         """Test mounting hole positions from spec."""
         params = FrameParams()
         positions = params.mounting_hole_positions
         assert len(positions) == 6
-        # From spec: 4.5, 31.7, 58.9, 86.1, 113.3, 140.5
-        expected = (4.5, 31.7, 58.9, 86.1, 113.3, 140.5)
+        # Symmetric end holes: 5.0 and 140.0
+        expected = (5.0, 31.7, 58.9, 86.1, 113.3, 140.0)
         for actual, exp in zip(positions, expected):
             assert abs(actual - exp) < 0.01
 

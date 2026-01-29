@@ -31,19 +31,18 @@ class DDCutParams:
 
 @dataclass(frozen=True)
 class FrameParams:
-    """Parameters for the 5-gang frame."""
+    """Parameters for an N-gang frame (1 to N tuning stations)."""
     # Box section dimensions (as manufactured)
     box_outer: float = 10.35  # Outer dimension of square tube
     wall_thickness: float = 1.1  # Wall thickness
 
-    # Overall dimensions
-    total_length: float = 145.0  # Frame length
+    # Housing dimensions
     housing_length: float = 16.2  # Length of each rigid box section
-    end_length: float = 10.0  # Distance from frame end to first/last housing center
+    end_length: float = 10.0  # Distance from frame end to housing edge (symmetric)
 
     # Layout
-    num_housings: int = 5
-    tuner_pitch: float = 27.2  # Center-to-center spacing
+    num_housings: int = 5  # Number of tuning stations (1 to N)
+    tuner_pitch: float = 27.2  # Center-to-center spacing between tuners
 
     # Hole diameters (nominal, before tolerance adjustment)
     post_bearing_hole: float = 4.2  # Top face, for string post shaft
@@ -58,29 +57,52 @@ class FrameParams:
         return self.box_outer - 2 * self.wall_thickness
 
     @property
+    def total_length(self) -> float:
+        """Total frame length, computed from num_housings and pitch.
+
+        Formula: 2 * end_length + housing_length + (num_housings - 1) * pitch
+        For 5 housings: 2 * 10 + 16.2 + 4 * 27.2 = 145.0mm
+        """
+        return (
+            2 * self.end_length
+            + self.housing_length
+            + (self.num_housings - 1) * self.tuner_pitch
+        )
+
+    @property
     def housing_centers(self) -> Tuple[float, ...]:
-        """Y positions of housing centers from frame start."""
-        first_center = self.end_length + self.housing_length / 2  # 10 + 8.1 = 18.1...
-        # Actually from spec: first center is at 15.1mm
-        # Let me recalculate: end_length is to first housing center
-        # So first center = end_length + (housing_length/2) would be wrong
-        # Spec says: Housing 1 center at 15.1mm, end_length = 10.0mm
-        # This means housing_length/2 = 5.1mm for end calculation...
-        # Actually looking at spec more carefully:
-        # end_length (10.0mm) is from frame end to first housing CENTER
-        # So first center = end_length = 10.0mm... no that's not 15.1mm either
-        # Let me check: 15.1 - 10.0 = 5.1mm discrepancy
-        # The spec table shows first housing center at 15.1mm
-        # So end_length must be measured differently
-        # Actually the first center position from the spec is the source of truth
-        first_center = 15.1
+        """Y positions of housing centers from frame start.
+
+        First center = end_length + housing_length / 2 = 10 + 8.1 = 18.1mm
+        """
+        first_center = self.end_length + self.housing_length / 2
         return tuple(first_center + i * self.tuner_pitch for i in range(self.num_housings))
 
     @property
     def mounting_hole_positions(self) -> Tuple[float, ...]:
-        """Y positions of mounting holes from frame start."""
-        # From spec: 4.5, 31.7, 58.9, 86.1, 113.3, 140.5
-        return (4.5, 31.7, 58.9, 86.1, 113.3, 140.5)
+        """Y positions of mounting holes from frame start.
+
+        Holes are centered in the gaps between housings.
+        There are num_housings + 1 holes (one before first, one between each pair,
+        one after last).
+        """
+        centers = self.housing_centers
+        half_housing = self.housing_length / 2
+        positions = []
+
+        # Hole before first housing (centered in end gap)
+        positions.append(self.end_length / 2)
+
+        # Holes between housings
+        for i in range(len(centers) - 1):
+            gap_start = centers[i] + half_housing
+            gap_end = centers[i + 1] - half_housing
+            positions.append((gap_start + gap_end) / 2)
+
+        # Hole after last housing (centered in end gap)
+        positions.append(self.total_length - self.end_length / 2)
+
+        return tuple(positions)
 
 
 @dataclass(frozen=True)
