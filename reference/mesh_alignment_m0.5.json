@@ -1,0 +1,19 @@
+{
+  "optimal_rotation_deg": 14.0,
+  "interference_volume_mm3": 0.0,
+  "within_tolerance": true,
+  "tooth_pitch_deg": 27.692307692307693,
+  "worm_position": {
+    "x_mm": 5.75,
+    "y_mm": 0.0,
+    "z_mm": 0.0
+  },
+  "message": "Perfect mesh - no interference detected",
+  "design_info": {
+    "module_mm": 0.5,
+    "ratio": 13,
+    "centre_distance_mm": 5.75,
+    "worm_starts": 1,
+    "wheel_teeth": 13
+  }
+}

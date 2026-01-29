@@ -1,6 +1,7 @@
 """Factory functions for creating configurations from JSON and defaults."""
 
 import json
+import math
 from pathlib import Path
 from typing import Optional
 
@@ -19,11 +20,27 @@ from .tolerances import get_tolerance
 
 # Default gear parameters JSON - single source of truth for gear geometry
 DEFAULT_GEAR_JSON = Path(__file__).parent.parent.parent.parent / "config" / "worm_gear.json"
-# Assembly-specific config (mesh rotation, etc.) - separate from generated gear JSON
-DEFAULT_ASSEMBLY_JSON = Path(__file__).parent.parent.parent.parent / "config" / "assembly.json"
+# Reference directory for mesh alignment JSON files (output from wormgear optimizer)
+REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
 
 # Clearance for worm entry hole (allows worm to pass through frame hole)
 WORM_ENTRY_CLEARANCE = 0.2  # 0.1mm per side
+
+
+def load_mesh_alignment(module: float) -> dict:
+    """Load mesh alignment data from wormgear optimizer output.
+
+    Args:
+        module: Gear module in mm (e.g., 0.5)
+
+    Returns:
+        Dict with optimal_rotation_deg, tooth_pitch_deg, etc., or empty dict if not found
+    """
+    mesh_json = REFERENCE_DIR / f"mesh_alignment_m{module}.json"
+    if mesh_json.exists():
+        with open(mesh_json) as f:
+            return json.load(f)
+    return {}
 
 
 def load_gear_params(json_path: Path) -> GearParams:
@@ -82,12 +99,11 @@ def load_gear_params(json_path: Path) -> GearParams:
         bore=wheel_bore,
     )
 
-    # Load mesh rotation from separate assembly config (not part of gear generator output)
-    mesh_rotation = 0.0
-    if DEFAULT_ASSEMBLY_JSON.exists():
-        with open(DEFAULT_ASSEMBLY_JSON) as f:
-            assembly_config = json.load(f)
-            mesh_rotation = assembly_config.get("mesh_rotation_deg", 0.0)
+    # Load base mesh rotation from mesh_alignment JSON (wormgear optimizer output)
+    # This is the optimal rotation for Z-aligned axes; will be adjusted for Z-offset in create_default_config
+    module = worm_data["module_mm"]
+    mesh_alignment = load_mesh_alignment(module)
+    mesh_rotation_base = mesh_alignment.get("optimal_rotation_deg", 0.0)
 
     return GearParams(
         worm=worm,
@@ -96,7 +112,7 @@ def load_gear_params(json_path: Path) -> GearParams:
         pressure_angle_deg=assembly_data["pressure_angle_deg"],
         backlash=assembly_data["backlash_mm"],
         ratio=assembly_data["ratio"],
-        mesh_rotation_deg=mesh_rotation,
+        mesh_rotation_deg=mesh_rotation_base,
     )
 
 
@@ -153,6 +169,52 @@ def create_default_config(
             f"Worm tip diameter ({gear.worm.tip_diameter}mm) must be less than "
             f"worm entry hole ({worm_entry_hole}mm)"
         )
+
+    # Calculate Z-offset correction for mesh rotation
+    # The mesh_alignment JSON gives optimal rotation for Z-aligned axes (worm and wheel at same Z).
+    # In the actual assembly, the wheel and worm are at different Z heights, so we need to correct.
+    #
+    # From tuner_unit.py:
+    #   post_z_offset = -(dd_h + bearing_h)
+    #   wheel_z = post_z_offset + face_width / 2  (wheel center)
+    #   worm_z = -box_outer / 2  (worm axis)
+    #   z_offset = wheel_z - worm_z
+    #
+    # Z offset is perpendicular to worm axis. Due to helix geometry:
+    #   effective_axial_shift = z_offset × tan(lead_angle)
+    #   worm_rotation = (effective_axial_shift / lead) × 360°
+    #   wheel_rotation = worm_rotation / ratio
+    dd_h = string_post.dd_cut_length
+    bearing_h = string_post.bearing_length
+    face_width = gear.wheel.face_width
+    box_outer = frame.box_outer
+    lead = gear.worm.lead
+    ratio = gear.ratio
+    lead_angle_rad = math.radians(gear.worm.lead_angle_deg)
+
+    post_z_offset = -(dd_h + bearing_h)
+    wheel_z = post_z_offset + face_width / 2
+    worm_z = -box_outer / 2
+    z_offset = wheel_z - worm_z
+
+    # Convert Z offset to wheel rotation using lead angle geometry
+    effective_axial_shift = z_offset * math.tan(lead_angle_rad)
+    z_correction_deg = (effective_axial_shift / lead) * 360.0 / ratio
+
+    # Apply correction to get final mesh rotation
+    final_mesh_rotation = gear.mesh_rotation_deg + z_correction_deg
+
+    # Create updated gear params with corrected rotation
+    gear = GearParams(
+        worm=gear.worm,
+        wheel=gear.wheel,
+        center_distance=gear.center_distance,
+        pressure_angle_deg=gear.pressure_angle_deg,
+        backlash=gear.backlash,
+        extra_backlash=gear.extra_backlash,
+        ratio=gear.ratio,
+        mesh_rotation_deg=final_mesh_rotation,
+    )
 
     return BuildConfig(
         scale=scale,
