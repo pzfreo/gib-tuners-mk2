@@ -100,6 +100,7 @@ def create_wheel_placeholder(config: BuildConfig) -> Part:
     """Create a placeholder wheel for when STEP file is unavailable.
 
     This creates a simple cylinder with DD bore for testing.
+    The wheel is centered at Z=0 to match STEP file conventions.
 
     Args:
         config: Build configuration
@@ -113,16 +114,15 @@ def create_wheel_placeholder(config: BuildConfig) -> Part:
     tip_d = wheel_params.tip_diameter * scale
     face_width = wheel_params.face_width * scale
 
-    # Basic cylinder
+    # Basic cylinder centered at Z=0
     wheel = Cylinder(
         radius=tip_d / 2,
         height=face_width,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
+        align=(Align.CENTER, Align.CENTER, Align.CENTER),
     )
 
-    # Add DD bore
+    # Add DD bore (centered)
     dd_bore = create_dd_cut_bore(wheel_params.bore, face_width + 0.2, scale)
-    dd_bore = dd_bore.locate(Location((0, 0, -0.1)))
     wheel = wheel - dd_bore
 
     return wheel

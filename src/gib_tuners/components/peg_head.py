@@ -121,7 +121,9 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     tap_hole = tap_hole.locate(Location((0, 0, shaft_length)))
     result = result - tap_hole
 
-    # Rotate for assembly orientation (shaft along X, pip at -X)
+    # Rotate for assembly orientation (pip at +X, shaft at -X)
+    # -90° around Y: +Z → -X, -Z → +X
+    # So: peg head (Z<0) → +X (outside), shaft (Z>0) → -X (through frame)
     result = result.rotate(Axis.Y, -90)
 
     # Apply scale if needed

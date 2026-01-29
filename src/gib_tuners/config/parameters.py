@@ -198,6 +198,7 @@ class PegHeadParams:
 
     # Retention hardware
     screw_thread: str = "M2"
+    screw_length: float = 4.0  # M2 screw length (threads into tap bore)
     washer_od: float = 5.0
     washer_id: float = 2.2
     washer_thickness: float = 0.5
