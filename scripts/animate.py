@@ -20,14 +20,13 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from build123d import Axis, Location
+from build123d import Location
 
 from gib_tuners.config.defaults import create_default_config
 from gib_tuners.config.parameters import Hand
-from gib_tuners.components.frame import create_frame
-from gib_tuners.components.peg_head import create_peg_head
-from gib_tuners.components.string_post import create_string_post
-from gib_tuners.components.wheel import load_wheel, create_wheel_placeholder
+from gib_tuners.assembly.gang_assembly import create_positioned_assembly
+
+REFERENCE_DIR = Path(__file__).parent.parent / "reference"
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,7 +83,7 @@ def main() -> int:
         from ocp_vscode import show, Animation
     except ImportError as e:
         print(f"Error: Missing package - {e}")
-        print("Install with: pip install bd_animation ocp-vscode")
+        print("Install with: pip install git+https://github.com/bernhard-42/bd_animation.git")
         return 1
 
     # Create 1-gang config
@@ -96,56 +95,58 @@ def main() -> int:
     )
 
     scale = config.scale
-    ratio = config.gear.ratio  # 13
+    ratio = config.gear.ratio
 
     print(f"=== Worm Gear Animation ({args.hand.upper()}) @ {args.scale}x ===")
     print(f"Gear ratio: {ratio}:1")
     print(f"Worm revolutions: {args.worm_revs}")
     print(f"Wheel rotation: {args.worm_revs * 360 / ratio:.1f}°")
 
-    # Build components
-    print("\nBuilding components...")
+    # Build assembly using same code as viz.py
+    print("\nBuilding assembly...")
+    wheel_step = REFERENCE_DIR / "wheel_m0.5_z13.step"
+    if not wheel_step.exists():
+        wheel_step = None
+        print("  Warning: wheel STEP not found, using placeholder")
 
-    # Frame (static)
-    frame = create_frame(config)
+    assembly = create_positioned_assembly(
+        config,
+        wheel_step_path=wheel_step,
+        include_hardware=False,  # No hardware for animation
+    )
 
-    # String post (static)
+    # Extract parts (1-gang, so tuner index is 1)
+    all_parts = assembly["all_parts"]
+    frame = all_parts["frame"]
+    string_post = all_parts["string_post_1"]
+    wheel = all_parts["wheel_1"]
+    peg_head = all_parts["peg_head_1"]
+
+    # Calculate pivot points for animation from config
+    # These must match the positioning in tuner_unit.py
+    frame_params = config.frame
     post_params = config.string_post
+    gear_params = config.gear
+
+    # Wheel pivot: Z-axis at wheel center
     dd_h = post_params.dd_cut_length * scale
     bearing_h = post_params.bearing_length * scale
     post_z_offset = -(dd_h + bearing_h)
-
-    string_post = create_string_post(config)
-    string_post = string_post.locate(Location((0, 0, post_z_offset)))
-
-    # Wheel (animated - rotates around Z)
-    wheel_step = Path(__file__).parent.parent / "reference" / "wheel_m0.5_z13.step"
-    if wheel_step.exists():
-        wheel = load_wheel(wheel_step)
-        if scale != 1.0:
-            wheel = wheel.scale(scale)
-    else:
-        print("  Warning: wheel STEP not found, using placeholder")
-        wheel = create_wheel_placeholder(config)
-
-    wheel_params = config.gear.wheel
-    face_width = wheel_params.face_width * scale
-    mesh_rotation = config.gear.mesh_rotation_deg
-
-    if mesh_rotation != 0.0:
-        wheel = wheel.rotate(Axis.Z, mesh_rotation)
-
+    face_width = gear_params.wheel.face_width * scale
     wheel_z = post_z_offset + face_width / 2
-    wheel = wheel.locate(Location((0, 0, wheel_z)))
 
-    # Peg head (animated - rotates around X)
-    peg_head = create_peg_head(config)
+    # Housing Y position (1-gang)
+    housing_y = assembly["housing_centers"][0]
+    effective_cd = assembly["effective_cd"]
+    translation_y = housing_y - effective_cd / 2
 
-    frame_params = config.frame
+    wheel_pivot = Location((0, translation_y, wheel_z))
+
+    # Peg head pivot: X-axis at worm shaft center
     box_outer = frame_params.box_outer * scale
     box_inner = frame_params.box_inner * scale
-    center_distance = config.gear.center_distance * scale
-    worm_length = config.gear.worm.length * scale
+    center_distance = gear_params.center_distance * scale
+    worm_length = gear_params.worm.length * scale
 
     half_inner = box_inner / 2
     worm_clearance = (box_inner - worm_length) / 2
@@ -155,32 +156,12 @@ def main() -> int:
         peg_x = half_inner - worm_clearance
     else:
         peg_x = -(half_inner - worm_clearance)
-        peg_head = peg_head.rotate(Axis.Z, 180)
 
-    peg_y = center_distance
-    peg_head = peg_head.locate(Location((peg_x, peg_y, worm_z)))
-
-    # Position at housing center (1-gang: housing at end_length + housing_length/2)
-    housing_y = frame_params.end_length * scale + frame_params.housing_length * scale / 2
-
-    # Translate all tuner components to housing position
-    # The effective center distance offset
-    effective_cd = center_distance
-    translation_y = housing_y - effective_cd / 2
-
-    string_post = string_post.locate(Location((0, translation_y, 0)))
-    wheel = wheel.locate(Location((0, translation_y, 0)))
-    peg_head = peg_head.locate(Location((0, translation_y, 0)))
-
-    # Calculate pivot points for animation
-    # Wheel rotates around Z at its center
-    wheel_pivot = Location((0, translation_y, wheel_z))
-
-    # Peg head rotates around X at its shaft axis
-    peg_pivot = Location((peg_x, peg_y + translation_y, worm_z))
+    peg_y = center_distance + translation_y
+    peg_pivot = Location((peg_x, peg_y, worm_z))
 
     print(f"  Wheel pivot: (0, {translation_y:.2f}, {wheel_z:.2f})")
-    print(f"  Peg pivot: ({peg_x:.2f}, {peg_y + translation_y:.2f}, {worm_z:.2f})")
+    print(f"  Peg pivot: ({peg_x:.2f}, {peg_y:.2f}, {worm_z:.2f})")
 
     # Clone parts with proper origins for rotation
     # Static parts don't need special origin handling
@@ -192,7 +173,7 @@ def main() -> int:
     peg_cloned = clone(peg_head, color=(0.6, 0.4, 0.2), origin=peg_pivot)
 
     # Create animation group
-    assembly = AnimationGroup(
+    anim_group = AnimationGroup(
         children={
             "frame": frame_cloned,
             "string_post": post_cloned,
@@ -203,7 +184,7 @@ def main() -> int:
     )
 
     # Create animation
-    animation = Animation(assembly)
+    animation = Animation(anim_group)
 
     # Define tracks
     steps = args.steps
@@ -224,7 +205,7 @@ def main() -> int:
     print("Sending to OCP viewer...")
 
     # Show and animate
-    show(assembly)
+    show(anim_group)
     animation.animate(speed=1)
 
     print("Animation started. Use OCP viewer controls to replay.")
