@@ -40,8 +40,11 @@ def load_wheel(step_path: Path) -> Part:
 
     shapes = import_step(step_path)
 
-    # import_step returns a list of shapes or a Compound
-    if isinstance(shapes, Compound):
+    # import_step can return various types depending on STEP content
+    if isinstance(shapes, Part):
+        return shapes
+    elif hasattr(shapes, "wrapped"):
+        # Solid, Compound, or other Shape subclass
         return Part(shapes.wrapped)
     elif isinstance(shapes, list) and len(shapes) > 0:
         return Part(shapes[0].wrapped)
