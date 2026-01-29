@@ -21,6 +21,7 @@ from .tuner_unit import create_tuner_unit
 def create_gang_assembly(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
+    worm_step_path: Optional[Path] = None,
     include_hardware: bool = True,
 ) -> dict[str, Part | dict]:
     """Create the full 5-gang tuner assembly.
@@ -28,6 +29,7 @@ def create_gang_assembly(
     Args:
         config: Build configuration
         wheel_step_path: Optional path to wheel STEP file
+        worm_step_path: Optional path to worm STEP file (for mesh rotation calculation)
         include_hardware: Whether to include washers, screws, E-clips
 
     Returns:
@@ -50,6 +52,7 @@ def create_gang_assembly(
         tuner_components = create_tuner_unit(
             config,
             wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
             include_hardware=include_hardware,
         )
 
@@ -70,6 +73,7 @@ def create_gang_assembly(
 def create_gang_assembly_compound(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
+    worm_step_path: Optional[Path] = None,
     include_hardware: bool = True,
 ) -> Compound:
     """Create the full 5-gang assembly as a compound shape.
@@ -77,12 +81,13 @@ def create_gang_assembly_compound(
     Args:
         config: Build configuration
         wheel_step_path: Optional path to wheel STEP file
+        worm_step_path: Optional path to worm STEP file (for mesh rotation calculation)
         include_hardware: Whether to include washers, screws, E-clips
 
     Returns:
         Compound containing frame and all tuner components
     """
-    assembly = create_gang_assembly(config, wheel_step_path, include_hardware)
+    assembly = create_gang_assembly(config, wheel_step_path, worm_step_path, include_hardware)
 
     parts = [assembly["frame"]]
     for tuner_dict in assembly["tuners"]:

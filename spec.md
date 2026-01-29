@@ -521,4 +521,4 @@ Before manufacturing, verify:
 | `peghead-and-shaft.step` | Complete peg head + shaft reference geometry (from Onshape) |
 | `worm_m0.5_z1.step` | Cylindrical worm reference geometry (for machining cast shaft) |
 | `wheel_m0.5_z13.step` | 13-tooth worm wheel (separate part) |
-| `75mm-globoid.json` | Gear calculator parameters |
+| `config/worm_gear.json` | Gear calculator parameters |

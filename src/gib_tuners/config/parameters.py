@@ -145,6 +145,7 @@ class GearParams:
     backlash: float = 0.1
     extra_backlash: float = 0.0  # Additional backlash beyond gear design
     ratio: int = 13
+    mesh_rotation_deg: float = 0.0  # Wheel rotation for optimal mesh alignment
 
 
 @dataclass(frozen=True)

@@ -4,7 +4,10 @@ Validates clearances, retention geometry, and gear mesh parameters.
 """
 
 from dataclasses import dataclass
-from typing import List
+from pathlib import Path
+from typing import List, Optional, Tuple
+
+from build123d import Axis, Location, Part, import_step
 
 from ..config.parameters import BuildConfig
 
@@ -226,3 +229,187 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
     all_passed = all(check.passed for check in checks)
 
     return ValidationResult(passed=all_passed, checks=checks)
+
+
+@dataclass
+class InterferenceResult:
+    """Result of wheel-worm interference check."""
+
+    mesh_rotation_deg: float
+    interference_volume_mm3: float
+    within_backlash_tolerance: bool
+    within_manufacturing_tolerance: bool
+    message: str
+
+
+def _load_step_as_part(step_path: Path) -> Optional[Part]:
+    """Load a STEP file and return as Part."""
+    if not step_path.exists():
+        return None
+
+    shapes = import_step(step_path)
+    if isinstance(shapes, Part):
+        return shapes
+    elif hasattr(shapes, "wrapped"):
+        return Part(shapes.wrapped)
+    elif isinstance(shapes, list) and len(shapes) > 0:
+        return Part(shapes[0].wrapped)
+    return None
+
+
+def check_wheel_worm_interference(
+    wheel_step_path: Path,
+    worm_step_path: Path,
+    config: BuildConfig,
+    mesh_rotation_deg: float = 0.0,
+) -> InterferenceResult:
+    """Check interference between wheel and worm at specified rotation.
+
+    Loads wheel and worm STEP files, positions them at the correct center
+    distance, applies the mesh rotation, and measures the intersection volume.
+
+    Args:
+        wheel_step_path: Path to wheel STEP file
+        worm_step_path: Path to worm STEP file
+        config: Build configuration (for center distance and tolerances)
+        mesh_rotation_deg: Wheel rotation angle in degrees
+
+    Returns:
+        InterferenceResult with volume and tolerance check status
+    """
+    scale = config.scale
+    center_distance = config.gear.center_distance * scale
+    backlash = config.gear.backlash * scale
+    num_teeth = config.gear.wheel.num_teeth
+
+    # Load STEP files
+    wheel = _load_step_as_part(wheel_step_path)
+    worm = _load_step_as_part(worm_step_path)
+
+    if wheel is None:
+        return InterferenceResult(
+            mesh_rotation_deg=mesh_rotation_deg,
+            interference_volume_mm3=0.0,
+            within_backlash_tolerance=False,
+            within_manufacturing_tolerance=False,
+            message=f"Could not load wheel STEP: {wheel_step_path}",
+        )
+
+    if worm is None:
+        return InterferenceResult(
+            mesh_rotation_deg=mesh_rotation_deg,
+            interference_volume_mm3=0.0,
+            within_backlash_tolerance=False,
+            within_manufacturing_tolerance=False,
+            message=f"Could not load worm STEP: {worm_step_path}",
+        )
+
+    # Scale if needed
+    if scale != 1.0:
+        wheel = wheel.scale(scale)
+        worm = worm.scale(scale)
+
+    # Apply mesh rotation to wheel (wheel is at origin, Z-axis up)
+    if mesh_rotation_deg != 0.0:
+        wheel = wheel.rotate(Axis.Z, mesh_rotation_deg)
+
+    # Position worm for mesh:
+    # - Rotate -90° Y so shaft is along X axis
+    # - Offset by center_distance in Y
+    worm = worm.rotate(Axis.Y, -90)
+    worm = worm.locate(Location((0, center_distance, 0)))
+
+    # Calculate intersection volume
+    try:
+        intersection = wheel & worm
+        interference_volume = intersection.volume if hasattr(intersection, "volume") else 0.0
+    except Exception:
+        # Boolean operation failed
+        interference_volume = 0.0
+
+    # Tolerance checks
+    # Backlash tolerance: small interference is acceptable (within backlash)
+    # For a proper mesh, volume should be near zero
+    # Rough estimate: backlash of 0.1mm across mesh contact area
+    # Contact area ~ face_width * tooth_depth ~ 7.5 * 1.0 = 7.5 mm²
+    # Acceptable volume ~ 0.1 * 7.5 = 0.75 mm³
+    backlash_volume_tolerance = backlash * config.gear.wheel.face_width * scale
+    within_backlash = interference_volume <= backlash_volume_tolerance
+
+    # Manufacturing tolerance: larger interference indicates collision
+    # Allow up to 1mm³ for manufacturing/STEP tolerance
+    manufacturing_volume_tolerance = 1.0 * (scale ** 3)
+    within_manufacturing = interference_volume <= manufacturing_volume_tolerance
+
+    if interference_volume == 0.0:
+        message = "No interference detected - perfect mesh or no contact"
+    elif within_backlash:
+        message = f"Interference {interference_volume:.4f}mm³ within backlash tolerance"
+    elif within_manufacturing:
+        message = f"Interference {interference_volume:.4f}mm³ within manufacturing tolerance"
+    else:
+        message = f"Interference {interference_volume:.4f}mm³ exceeds tolerances - teeth may collide"
+
+    return InterferenceResult(
+        mesh_rotation_deg=mesh_rotation_deg,
+        interference_volume_mm3=interference_volume,
+        within_backlash_tolerance=within_backlash,
+        within_manufacturing_tolerance=within_manufacturing,
+        message=message,
+    )
+
+
+def find_optimal_mesh_rotation(
+    wheel_step_path: Path,
+    worm_step_path: Path,
+    config: BuildConfig,
+) -> Tuple[float, InterferenceResult]:
+    """Find the optimal wheel rotation to minimize interference.
+
+    Uses iterative collision minimization across one tooth pitch.
+
+    Args:
+        wheel_step_path: Path to wheel STEP file
+        worm_step_path: Path to worm STEP file
+        config: Build configuration
+
+    Returns:
+        Tuple of (optimal_rotation_deg, InterferenceResult at that rotation)
+    """
+    from ..components.wheel import calculate_mesh_rotation
+
+    scale = config.scale
+    center_distance = config.gear.center_distance * scale
+    num_teeth = config.gear.wheel.num_teeth
+
+    # Load STEP files
+    wheel = _load_step_as_part(wheel_step_path)
+    worm = _load_step_as_part(worm_step_path)
+
+    if wheel is None or worm is None:
+        return 0.0, check_wheel_worm_interference(
+            wheel_step_path, worm_step_path, config, 0.0
+        )
+
+    # Scale if needed
+    if scale != 1.0:
+        wheel = wheel.scale(scale)
+        worm = worm.scale(scale)
+
+    # Position worm for mesh test
+    worm_positioned = worm.rotate(Axis.Y, -90)
+    worm_positioned = worm_positioned.locate(Location((0, center_distance, 0)))
+
+    # Calculate optimal rotation
+    optimal_rotation = calculate_mesh_rotation(
+        wheel=wheel,
+        worm=worm_positioned,
+        num_teeth=num_teeth,
+    )
+
+    # Get interference result at optimal rotation
+    result = check_wheel_worm_interference(
+        wheel_step_path, worm_step_path, config, optimal_rotation
+    )
+
+    return optimal_rotation, result

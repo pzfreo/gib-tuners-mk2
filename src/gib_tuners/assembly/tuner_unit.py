@@ -21,7 +21,7 @@ from build123d import (
 from ..config.parameters import BuildConfig, Hand
 from ..components.peg_head import create_peg_head
 from ..components.string_post import create_string_post
-from ..components.wheel import create_wheel_placeholder, load_wheel
+from ..components.wheel import calculate_mesh_rotation, create_wheel_placeholder, load_wheel
 from ..components.hardware import (
     create_peg_retention_washer,
     create_wheel_retention_washer,
@@ -33,6 +33,7 @@ from ..components.hardware import (
 def create_tuner_unit(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
+    worm_step_path: Optional[Path] = None,
     include_hardware: bool = True,
 ) -> dict[str, Part]:
     """Create a single tuner unit with all components.
@@ -44,6 +45,7 @@ def create_tuner_unit(
     Args:
         config: Build configuration
         wheel_step_path: Optional path to wheel STEP file
+        worm_step_path: Optional path to worm STEP file (for mesh rotation calculation)
         include_hardware: Whether to include washers, screws, E-clips
 
     Returns:
@@ -86,11 +88,17 @@ def create_tuner_unit(
     else:
         wheel = create_wheel_placeholder(config)
 
+    wheel_params = config.gear.wheel
+    face_width = wheel_params.face_width * scale
+
+    # Apply mesh rotation from config (pre-calculated for optimal tooth alignment)
+    mesh_rotation = config.gear.mesh_rotation_deg
+    if mesh_rotation != 0.0:
+        wheel = wheel.rotate(Axis.Z, mesh_rotation)
+
     # Wheel sits on post DD section
     # DD section spans from post Z=0 to Z=dd_h
     # Wheel STEP is centered at Z=0, so shift up by half face width
-    wheel_params = config.gear.wheel
-    face_width = wheel_params.face_width * scale
     wheel_z = post_z_offset + face_width / 2
     wheel = wheel.locate(Location((0, 0, wheel_z)))
     components["wheel"] = wheel
@@ -212,6 +220,7 @@ def create_tuner_unit(
 def create_tuner_unit_compound(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
+    worm_step_path: Optional[Path] = None,
     include_hardware: bool = True,
 ) -> Compound:
     """Create a single tuner unit as a compound shape.
@@ -219,10 +228,11 @@ def create_tuner_unit_compound(
     Args:
         config: Build configuration
         wheel_step_path: Optional path to wheel STEP file
+        worm_step_path: Optional path to worm STEP file (for mesh rotation calculation)
         include_hardware: Whether to include washers, screws, E-clips
 
     Returns:
         Compound containing all tuner components
     """
-    components = create_tuner_unit(config, wheel_step_path, include_hardware)
+    components = create_tuner_unit(config, wheel_step_path, worm_step_path, include_hardware)
     return Compound(list(components.values()))

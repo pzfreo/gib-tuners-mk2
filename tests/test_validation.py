@@ -1,9 +1,16 @@
 """Tests for geometry validation (spec Section 9)."""
 
+from pathlib import Path
+
 import pytest
 
 from gib_tuners.config.defaults import create_default_config
-from gib_tuners.utils.validation import validate_geometry, ValidationResult
+from gib_tuners.utils.validation import (
+    validate_geometry,
+    ValidationResult,
+    check_wheel_worm_interference,
+    find_optimal_mesh_rotation,
+)
 
 
 class TestSpecValidation:
@@ -127,3 +134,118 @@ class TestValidationOutput:
         result = validate_geometry(config)
         # Should have at least 10 checks
         assert len(result.checks) >= 10
+
+
+class TestWheelWormInterference:
+    """Tests for wheel-worm mesh interference checking."""
+
+    @pytest.fixture
+    def wheel_step_path(self, reference_dir: Path) -> Path:
+        """Return path to wheel STEP file."""
+        return reference_dir / "wheel_m0.5_z13.step"
+
+    @pytest.fixture
+    def worm_step_path(self, reference_dir: Path) -> Path:
+        """Return path to worm STEP file."""
+        return reference_dir / "worm_m0.5_z1.step"
+
+    def test_interference_check_with_missing_files(self, production_config):
+        """Test that interference check handles missing files gracefully."""
+        result = check_wheel_worm_interference(
+            wheel_step_path=Path("/nonexistent/wheel.step"),
+            worm_step_path=Path("/nonexistent/worm.step"),
+            config=production_config,
+        )
+        assert not result.within_backlash_tolerance
+        assert "Could not load" in result.message
+
+    @pytest.mark.skipif(
+        not Path(__file__).parent.parent.joinpath("reference/wheel_m0.5_z13.step").exists(),
+        reason="STEP files not available"
+    )
+    def test_interference_check_loads_step_files(
+        self, wheel_step_path, worm_step_path, production_config
+    ):
+        """Test that interference check can load STEP files."""
+        if not wheel_step_path.exists() or not worm_step_path.exists():
+            pytest.skip("STEP files not available")
+
+        result = check_wheel_worm_interference(
+            wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
+            config=production_config,
+        )
+        # Should not contain "Could not load" error
+        assert "Could not load" not in result.message
+
+    @pytest.mark.skipif(
+        not Path(__file__).parent.parent.joinpath("reference/wheel_m0.5_z13.step").exists(),
+        reason="STEP files not available"
+    )
+    def test_optimal_mesh_rotation_is_deterministic(
+        self, wheel_step_path, worm_step_path, production_config
+    ):
+        """Test that mesh rotation calculation gives same result each run."""
+        if not wheel_step_path.exists() or not worm_step_path.exists():
+            pytest.skip("STEP files not available")
+
+        # Run calculation twice
+        rotation1, _ = find_optimal_mesh_rotation(
+            wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
+            config=production_config,
+        )
+        rotation2, _ = find_optimal_mesh_rotation(
+            wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
+            config=production_config,
+        )
+        # Should get same result
+        assert abs(rotation1 - rotation2) < 0.01, (
+            f"Mesh rotation not deterministic: {rotation1}° vs {rotation2}°"
+        )
+
+    @pytest.mark.skipif(
+        not Path(__file__).parent.parent.joinpath("reference/wheel_m0.5_z13.step").exists(),
+        reason="STEP files not available"
+    )
+    def test_optimal_rotation_within_tooth_pitch(
+        self, wheel_step_path, worm_step_path, production_config
+    ):
+        """Test that optimal rotation is within one tooth pitch angle."""
+        if not wheel_step_path.exists() or not worm_step_path.exists():
+            pytest.skip("STEP files not available")
+
+        rotation, _ = find_optimal_mesh_rotation(
+            wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
+            config=production_config,
+        )
+        num_teeth = production_config.gear.wheel.num_teeth
+        tooth_angle = 360.0 / num_teeth  # ~27.69° for 13 teeth
+
+        assert 0 <= rotation < tooth_angle, (
+            f"Rotation {rotation}° should be in [0, {tooth_angle}°)"
+        )
+
+    @pytest.mark.skipif(
+        not Path(__file__).parent.parent.joinpath("reference/wheel_m0.5_z13.step").exists(),
+        reason="STEP files not available"
+    )
+    def test_interference_within_tolerance(
+        self, wheel_step_path, worm_step_path, production_config
+    ):
+        """Test that optimized mesh has interference within tolerance."""
+        if not wheel_step_path.exists() or not worm_step_path.exists():
+            pytest.skip("STEP files not available")
+
+        rotation, result = find_optimal_mesh_rotation(
+            wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
+            config=production_config,
+        )
+        # At minimum, should be within manufacturing tolerance
+        assert result.within_manufacturing_tolerance, (
+            f"Interference {result.interference_volume_mm3:.4f}mm³ exceeds tolerance. "
+            f"Rotation: {rotation}°. Message: {result.message}"
+        )

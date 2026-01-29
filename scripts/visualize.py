@@ -91,6 +91,10 @@ def main() -> int:
 
     print(f"Building {args.component} at scale {args.scale}x...")
 
+    # STEP file path for wheel geometry
+    project_root = Path(__file__).parent.parent
+    wheel_step = project_root / "reference" / "wheel_m0.5_z13.step"
+
     # Build requested component
     if args.component == "frame":
         from gib_tuners.components.frame import create_frame
@@ -114,13 +118,13 @@ def main() -> int:
 
     elif args.component == "tuner":
         from gib_tuners.assembly.tuner_unit import create_tuner_unit
-        components = create_tuner_unit(config)
+        components = create_tuner_unit(config, wheel_step)
         for name, part in components.items():
             show_object(part, name=name)
 
     elif args.component == "assembly":
         from gib_tuners.assembly.gang_assembly import create_gang_assembly
-        assembly = create_gang_assembly(config)
+        assembly = create_gang_assembly(config, wheel_step)
         show_object(assembly["frame"], name="frame")
         for i, tuner_dict in enumerate(assembly["tuners"]):
             for name, part in tuner_dict.items():

@@ -19,6 +19,8 @@ from .tolerances import get_tolerance
 
 # Default gear parameters JSON - single source of truth for gear geometry
 DEFAULT_GEAR_JSON = Path(__file__).parent.parent.parent.parent / "config" / "worm_gear.json"
+# Assembly-specific config (mesh rotation, etc.) - separate from generated gear JSON
+DEFAULT_ASSEMBLY_JSON = Path(__file__).parent.parent.parent.parent / "config" / "assembly.json"
 
 # Clearance for worm entry hole (allows worm to pass through frame hole)
 WORM_ENTRY_CLEARANCE = 0.2  # 0.1mm per side
@@ -80,6 +82,13 @@ def load_gear_params(json_path: Path) -> GearParams:
         bore=wheel_bore,
     )
 
+    # Load mesh rotation from separate assembly config (not part of gear generator output)
+    mesh_rotation = 0.0
+    if DEFAULT_ASSEMBLY_JSON.exists():
+        with open(DEFAULT_ASSEMBLY_JSON) as f:
+            assembly_config = json.load(f)
+            mesh_rotation = assembly_config.get("mesh_rotation_deg", 0.0)
+
     return GearParams(
         worm=worm,
         wheel=wheel,
@@ -87,6 +96,7 @@ def load_gear_params(json_path: Path) -> GearParams:
         pressure_angle_deg=assembly_data["pressure_angle_deg"],
         backlash=assembly_data["backlash_mm"],
         ratio=assembly_data["ratio"],
+        mesh_rotation_deg=mesh_rotation,
     )
 
 
