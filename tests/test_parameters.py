@@ -25,9 +25,9 @@ class TestFrameParams:
     def test_default_values(self):
         """Test default frame parameters match spec."""
         params = FrameParams()
-        # Updated to standard 10x10x1 box section (real measurements TBD)
-        assert params.box_outer == 10.0
-        assert params.wall_thickness == 1.0
+        # Box section dimensions as manufactured
+        assert params.box_outer == 10.35
+        assert params.wall_thickness == 1.1
         assert params.total_length == 145.0
         assert params.housing_length == 16.2
         assert params.num_housings == 5
@@ -36,7 +36,7 @@ class TestFrameParams:
     def test_box_inner(self):
         """Test internal cavity calculation."""
         params = FrameParams()
-        expected = 10.0 - 2 * 1.0  # 8.0
+        expected = 10.35 - 2 * 1.1  # 8.15
         assert abs(params.box_inner - expected) < 0.01
 
     def test_housing_centers(self):
@@ -145,7 +145,7 @@ class TestLoadGearParams:
         assert gear.worm.num_starts == 1
         assert gear.worm.pitch_diameter == 5.0
         assert gear.worm.tip_diameter == 6.0
-        assert gear.worm.length == 7.0
+        assert gear.worm.length == 7.8
 
         # Check wheel params (updated for 7.5mm wheel)
         assert gear.wheel.module == 0.5

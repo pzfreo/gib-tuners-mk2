@@ -36,8 +36,8 @@ REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
 PEG_HEAD_STEP = REFERENCE_DIR / "peghead-and-shaft.step"
 WORM_STEP = REFERENCE_DIR / "worm_m0.5_z1.step"
 
-# Current worm STEP length (until regenerated at target length)
-WORM_STEP_LENGTH = 7.0
+# Current worm STEP length (regenerated at target length)
+WORM_STEP_LENGTH = 7.8
 
 
 def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
@@ -71,7 +71,14 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     scale = config.scale
 
     # Import peg head and cut at Z=0 (keep Z ≤ 0)
-    peg_head_full = import_step(PEG_HEAD_STEP)
+    peg_head_imported = import_step(PEG_HEAD_STEP)
+    # import_step returns ShapeList; fuse into single Part if multiple shapes
+    if hasattr(peg_head_imported, '__iter__') and not isinstance(peg_head_imported, Part):
+        peg_head_full = peg_head_imported[0]
+        for shape in peg_head_imported[1:]:
+            peg_head_full = peg_head_full + shape
+    else:
+        peg_head_full = peg_head_imported
 
     keep_box = Box(20, 20, 30, align=(Align.CENTER, Align.CENTER, Align.MAX))
     keep_box = keep_box.locate(Location((0, 0, 0)))
@@ -94,7 +101,12 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
 
     # Add worm if requested and STEP exists
     if include_worm and WORM_STEP.exists():
-        worm = import_step(WORM_STEP)
+        worm_imported = import_step(WORM_STEP)
+        # import_step returns ShapeList; get first shape
+        if hasattr(worm_imported, '__iter__') and not isinstance(worm_imported, Part):
+            worm = worm_imported[0]
+        else:
+            worm = worm_imported
         # Worm STEP is centered at origin, shift so bottom is at Z=0
         worm_half = WORM_STEP_LENGTH / 2
         worm_positioned = worm.locate(Location((0, 0, worm_half)))

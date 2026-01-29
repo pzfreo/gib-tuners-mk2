@@ -49,7 +49,7 @@
     "profile": "ZI",
     "virtual_hobbing": false,
     "hobbing_steps": 72,
-    "worm_length_mm": 7,
+    "worm_length_mm": 7.8,
     "wheel_width_mm": 6
   },
   "schema_version": "2.0"

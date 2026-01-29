@@ -78,7 +78,7 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
     ))
 
     # 3. Peg shaft fits in bearing hole
-    peg_shaft = peg.bearing_diameter
+    peg_shaft = peg.shaft_diameter
     bearing_hole = frame.peg_bearing_hole
     clearance = bearing_hole - peg_shaft
     checks.append(ValidationCheck(

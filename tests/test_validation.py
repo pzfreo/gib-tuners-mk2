@@ -36,8 +36,8 @@ class TestSpecValidation:
         assert entry_hole - worm_od >= 0.2  # 0.2mm clearance
 
     def test_peg_shaft_fits_in_bearing(self, config):
-        """Spec check: Peg shaft (3.8mm) fits in bearing hole (4.0mm)."""
-        shaft = config.peg_head.bearing_diameter
+        """Spec check: Peg shaft (3.5mm) fits in bearing hole (4.0mm)."""
+        shaft = config.peg_head.shaft_diameter
         hole = config.frame.peg_bearing_hole
         assert hole > shaft
         assert hole - shaft >= 0.2  # 0.2mm clearance
