@@ -32,9 +32,9 @@ class DDCutParams:
 @dataclass(frozen=True)
 class FrameParams:
     """Parameters for an N-gang frame (1 to N tuning stations)."""
-    # Box section dimensions (standard 10x10x1 until real measurements taken)
-    box_outer: float = 10.0  # Outer dimension of square tube
-    wall_thickness: float = 1.0  # Wall thickness
+    # Box section dimensions (as manufactured)
+    box_outer: float = 10.35  # Outer dimension of square tube
+    wall_thickness: float = 1.1  # Wall thickness
 
     # Housing dimensions
     housing_length: float = 16.2  # Length of each rigid box section
@@ -107,7 +107,7 @@ class FrameParams:
 
 @dataclass(frozen=True)
 class WormParams:
-    """Parameters for the globoid worm (integral to peg head)."""
+    """Parameters for the cylindrical worm (integral to peg head)."""
     module: float = 0.5
     num_starts: int = 1
     pitch_diameter: float = 5.0
@@ -115,7 +115,7 @@ class WormParams:
     root_diameter: float = 3.75
     lead: float = 1.5708  # π/2
     lead_angle_deg: float = 5.71
-    length: float = 7.0
+    length: float = 7.8  # 0.1mm clearance each side in 8mm frame cavity
     hand: Hand = Hand.RIGHT
 
     # Globoid-specific
@@ -149,30 +149,63 @@ class GearParams:
 
 @dataclass(frozen=True)
 class PegHeadParams:
-    """Parameters for the peg head assembly (cast with integral worm)."""
-    # Ring dimensions
-    ring_od: float = 12.8  # Outer diameter
-    ring_bore: float = 9.5  # Inner bore (hollow)
-    ring_width: float = 7.8  # Width (flat-to-flat)
-    ring_height: float = 8.0  # Overall height
-    chamfer: float = 1.0  # Edge chamfer
+    """Parameters for the peg head assembly (combined from STEP files).
 
-    # Button
-    button_diameter: float = 6.0  # Decorative end button
-    button_height: float = 3.5
+    Construction:
+    1. Import peg head STEP (ring, pip, cap, shoulder), cut at Z=0
+    2. Add new 3.5mm shaft (fits inside worm root of 3.75mm)
+    3. Add worm STEP at Z=0 (butted against shoulder)
+    4. Add M2 tap hole at shaft end
 
-    # Shaft sections
-    shoulder_diameter: float = 8.0  # Stops pull-in through entry hole
-    shoulder_length: float = 2.0
-    bearing_diameter: float = 3.8  # Runs in peg bearing hole
-    bearing_length: float = 1.0  # Through wall thickness
+    Shaft structure (from shoulder toward bearing):
+    - Worm: 7.8mm (0.1mm clearance each side in 8mm cavity)
+    - Gap: 0.2mm to frame cavity end
+    - Bearing wall: 1.0mm
+    - Extension: 0.1mm beyond frame for washer
+    - Total shaft: 9.1mm
+    """
+    # Ring dimensions (from peg head STEP)
+    ring_od: float = 12.5  # Outer diameter (headouterd)
+    ring_bore: float = 9.8  # Inner bore diameter (headinnerd) - finger grip
+    ring_width_top: float = 2.4  # Width at outer edge (headthicknessattop)
+    bore_offset: float = 0.25  # Bore center offset (headinneroffset)
+    chamfer: float = 0.3  # Edge chamfer (smoothedges)
 
-    # Retention
+    # Pip (small decorative button on outside of ring)
+    pip_diameter: float = 2.1  # Onshape: pipd
+    pip_length: float = 1.2  # Onshape: pipl
+    pip_stalk_diameter: float = 1.0  # Onshape: pipstalkd
+    pip_stalk_length: float = 0.2  # Onshape: pipstalkl
+
+    # Join (shaft through ring bore) - from peg head STEP
+    join_diameter: float = 3.5  # Onshape: headjoind
+    join_length: float = 3.0  # Onshape: headjoinl
+
+    # Cap (flange against frame) - from peg head STEP
+    cap_diameter: float = 8.0  # Onshape: capd - must be > worm_entry_hole (6.2mm)
+    cap_length: float = 1.0  # Onshape: capl
+
+    # Shaft (new, added programmatically)
+    shaft_diameter: float = 3.5  # Fits inside worm root (3.75mm)
+    worm_length: float = 7.8  # Target length (0.1mm clearance each side)
+    shaft_gap: float = 0.2  # Gap between worm end and frame cavity end
+    bearing_wall: float = 1.0  # Frame wall thickness
+    washer_clearance: float = 0.1  # Extension beyond frame
+
+    # M2 tap hole
+    tap_drill: float = 1.6  # M2 tap drill diameter
+    tap_depth: float = 4.0  # Depth of tapped hole
+
+    # Retention hardware
     screw_thread: str = "M2"
-    screw_length: float = 3.0
     washer_od: float = 5.0
     washer_id: float = 2.2
     washer_thickness: float = 0.5
+
+    @property
+    def shaft_length(self) -> float:
+        """Total shaft length from shoulder to end."""
+        return self.worm_length + self.shaft_gap + self.bearing_wall + self.washer_clearance
 
 
 @dataclass(frozen=True)

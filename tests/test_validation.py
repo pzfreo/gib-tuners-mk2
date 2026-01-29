@@ -62,11 +62,11 @@ class TestSpecValidation:
         hole = config.frame.post_bearing_hole
         assert cap > hole
 
-    def test_peg_shoulder_stops_pull_in(self, config):
-        """Spec check: Peg shoulder (8mm) larger than entry hole (6.2mm)."""
-        shoulder = config.peg_head.shoulder_diameter
+    def test_peg_cap_stops_push_in(self, config):
+        """Spec check: Peg cap (8mm) larger than entry hole (6.2mm)."""
+        cap = config.peg_head.cap_diameter
         hole = config.frame.worm_entry_hole
-        assert shoulder > hole
+        assert cap > hole
 
     def test_washer_stops_peg_pull_out(self, config):
         """Spec check: Washer (5mm OD) larger than bearing hole (4.0mm)."""

@@ -123,14 +123,14 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
         message=f"Post cap ({cap_dia}mm) must be larger than top hole ({post_hole}mm)",
     ))
 
-    # 7. Peg shoulder stops pull-in through entry hole
-    shoulder_dia = peg.shoulder_diameter
+    # 7. Peg cap stops push-in through entry hole
+    cap_dia = peg.cap_diameter
     checks.append(ValidationCheck(
-        name="Peg shoulder stops pull-in",
-        passed=shoulder_dia > entry_hole,
-        expected=f"shoulder diameter > entry hole",
-        actual=f"{shoulder_dia}mm shoulder vs {entry_hole}mm hole",
-        message=f"Peg shoulder ({shoulder_dia}mm) must be larger than entry hole ({entry_hole}mm)",
+        name="Peg cap stops push-in",
+        passed=cap_dia > entry_hole,
+        expected=f"cap diameter > entry hole",
+        actual=f"{cap_dia}mm cap vs {entry_hole}mm hole",
+        message=f"Peg cap ({cap_dia}mm) must be larger than entry hole ({entry_hole}mm)",
     ))
 
     # 8. Washer stops peg pull-out through bearing hole

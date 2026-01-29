@@ -120,13 +120,14 @@ def create_tuner_unit(
         # Position at end of peg shaft
         peg_params = config.peg_head
         worm_params = config.gear.worm
-        # Shaft extends from ring center
+        # Shaft extends from ring center: cap + entry_shaft + worm + bearing
         ring_width = peg_params.ring_width * scale
-        shoulder_h = peg_params.shoulder_length * scale
+        cap_h = peg_params.cap_length * scale
+        entry_h = peg_params.entry_shaft_length * scale
         worm_length = worm_params.length * scale
         bearing_h_peg = peg_params.bearing_length * scale
 
-        washer_x = worm_x + ring_width / 2 + shoulder_h + worm_length + bearing_h_peg
+        washer_x = worm_x + ring_width / 2 + cap_h + entry_h + worm_length + bearing_h_peg
         # Rotate washer to face along X axis
         peg_washer = peg_washer.rotate(Axis.Y, 90)
         peg_washer = peg_washer.locate(Location((washer_x, 0, worm_z)))
