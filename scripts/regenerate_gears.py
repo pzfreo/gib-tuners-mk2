@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
-GEAR_JSON = PROJECT_ROOT / "7.5mm-cyl.json"
+GEAR_JSON = PROJECT_ROOT / "config" / "worm_gear.json"
 REFERENCE_DIR = PROJECT_ROOT / "reference"
 
 

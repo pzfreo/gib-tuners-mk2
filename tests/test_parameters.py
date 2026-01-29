@@ -151,9 +151,38 @@ class TestLoadGearParams:
         assert gear.wheel.module == 0.5
         assert gear.wheel.num_teeth == 13
         assert gear.wheel.tip_diameter == 7.5
-        assert gear.wheel.face_width == 6.0
+        assert gear.wheel.face_width == 7.5  # Wider to center worm contact
 
         # Check assembly params (updated for 5.75mm CD)
         assert gear.center_distance == 5.75
         assert gear.pressure_angle_deg == 25.0
         assert gear.ratio == 13
+
+
+class TestDerivedParameters:
+    """Tests for parameters derived from gear config."""
+
+    def test_dd_cut_length_equals_wheel_face_width(self, gear_json_path):
+        """Test that dd_cut_length is derived from wheel face width."""
+        if not gear_json_path.exists():
+            pytest.skip("Gear JSON file not found")
+
+        config = create_default_config(gear_json_path=gear_json_path)
+        assert config.string_post.dd_cut_length == config.gear.wheel.face_width
+
+    def test_worm_entry_hole_derived_from_tip_diameter(self, gear_json_path):
+        """Test that worm_entry_hole is derived from worm tip diameter."""
+        if not gear_json_path.exists():
+            pytest.skip("Gear JSON file not found")
+
+        config = create_default_config(gear_json_path=gear_json_path)
+        expected = config.gear.worm.tip_diameter + 0.2  # WORM_ENTRY_CLEARANCE
+        assert config.frame.worm_entry_hole == expected
+
+    def test_worm_fits_through_entry_hole(self, gear_json_path):
+        """Test that worm tip diameter is less than entry hole."""
+        if not gear_json_path.exists():
+            pytest.skip("Gear JSON file not found")
+
+        config = create_default_config(gear_json_path=gear_json_path)
+        assert config.gear.worm.tip_diameter < config.frame.worm_entry_hole
