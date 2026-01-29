@@ -7,7 +7,7 @@ Parametric CAD project for historic guitar tuner restoration using build123d. Th
 ## Key Files
 
 - `spec.md` - Master engineering specification (source of truth for all dimensions)
-- `75mm-globoid.json` - Gear calculator parameters for worm/wheel (13T, 7.5mm wheel)
+- `config/worm_gear.json` - Gear calculator parameters for worm/wheel (13T, 7.5mm wheel)
 - `src/gib_tuners/config/parameters.py` - All dataclasses defining component geometry
 - `src/gib_tuners/config/tolerances.py` - Tolerance profiles for different manufacturing methods
 

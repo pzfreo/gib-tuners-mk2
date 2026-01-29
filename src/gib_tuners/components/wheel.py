@@ -12,6 +12,7 @@ from typing import Optional
 
 from build123d import (
     Align,
+    Axis,
     Compound,
     Cylinder,
     Location,
@@ -94,6 +95,71 @@ def modify_wheel_bore(
     wheel = wheel - dd_bore
 
     return wheel
+
+
+def calculate_mesh_rotation(
+    wheel: Part,
+    worm: Part,
+    num_teeth: int,
+    coarse_step: float = 1.0,
+    fine_step: float = 0.1,
+) -> float:
+    """Find wheel rotation that minimizes collision with worm.
+
+    Uses iterative collision minimization to find the optimal wheel rotation
+    angle that aligns wheel teeth with worm thread valleys.
+
+    Args:
+        wheel: Wheel Part (centered at origin, Z-axis rotation)
+        worm: Worm Part (positioned for mesh testing)
+        num_teeth: Number of teeth on the wheel (determines tooth pitch angle)
+        coarse_step: Step size in degrees for initial search (default 1.0°)
+        fine_step: Step size in degrees for refinement (default 0.1°)
+
+    Returns:
+        Optimal rotation angle in degrees
+    """
+    tooth_angle = 360.0 / num_teeth  # ~27.69° for 13 teeth
+
+    best_rotation = 0.0
+    min_interference = float("inf")
+
+    # Coarse search: test rotations in coarse_step increments within one tooth pitch
+    coarse_angles = [i * coarse_step for i in range(int(tooth_angle / coarse_step) + 1)]
+    for angle in coarse_angles:
+        rotated_wheel = wheel.rotate(Axis.Z, angle)
+        try:
+            intersection = rotated_wheel & worm
+            interference = intersection.volume if hasattr(intersection, "volume") else 0
+        except Exception:
+            # Boolean operation failed - treat as no interference
+            interference = 0
+
+        if interference < min_interference:
+            min_interference = interference
+            best_rotation = angle
+
+    # Fine search: refine around best angle with fine_step increments
+    fine_range = int(coarse_step / fine_step)
+    fine_angles = [
+        best_rotation + (d - fine_range) * fine_step
+        for d in range(2 * fine_range + 1)
+    ]
+    for angle in fine_angles:
+        # Keep angle within [0, tooth_angle) range
+        normalized_angle = angle % tooth_angle
+        rotated_wheel = wheel.rotate(Axis.Z, normalized_angle)
+        try:
+            intersection = rotated_wheel & worm
+            interference = intersection.volume if hasattr(intersection, "volume") else 0
+        except Exception:
+            interference = 0
+
+        if interference < min_interference:
+            min_interference = interference
+            best_rotation = normalized_angle
+
+    return best_rotation
 
 
 def create_wheel_placeholder(config: BuildConfig) -> Part:
