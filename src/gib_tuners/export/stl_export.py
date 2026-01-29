@@ -18,6 +18,9 @@ def export_stl(
 ) -> None:
     """Export a shape to STL format.
 
+    Uses build123d Mesher by default, falls back to OCP StlAPI_Writer
+    for complex geometry with degenerate faces.
+
     Args:
         shape: Part or Compound to export
         output_path: Output file path (should end in .stl)
@@ -26,7 +29,18 @@ def export_stl(
     """
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Use Mesher for STL export
-    mesher = Mesher()
-    mesher.add_shape(shape)
-    mesher.write(str(output_path))
+    try:
+        # Try build123d Mesher first
+        mesher = Mesher()
+        mesher.add_shape(shape)
+        mesher.write(str(output_path))
+    except Exception:
+        # Fall back to OCP direct export (more tolerant of degenerate faces)
+        from OCP.BRepMesh import BRepMesh_IncrementalMesh
+        from OCP.StlAPI import StlAPI_Writer
+
+        mesh = BRepMesh_IncrementalMesh(shape.wrapped, tolerance, False, angular_tolerance, True)
+        mesh.Perform()
+
+        writer = StlAPI_Writer()
+        writer.Write(shape.wrapped, str(output_path))
