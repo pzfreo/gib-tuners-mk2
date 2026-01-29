@@ -132,9 +132,10 @@ To enable assembly without soldering:
 2. **Top Face (Post Bearing):** ø4.2mm through-hole.
    * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft).
 3. **Side Faces (Worm Axle):** Asymmetric through-holes.
-   * **Entry Side:** ø6.2mm (worm 6.0mm OD + 0.2mm clearance).
-   * **Bearing Side:** ø4.0mm (peg shaft 3.8mm + 0.2mm clearance).
-   * *Note:* For RH frame, entry is on left side (viewed from front). LH frame is mirrored.
+   * **Entry Side:** ø6.2mm (entry shaft 6.0mm + 0.2mm clearance).
+   * **Bearing Side:** ø4.0mm (bearing shaft 3.8mm + 0.2mm clearance).
+   * *Note:* For RH frame, entry is on RIGHT side (+X). LH frame is mirrored.
+   * *Retention:* Cap (8mm) sits against frame exterior, cannot pass through 6.2mm hole.
 
 ## **3\. Component B: The Gear Set**
 
@@ -200,50 +201,66 @@ The DD cut is created by milling two parallel flats on the string post shaft.
 
 The peg head, shaft, and worm thread are cast as a single brass piece, then finish-machined. This provides maximum strength and eliminates the need for a separate worm gear.
 
-### **Peg Head Geometry (from technical drawing)**
+### **Peg Head Geometry (from Onshape model)**
 
-| Dimension | Value | Description |
-|-----------|-------|-------------|
-| Ring OD | 12.8mm | Outer diameter of peg head ring |
-| Ring Bore | 9.5mm | Inner bore diameter (hollow for finger grip) |
-| Ring Width | 7.8mm | Width of ring (flat-to-flat) |
-| Ring Height | 8.0mm | Overall height of ring section |
-| Chamfer | 1.0mm | Edge chamfer on ring faces |
-| Button Diameter | ~6.0mm | Decorative end button |
-| Button Height | 3.5mm | Height of decorative button |
+| Dimension | Variable | Value | Description |
+|-----------|----------|-------|-------------|
+| Ring OD | headouterd | 12.5mm | Outer diameter of peg head ring |
+| Ring Bore | headinnerd | 9.8mm | Inner bore diameter (hollow for finger grip) |
+| Ring Width | - | 7.8mm | Width of ring (flat-to-flat) |
+| Ring Wall | headthicknessattop | 2.4mm | Wall thickness at top of ring |
+| Ring Inner Offset | headinneroffset | 0.25mm | Bore offset for taper |
+| Chamfer | smoothedges | 0.3mm | Edge chamfer on ring faces |
+| Button Diameter | capd | 8.0mm | Decorative end button |
+| Button Height | capl | 1.0mm | Height of decorative button |
 
-*Note: The peg head is a ring shape with flat sides and chamfered edges, with a small decorative button on the end. The hollow bore (~9.5mm) provides finger grip for fine tuning.*
+*Note: The peg head ring is created by revolving a profile, then hollowing with a tapered bore. The hollow bore (~9.8mm) provides finger grip for fine tuning.*
+
+### **Ring Construction (from Onshape)**
+
+The ring is created in three steps:
+1. **Revolve profile** (Sketch 8 → Revolve 1): Creates outer ring shape using `headouterd`, `headjoinl`, `headjoind`
+2. **Hollow cut** (Sketch 9 → Extrude 8): Removes material to create hollow ring, wall thickness = `headthicknessattop/2` = 1.2mm
+3. **Bore cut** (Sketch 10 → Extrude 9): Creates `headinnerd` (9.8mm) bore, positioned at `headjoinl + headouterd/2 + headinneroffset`
 
 ### **Integral Shaft + Worm (Cast as One Piece)**
 
-The peg head, shaft, and worm thread are cast/machined as a single piece. This eliminates the weak point of a separate gear on a small shaft.
+The peg head, shaft, and worm thread are cast/machined as a single piece. Structure from outside to inside frame:
 
-| Section | Diameter | Length | Description |
-|---------|----------|--------|-------------|
-| Peg head shoulder | 8.0mm | ~2mm | Stops shaft being pulled into frame |
-| Worm thread | 6.0mm OD | 7mm | Globoid worm, integral to shaft |
-| Bearing surface | 3.8mm round | ~1mm (wall) | Runs in ø4.0mm frame bearing hole |
-| Screw hole | M2 tapped | 3mm deep | Retention screw at shaft end |
+| Section | Variable | Diameter | Length | Description |
+|---------|----------|----------|--------|-------------|
+| Button | capd/capl | 8.0mm | 1.0mm | Decorative end (outside frame) |
+| Ring | headouterd | 12.5mm OD | 7.8mm | Finger grip |
+| Join | headjoind/headjoinl | 3.5mm | 3.0mm | Connects ring to shaft |
+| **Cap** | capd/capl | **8.0mm** | **1.0mm** | **Sits against frame, stops push-in** |
+| **Entry shaft** | shoulderd/shoulderl | **6.0mm** | **1.2mm** | **Through worm entry hole (6.2mm)** |
+| Worm thread | - | 6.0mm OD | 7.0mm | Cylindrical worm, in frame cavity |
+| Bearing shaft | shankd/shanklength | 3.8mm | 2.4mm | Through peg bearing hole (4.0mm) |
+| Screw hole | - | M2 tap | 3mm deep | Retention screw at shaft end |
 
-**Total shaft length:** ~10mm (from peg head shoulder to shaft end)
+**Key dimensions:**
+- Cap (8mm) > worm entry hole (6.2mm) → stops push-in
+- Entry shaft (6mm) < worm entry hole (6.2mm) → passes through with 0.2mm clearance
+- Bearing shaft (3.8mm) < peg bearing hole (4.0mm) → passes through with 0.2mm clearance
 
 ### **Worm Thread Geometry**
 
 The worm thread is machined onto the shaft using the reference geometry from `worm_m0.5_z1.step`:
 
-* **Type:** Globoid
-* **Outer Diameter:** 6.0mm
+* **Type:** Cylindrical
+* **Outer Diameter (tip):** 6.0mm
 * **Pitch Diameter:** 5.0mm
-* **Root Diameter:** 3.75mm
-* **Length:** 7mm
-* **Lead:** 1.57mm
+* **Root Diameter:** 3.75mm (worminnerd)
+* **Length:** 7.0mm
+* **Lead:** 1.57mm (π/2)
 * **Lead Angle:** 5.7°
+* **Thread depth:** 1.75mm (threaddepth from Onshape)
 
 ### **Shaft Retention**
 
-* **Pull-in prevention:** 8mm peg head shoulder cannot pass through 6.2mm entry hole
-* **Pull-out prevention:** M2 × 3mm pan head screw + washer in shaft end
-  * Washer: ~5mm OD, 2.2mm ID, 0.5mm thick (larger than 4.0mm bearing hole)
+* **Push-in prevention:** Cap (8mm) sits against frame exterior, cannot pass through 6.2mm entry hole
+* **Pull-out prevention:** M2 × 3mm pan head screw + washer on bearing shaft end
+  * Washer: 5mm OD, 2.2mm ID, 0.5mm thick (larger than 4.0mm bearing hole)
   * Screw head OD: ~3.8mm (holds washer in place)
   * Total protrusion: ~1.8mm beyond shaft end
 
