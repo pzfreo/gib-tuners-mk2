@@ -154,7 +154,7 @@ The worm thread is cast/machined as part of the peg head assembly (not a separat
 * **Outer Diameter (tip):** **6.0mm**
 * **Pitch Diameter:** 5.0mm
 * **Root Diameter:** 3.75mm
-* **Length:** **7mm**
+* **Length:** **7.8mm** (0.1mm clearance each side in 8mm cavity)
 * **Lead:** 1.57mm (π/2)
 * **Lead Angle:** 5.7°
 * **Hand:** Right (LH variant uses left-hand worm)
@@ -425,7 +425,7 @@ Investment cast peg head with integral shaft and worm thread:
 
 * **Center Distance (CD):** Distance from Worm Axis to Post Axis.
   * CD = (Pitch Dia Worm + Pitch Dia Wheel) / 2
-  * CD = (5.0mm + 6.0mm) / 2 = **5.5mm**.
+  * CD = (5.0mm + 6.5mm) / 2 = **5.75mm**.
 * **Vertical Alignment:**
   * Internal Cavity: Z = 1.0mm (floor) to Z = 9.0mm (ceiling), height = 8.0mm.
   * Worm Axis Height: **Z = 5.0mm** (Centered in box and cavity).

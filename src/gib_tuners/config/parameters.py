@@ -32,9 +32,9 @@ class DDCutParams:
 @dataclass(frozen=True)
 class FrameParams:
     """Parameters for an N-gang frame (1 to N tuning stations)."""
-    # Box section dimensions (standard 10x10x1 until real measurements taken)
-    box_outer: float = 10.0  # Outer dimension of square tube
-    wall_thickness: float = 1.0  # Wall thickness
+    # Box section dimensions (as manufactured)
+    box_outer: float = 10.35  # Outer dimension of square tube
+    wall_thickness: float = 1.1  # Wall thickness
 
     # Housing dimensions
     housing_length: float = 16.2  # Length of each rigid box section
@@ -107,7 +107,7 @@ class FrameParams:
 
 @dataclass(frozen=True)
 class WormParams:
-    """Parameters for the globoid worm (integral to peg head)."""
+    """Parameters for the cylindrical worm (integral to peg head)."""
     module: float = 0.5
     num_starts: int = 1
     pitch_diameter: float = 5.0
@@ -115,7 +115,7 @@ class WormParams:
     root_diameter: float = 3.75
     lead: float = 1.5708  # π/2
     lead_angle_deg: float = 5.71
-    length: float = 4.88  # From drawing
+    length: float = 7.8  # 0.1mm clearance each side in 8mm frame cavity
     hand: Hand = Hand.RIGHT
 
     # Globoid-specific
