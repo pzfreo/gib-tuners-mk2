@@ -83,10 +83,22 @@ def position_tuner_at_housing(
     return positioned
 
 
+class AssemblyInterferenceError(Exception):
+    """Raised when assembly has interference between parts."""
+
+    def __init__(self, results: dict[str, float]):
+        self.results = results
+        total = results.get("total", 0.0)
+        failures = [k for k, v in results.items() if k != "total" and v >= 0.01]
+        msg = f"Assembly has {total:.3f} mm³ total interference in: {', '.join(failures)}"
+        super().__init__(msg)
+
+
 def create_positioned_assembly(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
     include_hardware: bool = True,
+    check_interference: bool = False,
 ) -> dict[str, Part | list]:
     """Create the full N-gang tuner assembly with all parts correctly positioned.
 
@@ -94,12 +106,17 @@ def create_positioned_assembly(
         config: Build configuration (num_housings determines gang count)
         wheel_step_path: Optional path to wheel STEP file
         include_hardware: Whether to include washers, screws
+        check_interference: If True, run interference checks and raise AssemblyInterferenceError if any
 
     Returns:
         Dictionary containing:
         - 'frame': The frame Part
         - 'tuners': List of dicts, each containing positioned components for one tuner
         - 'all_parts': Flat dict of all parts keyed by unique name (e.g. "wheel_1")
+        - 'interference': Dict of interference results (if check_interference=True)
+
+    Raises:
+        AssemblyInterferenceError: If check_interference=True and interference is found
     """
     scale = config.scale
     gear_params = config.gear
@@ -136,13 +153,22 @@ def create_positioned_assembly(
         for name, part in positioned.items():
             all_parts[f"{name}_{tuner_num}"] = part
 
-    return {
+    result = {
         "frame": frame,
         "tuners": tuners,
         "all_parts": all_parts,
         "housing_centers": housing_centers,
         "effective_cd": effective_cd,
     }
+
+    # Run interference checks if requested
+    if check_interference:
+        interference = run_interference_report(result, verbose=False)
+        result["interference"] = interference
+        if interference.get("total", 0.0) >= 0.01:
+            raise AssemblyInterferenceError(interference)
+
+    return result
 
 
 def create_gang_assembly_compound(
