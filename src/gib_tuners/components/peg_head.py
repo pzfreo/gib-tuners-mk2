@@ -1,11 +1,12 @@
 """Peg head assembly geometry.
 
-The peg head is cast as a single piece with:
+The peg head is cast as a single piece with (from outside to inside frame):
+- Decorative button (outside)
 - Ring head (finger grip with hollow bore)
-- Decorative button
-- Shoulder (stops pull-in)
-- Integral worm thread
-- Bearing shaft
+- Cap (sits against frame, stops push-in)
+- Entry shaft (passes through worm entry hole)
+- Integral worm thread (in cavity)
+- Bearing shaft (through peg bearing hole on opposite side)
 - M2 tapped hole for retention screw
 
 Note: The worm thread geometry is complex (globoid) and should be
@@ -29,8 +30,8 @@ def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> P
 
     The peg head is oriented with:
     - Worm axis along X (horizontal)
-    - Ring head on the left (-X)
-    - Shaft extending right (+X)
+    - Button/ring on the left (-X), outside frame
+    - Shaft extending right (+X), into frame
 
     Args:
         config: Build configuration
@@ -53,18 +54,26 @@ def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> P
     button_d = params.button_diameter * scale
     button_h = params.button_height * scale
 
-    # Shaft
-    shoulder_d = params.shoulder_diameter * scale
-    shoulder_h = params.shoulder_length * scale
+    # Cap (stop against frame)
+    cap_d = params.cap_diameter * scale
+    cap_h = params.cap_length * scale
+
+    # Entry shaft (through worm entry hole)
+    entry_d = params.entry_shaft_diameter * scale
+    entry_h = params.entry_shaft_length * scale
+
+    # Worm
     worm_od = worm.tip_diameter * scale
     worm_length = worm.length * scale
+
+    # Bearing shaft
     bearing_d = params.bearing_diameter * scale
     bearing_h = params.bearing_length * scale
 
     # Build from left to right (negative X to positive X)
     # Ring head is centered at X=0 for positioning
 
-    # Button (leftmost)
+    # Button (leftmost, outside)
     button = Cylinder(
         radius=button_d / 2,
         height=button_h,
@@ -90,16 +99,26 @@ def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> P
 
     ring = ring_outer - ring_inner
 
-    # Shoulder (connects ring to worm)
+    # Cap (sits against frame, stops push-in)
     x_pos = ring_width / 2
-    shoulder = Cylinder(
-        radius=shoulder_d / 2,
-        height=shoulder_h,
+    cap = Cylinder(
+        radius=cap_d / 2,
+        height=cap_h,
         align=(Align.CENTER, Align.CENTER, Align.MIN),
     )
-    shoulder = shoulder.rotate(Axis.Y, 90)
-    shoulder = shoulder.locate(Location((x_pos, 0, 0)))
-    x_pos += shoulder_h
+    cap = cap.rotate(Axis.Y, 90)
+    cap = cap.locate(Location((x_pos, 0, 0)))
+    x_pos += cap_h
+
+    # Entry shaft (through worm entry hole in frame wall)
+    entry_shaft = Cylinder(
+        radius=entry_d / 2,
+        height=entry_h,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
+    entry_shaft = entry_shaft.rotate(Axis.Y, 90)
+    entry_shaft = entry_shaft.locate(Location((x_pos, 0, 0)))
+    x_pos += entry_h
 
     # Worm section (simplified as cylinder)
     worm_section = Cylinder(
@@ -111,7 +130,7 @@ def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> P
     worm_section = worm_section.locate(Location((x_pos, 0, 0)))
     x_pos += worm_length
 
-    # Bearing shaft
+    # Bearing shaft (through peg bearing hole on opposite side)
     bearing_shaft = Cylinder(
         radius=bearing_d / 2,
         height=bearing_h,
@@ -134,7 +153,7 @@ def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> P
     screw_hole = screw_hole.locate(Location((x_pos, 0, 0)))
 
     # Combine all parts
-    peg_head = button + ring + shoulder + worm_section + bearing_shaft
+    peg_head = button + ring + cap + entry_shaft + worm_section + bearing_shaft
     peg_head = peg_head - screw_hole
 
     return peg_head

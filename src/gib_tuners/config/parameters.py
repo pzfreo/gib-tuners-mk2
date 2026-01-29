@@ -149,23 +149,37 @@ class GearParams:
 
 @dataclass(frozen=True)
 class PegHeadParams:
-    """Parameters for the peg head assembly (cast with integral worm)."""
-    # Ring dimensions
-    ring_od: float = 12.8  # Outer diameter
-    ring_bore: float = 9.5  # Inner bore (hollow)
+    """Parameters for the peg head assembly (cast with integral worm).
+
+    Structure from outside to inside frame (RH tuner):
+    - Ring (finger grip) sits outside frame
+    - Cap sits against frame exterior, stops push-in
+    - Entry shaft passes through worm entry hole
+    - Worm threads mesh with wheel in cavity
+    - Bearing shaft passes through peg bearing hole on opposite side
+    """
+    # Ring dimensions (finger grip)
+    ring_od: float = 12.5  # Outer diameter (Onshape: headouterd)
+    ring_bore: float = 9.8  # Inner bore (Onshape: headinnerd)
     ring_width: float = 7.8  # Width (flat-to-flat)
     ring_height: float = 8.0  # Overall height
     chamfer: float = 1.0  # Edge chamfer
 
-    # Button
-    button_diameter: float = 6.0  # Decorative end button
-    button_height: float = 3.5
+    # Button (decorative end, outside ring)
+    button_diameter: float = 8.0  # Onshape: capd (note: Onshape uses "cap" for button)
+    button_height: float = 1.0  # Onshape: capl
 
-    # Shaft sections
-    shoulder_diameter: float = 8.0  # Stops pull-in through entry hole
-    shoulder_length: float = 2.0
-    bearing_diameter: float = 3.8  # Runs in peg bearing hole
-    bearing_length: float = 1.0  # Through wall thickness
+    # Cap (sits against frame, stops push-in)
+    cap_diameter: float = 8.0  # Must be > worm_entry_hole (6.2mm)
+    cap_length: float = 1.0
+
+    # Entry shaft (passes through worm entry hole)
+    entry_shaft_diameter: float = 6.0  # Onshape: shoulderd - fits in 6.2mm hole
+    entry_shaft_length: float = 1.2  # Onshape: shoulderl - through frame wall
+
+    # Bearing shaft (opposite side, through peg bearing hole)
+    bearing_diameter: float = 3.8  # Onshape: shankd - fits in 4.0mm hole
+    bearing_length: float = 2.4  # Onshape: shanklength
 
     # Retention
     screw_thread: str = "M2"
