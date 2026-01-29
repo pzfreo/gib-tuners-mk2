@@ -4,7 +4,7 @@ A tuner unit consists of:
 - Peg head (with integral worm)
 - String post
 - Worm wheel
-- Retention hardware (washers, E-clip, screw)
+- Retention hardware (washers, M2 screws)
 """
 
 from pathlib import Path
@@ -24,7 +24,8 @@ from ..components.string_post import create_string_post
 from ..components.wheel import create_wheel_placeholder, load_wheel
 from ..components.hardware import (
     create_peg_retention_washer,
-    create_wheel_eclip,
+    create_wheel_retention_washer,
+    create_wheel_retention_screw,
     create_m2_pan_head_screw,
 )
 
@@ -56,20 +57,22 @@ def create_tuner_unit(
     box_outer = frame.box_outer * scale
     wall = frame.wall_thickness * scale
 
-    # String post - positioned with bottom of E-clip groove at Z=0
-    # Adjust so frame bearing sits at frame wall level
-    post = create_string_post(config)
-    # Post total length from params
+    # String post dimensions
     post_params = config.string_post
-    eclip_h = post_params.eclip_shaft_length * scale
     dd_h = post_params.dd_cut_length * scale
     bearing_h = post_params.bearing_length * scale
 
-    # Position post so bearing section is at frame wall
-    # Frame bottom is at Z=0, frame top at Z=box_outer
-    # Top hole is at Z = box_outer - wall
-    # Post bearing should sit in this hole
-    post_z_offset = -(eclip_h + dd_h)  # Move down so bearing aligns with frame top
+    # String post - positioned so bearing section fills the mounting plate hole
+    # Post coordinate system: Z=0 at bottom of DD section, builds upward
+    # Frame coordinate system: Z=0 at mounting plate top, extends into -Z
+    #
+    # The bearing section (from dd_h to dd_h+bearing_h in post coords)
+    # should align with the mounting plate hole (from -wall to 0 in frame coords)
+    # So post Z=dd_h should align with frame Z=-wall (inside of mounting plate)
+    # Therefore: post_z_offset = -wall - dd_h
+    # Which means: post Z=dd_h+bearing_h aligns with frame Z=0 (top surface)
+    post = create_string_post(config)
+    post_z_offset = -(dd_h + bearing_h)
     post = post.locate(Location((0, 0, post_z_offset)))
 
     components = {"string_post": post}
@@ -83,17 +86,22 @@ def create_tuner_unit(
     else:
         wheel = create_wheel_placeholder(config)
 
-    # Wheel sits on post, centered on DD section
-    # DD section starts at Z = eclip_h (above E-clip shaft)
-    wheel_z = post_z_offset + eclip_h
+    # Wheel sits on post DD section
+    # DD section spans from post Z=0 to Z=dd_h
+    # Wheel STEP is centered at Z=0, so shift up by half face width
+    wheel_params = config.gear.wheel
+    face_width = wheel_params.face_width * scale
+    wheel_z = post_z_offset + face_width / 2
     wheel = wheel.locate(Location((0, 0, wheel_z)))
     components["wheel"] = wheel
 
     # Peg head - worm axis is horizontal (X), offset by center distance
     peg_head = create_peg_head(config)
 
-    # Worm axis height is at frame center (Z = box_outer / 2)
-    worm_z = box_outer / 2
+    # Worm axis height is at frame center
+    # Frame spans Z=0 (top) to Z=-box_outer (bottom)
+    # Worm axis is centered in the cavity at Z = -box_outer / 2
+    worm_z = -box_outer / 2
 
     # Determine X offset based on hand
     if config.hand == Hand.RIGHT:
@@ -124,17 +132,26 @@ def create_tuner_unit(
         peg_washer = peg_washer.locate(Location((washer_x, 0, worm_z)))
         components["peg_washer"] = peg_washer
 
-        # M2 screw
-        screw = create_m2_pan_head_screw(config)
-        screw = screw.rotate(Axis.Y, 90)
-        screw = screw.locate(Location((washer_x + peg_params.washer_thickness * scale, 0, worm_z)))
-        components["peg_screw"] = screw
+        # M2 screw for peg retention
+        peg_screw = create_m2_pan_head_screw(config)
+        peg_screw = peg_screw.rotate(Axis.Y, 90)
+        peg_screw = peg_screw.locate(Location((washer_x + peg_params.washer_thickness * scale, 0, worm_z)))
+        components["peg_screw"] = peg_screw
 
-        # Wheel E-clip - sits in groove below wheel
-        eclip = create_wheel_eclip(config)
-        eclip_z = post_z_offset  # At bottom of post
-        eclip = eclip.locate(Location((0, 0, eclip_z)))
-        components["wheel_eclip"] = eclip
+        # Wheel retention hardware (M2 washer + screw from below)
+        # Washer sits below the wheel at post Z=0 (frame Z = post_z_offset)
+        washer_thickness = 0.5 * scale
+        wheel_washer = create_wheel_retention_washer(config)
+        wheel_washer_z = post_z_offset - washer_thickness
+        wheel_washer = wheel_washer.locate(Location((0, 0, wheel_washer_z)))
+        components["wheel_washer"] = wheel_washer
+
+        # M2 screw threads into tap bore from below
+        wheel_screw = create_wheel_retention_screw(config)
+        screw_head_h = 1.3 * scale
+        wheel_screw_z = wheel_washer_z - screw_head_h
+        wheel_screw = wheel_screw.locate(Location((0, 0, wheel_screw_z)))
+        components["wheel_screw"] = wheel_screw
 
     return components
 

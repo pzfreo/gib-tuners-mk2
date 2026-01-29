@@ -68,8 +68,6 @@ def main() -> int:
         from gib_tuners.components.string_post import create_string_post
 
         post_params = config.string_post
-        eclip_groove_w = post_params.eclip_groove_width * scale
-        eclip_shaft_h = post_params.eclip_shaft_length * scale
         dd_length = post_params.dd_cut_length * scale
         bearing_h = post_params.bearing_length * scale
         post_h = post_params.post_height * scale
@@ -77,18 +75,19 @@ def main() -> int:
 
         print("=== Step 1: String post at origin ===")
         print("Post coordinate system:")
-        print("  Z=0: Bottom of E-clip groove")
+        print("  Z=0: Bottom of DD section (with M2 tap bore)")
         print("  Builds upward in +Z")
         print()
-        eclip_shaft_below_groove = eclip_shaft_h - eclip_groove_w
 
         print("Post sections (from bottom to top):")
-        print(f"  E-clip shaft:   Z=0.0 to Z={eclip_shaft_below_groove:.1f}")
-        print(f"  E-clip groove:  Z={eclip_shaft_below_groove:.1f} to Z={eclip_shaft_h:.1f}  <- E-clip holds wheel here")
-        print(f"  DD section:     Z={eclip_shaft_h:.1f} to Z={eclip_shaft_h + dd_length:.1f}  <- wheel sits here")
-        print(f"  Bearing:        Z={eclip_shaft_h + dd_length:.1f} to Z={eclip_shaft_h + dd_length + bearing_h:.1f}  <- shoulder stops wheel")
-        print(f"  Visible post:   Z={eclip_shaft_h + dd_length + bearing_h:.1f} to Z={eclip_shaft_h + dd_length + bearing_h + post_h:.1f}")
-        print(f"  Cap:            Z={eclip_shaft_h + dd_length + bearing_h + post_h:.1f} to Z={eclip_shaft_h + dd_length + bearing_h + post_h + cap_h:.1f}")
+        z = 0.0
+        print(f"  DD section:     Z={z:.1f} to Z={z + dd_length:.1f}  <- wheel sits here, M2 tap bore from bottom")
+        z += dd_length
+        print(f"  Bearing:        Z={z:.1f} to Z={z + bearing_h:.1f}  <- sits in frame hole")
+        z += bearing_h
+        print(f"  Visible post:   Z={z:.1f} to Z={z + post_h:.1f}")
+        z += post_h
+        print(f"  Cap:            Z={z:.1f} to Z={z + cap_h:.1f}")
 
         post = create_string_post(config)
         show_object(post, name="string_post", options={"color": "silver"})
