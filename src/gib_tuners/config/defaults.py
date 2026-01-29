@@ -7,17 +7,25 @@ from typing import Optional
 from .parameters import (
     BuildConfig,
     DDCutParams,
+    FrameParams,
     GearParams,
     Hand,
+    StringPostParams,
     ToleranceConfig,
     WheelParams,
     WormParams,
 )
 from .tolerances import get_tolerance
 
+# Default gear parameters JSON - single source of truth for gear geometry
+DEFAULT_GEAR_JSON = Path(__file__).parent.parent.parent.parent / "config" / "worm_gear.json"
+
+# Clearance for worm entry hole (allows worm to pass through frame hole)
+WORM_ENTRY_CLEARANCE = 0.2  # 0.1mm per side
+
 
 def load_gear_params(json_path: Path) -> GearParams:
-    """Load gear parameters from a JSON file (e.g., 75mm-globoid.json).
+    """Load gear parameters from a JSON file (e.g., config/worm_gear.json).
 
     Args:
         json_path: Path to the gear JSON file
@@ -90,26 +98,57 @@ def create_default_config(
 ) -> BuildConfig:
     """Create a BuildConfig with defaults and optional overrides.
 
+    Derives dependent parameters from gear config:
+    - dd_cut_length = wheel.face_width (they are the same)
+    - worm_entry_hole = worm.tip_diameter + clearance
+
     Args:
         scale: Geometry scale factor (1.0 for production, 2.0 for FDM prototype)
         tolerance: Tolerance profile name
         hand: LEFT or RIGHT hand variant
-        gear_json_path: Optional path to gear JSON file
+        gear_json_path: Optional path to gear JSON file (defaults to config/worm_gear.json)
 
     Returns:
         Configured BuildConfig instance
+
+    Raises:
+        ValueError: If worm tip diameter exceeds entry hole size
     """
     tol_config = get_tolerance(tolerance)
 
-    # Load gear params from JSON if provided
-    if gear_json_path is not None:
+    # Load gear params from JSON (use default if not specified)
+    if gear_json_path is None:
+        gear_json_path = DEFAULT_GEAR_JSON
+
+    if gear_json_path.exists():
         gear = load_gear_params(gear_json_path)
     else:
+        # Fallback to hardcoded defaults if JSON not found
         gear = GearParams(worm=WormParams(), wheel=WheelParams())
+
+    # Derive StringPostParams with dd_cut_length = wheel face width
+    string_post = StringPostParams(
+        dd_cut_length=gear.wheel.face_width,
+    )
+
+    # Derive FrameParams with worm_entry_hole = worm tip diameter + clearance
+    worm_entry_hole = gear.worm.tip_diameter + WORM_ENTRY_CLEARANCE
+    frame = FrameParams(
+        worm_entry_hole=worm_entry_hole,
+    )
+
+    # Validate: worm must fit through entry hole
+    if gear.worm.tip_diameter >= worm_entry_hole:
+        raise ValueError(
+            f"Worm tip diameter ({gear.worm.tip_diameter}mm) must be less than "
+            f"worm entry hole ({worm_entry_hole}mm)"
+        )
 
     return BuildConfig(
         scale=scale,
         tolerance=tol_config,
         hand=hand,
         gear=gear,
+        frame=frame,
+        string_post=string_post,
     )

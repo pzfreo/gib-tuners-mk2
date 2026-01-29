@@ -22,7 +22,7 @@ def project_root() -> Path:
 @pytest.fixture
 def gear_json_path(project_root: Path) -> Path:
     """Return path to gear JSON file."""
-    return project_root / "75mm-globoid.json"
+    return project_root / "config" / "worm_gear.json"
 
 
 @pytest.fixture

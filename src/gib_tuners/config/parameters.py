@@ -131,7 +131,7 @@ class WheelParams:
     pitch_diameter: float = 6.5
     tip_diameter: float = 7.5
     root_diameter: float = 5.25
-    face_width: float = 6.0
+    face_width: float = 7.5  # Wider to center worm contact point
     bore: DDCutParams = DDCutParams()
 
 
@@ -198,6 +198,7 @@ class PegHeadParams:
 
     # Retention hardware
     screw_thread: str = "M2"
+    screw_length: float = 4.0  # M2 screw length (threads into tap bore)
     washer_od: float = 5.0
     washer_id: float = 2.2
     washer_thickness: float = 0.5
@@ -226,7 +227,7 @@ class StringPostParams:
 
     # Wheel interface
     dd_cut: DDCutParams = DDCutParams()
-    dd_cut_length: float = 6.0  # Matches wheel face width
+    dd_cut_length: float = 7.5  # Matches wheel face width
 
     # M2 tap bore (drilled into bottom of DD section for screw retention)
     thread_size: str = "M2"

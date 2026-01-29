@@ -12,8 +12,7 @@ PEG_STEP = Path(__file__).parent.parent / "reference" / "peghead-and-shaft.step"
 WORM_STEP = Path(__file__).parent.parent / "reference" / "worm_m0.5_z1.step"
 
 # Worm: 7.8mm (0.1mm clearance each side in 8mm cavity)
-WORM_LENGTH = 7.0      # Current worm STEP length
-TARGET_WORM = 7.8      # Desired length (regenerate STEP file)
+WORM_LENGTH = 7.8      # Current worm STEP length (regenerated)
 
 # Shaft extends beyond worm:
 # - 0.2mm to meet frame cavity end
@@ -45,9 +44,9 @@ def main() -> int:
     peg_head = peg & keep_box
 
     # Shaft length = worm + extension
-    shaft_length = TARGET_WORM + SHAFT_BEYOND_WORM  # 7.8 + 1.3 = 9.1mm
+    shaft_length = WORM_LENGTH + SHAFT_BEYOND_WORM  # 7.8 + 1.3 = 9.1mm
 
-    print(f"Worm: {TARGET_WORM}mm (current STEP is {WORM_LENGTH}mm), Z = 0 to {TARGET_WORM}")
+    print(f"Worm: {WORM_LENGTH}mm, Z = 0 to {WORM_LENGTH}")
     print(f"Shaft beyond worm: {SHAFT_BEYOND_WORM}mm (0.2 gap + 1.0 wall + 0.1 clearance)")
     print(f"Total shaft: {SHAFT_DIA}mm dia, Z = 0 to {shaft_length}")
 
@@ -58,11 +57,9 @@ def main() -> int:
     )
     new_shaft = new_shaft.locate(Location((0, 0, 0)))
 
-    # Worm at Z=0 (using current 7mm STEP for visualization)
+    # Worm at Z=0 (bottom of worm at Z=0)
     worm_half = WORM_LENGTH / 2
     worm_positioned = worm.locate(Location((0, 0, worm_half)))
-
-    print(f"(Visualization uses {WORM_LENGTH}mm worm, regenerate at {TARGET_WORM}mm)")
 
     # M2 tap hole at end
     tap_hole = Cylinder(

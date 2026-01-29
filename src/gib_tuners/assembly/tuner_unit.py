@@ -95,7 +95,7 @@ def create_tuner_unit(
     wheel = wheel.locate(Location((0, 0, wheel_z)))
     components["wheel"] = wheel
 
-    # Peg head - worm axis is horizontal (X), offset by center distance
+    # Peg head - worm axis is horizontal (X), offset from post by center_distance in Y
     peg_head = create_peg_head(config)
 
     # Worm axis height is at frame center
@@ -103,54 +103,106 @@ def create_tuner_unit(
     # Worm axis is centered in the cavity at Z = -box_outer / 2
     worm_z = -box_outer / 2
 
-    # Determine X offset based on hand
-    if config.hand == Hand.RIGHT:
-        # Worm on negative X side
-        worm_x = -center_distance
-    else:
-        # Worm on positive X side
-        worm_x = center_distance
+    # After -90° Y rotation in create_peg_head:
+    # - Shoulder (local Z=0) at local X=0
+    # - Worm extends from local X=0 to X=-worm_length
+    # - Shaft end at local X=-shaft_length
+    # - Cap/pip at local X>0 (outside frame)
+    #
+    # Position worm centered in cavity:
+    # - Cavity is ±half_inner from center (where half_inner = box_inner/2)
+    # - Worm length is worm_params.length
+    # - Clearance each side = (box_inner - worm_length) / 2
+    # - Shoulder should be at X = half_inner - clearance
+    worm_params = config.gear.worm
+    worm_length = worm_params.length * scale
+    box_inner = frame.box_inner * scale
+    half_inner = box_inner / 2
+    worm_clearance = (box_inner - worm_length) / 2
 
-    peg_head = peg_head.locate(Location((worm_x, 0, worm_z)))
+    # X offset: position shoulder so worm is centered in cavity
+    # For RH: worm entry on +X, cap on +X, shaft exits -X
+    # For LH: mirror (worm entry on -X, cap on -X, shaft exits +X)
+    if config.hand == Hand.RIGHT:
+        peg_x = half_inner - worm_clearance  # Shoulder at +X side
+    else:
+        # LH: peg head rotated 180° around Z, so shoulder at -X
+        peg_x = -(half_inner - worm_clearance)
+        peg_head = peg_head.rotate(Axis.Z, 180)
+
+    # Y offset: worm axis is offset from post axis by center_distance
+    # Post is at Y=0, worm at Y=+center_distance
+    peg_y = center_distance
+
+    peg_head = peg_head.locate(Location((peg_x, peg_y, worm_z)))
     components["peg_head"] = peg_head
 
     if include_hardware:
         # Peg retention washer - sits on bearing shaft end
         peg_washer = create_peg_retention_washer(config)
-        # Position at end of peg shaft
         peg_params = config.peg_head
-        worm_params = config.gear.worm
-        # Shaft extends from ring center: cap + entry_shaft + worm + bearing
-        ring_width = peg_params.ring_width * scale
-        cap_h = peg_params.cap_length * scale
-        entry_h = peg_params.entry_shaft_length * scale
-        worm_length = worm_params.length * scale
-        bearing_h_peg = peg_params.bearing_length * scale
+        shaft_length = peg_params.shaft_length * scale
+        washer_thickness = peg_params.washer_thickness * scale
 
-        washer_x = worm_x + ring_width / 2 + cap_h + entry_h + worm_length + bearing_h_peg
-        # Rotate washer to face along X axis
-        peg_washer = peg_washer.rotate(Axis.Y, 90)
-        peg_washer = peg_washer.locate(Location((washer_x, 0, worm_z)))
+        # Shaft end position:
+        # After -90° Y rotation in create_peg_head, shaft extends toward -X (for RH)
+        # Shoulder at peg_x, shaft end at peg_x - shaft_length
+        if config.hand == Hand.RIGHT:
+            shaft_end_x = peg_x - shaft_length
+            # Washer sits against shaft end, body extends toward -X (outside frame)
+            # -90° Y rotation: washer extends from X=0 toward X=-thickness
+            peg_washer = peg_washer.rotate(Axis.Y, -90)
+            washer_outer_x = shaft_end_x - washer_thickness
+        else:
+            shaft_end_x = peg_x + shaft_length
+            # Washer sits against shaft end, body extends toward +X (outside frame)
+            # +90° Y rotation: washer extends from X=0 toward X=+thickness
+            peg_washer = peg_washer.rotate(Axis.Y, 90)
+            washer_outer_x = shaft_end_x + washer_thickness
+
+        peg_washer = peg_washer.locate(Location((shaft_end_x, peg_y, worm_z)))
         components["peg_washer"] = peg_washer
 
-        # M2 screw for peg retention
+        # M2 screw for peg retention (threads into tap bore)
+        # Screw is created with shank from Z=0 to Z=length, head from Z=length upward
+        # After rotation, head should be outside washer and shank goes into tap hole
         peg_screw = create_m2_pan_head_screw(config)
-        peg_screw = peg_screw.rotate(Axis.Y, 90)
-        peg_screw = peg_screw.locate(Location((washer_x + peg_params.washer_thickness * scale, 0, worm_z)))
+        screw_length = peg_params.screw_length * scale
+
+        if config.hand == Hand.RIGHT:
+            # -90° Y rotation: shank tip at local X=0, head at local X<0
+            peg_screw = peg_screw.rotate(Axis.Y, -90)
+            # Head sits against washer outer face, screw extends toward -X
+            screw_x = washer_outer_x + screw_length
+        else:
+            # +90° Y rotation: shank tip at local X=0, head at local X>0
+            peg_screw = peg_screw.rotate(Axis.Y, 90)
+            # Head sits against washer outer face, screw extends toward +X
+            screw_x = washer_outer_x - screw_length
+
+        peg_screw = peg_screw.locate(Location((screw_x, peg_y, worm_z)))
         components["peg_screw"] = peg_screw
 
         # Wheel retention hardware (M2 washer + screw from below)
-        # Washer sits below the wheel at post Z=0 (frame Z = post_z_offset)
-        washer_thickness = 0.5 * scale
+        # Washer sits below the DD section bottom (at post_z_offset in frame coords)
+        wheel_washer_thickness = 0.5 * scale
         wheel_washer = create_wheel_retention_washer(config)
-        wheel_washer_z = post_z_offset - washer_thickness
+        wheel_washer_z = post_z_offset - wheel_washer_thickness
         wheel_washer = wheel_washer.locate(Location((0, 0, wheel_washer_z)))
         components["wheel_washer"] = wheel_washer
 
         # M2 screw threads into tap bore from below
+        # Screw is created head-up (shank Z=0 to Z=length, head Z=length to Z=length+head_h)
+        # Rotate 180° X to flip: head now at bottom (lowest Z), shank extends upward
         wheel_screw = create_wheel_retention_screw(config)
-        screw_head_h = 1.3 * scale
-        wheel_screw_z = wheel_washer_z - screw_head_h
+        wheel_screw = wheel_screw.rotate(Axis.X, 180)
+        # After 180° X rotation:
+        #   - Original head bottom (Z=length) is now head top at local Z=-length
+        #   - Original head top (Z=length+head_h) is now head bottom at local Z=-(length+head_h)
+        #   - Shank tip still at local Z=0
+        # Position so head top (local Z=-length) touches washer bottom (wheel_washer_z)
+        wheel_screw_length = config.string_post.thread_length * scale
+        wheel_screw_z = wheel_washer_z - (-wheel_screw_length)  # = wheel_washer_z + screw_length
         wheel_screw = wheel_screw.locate(Location((0, 0, wheel_screw_z)))
         components["wheel_screw"] = wheel_screw
 
