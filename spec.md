@@ -206,55 +206,62 @@ The peg head, shaft, and worm thread are cast as a single brass piece, then fini
 | Dimension | Variable | Value | Description |
 |-----------|----------|-------|-------------|
 | Ring OD | headouterd | 12.5mm | Outer diameter of peg head ring |
-| Ring Bore | headinnerd | 9.8mm | Inner bore diameter (hollow for finger grip) |
-| Ring Width | - | 7.8mm | Width of ring (flat-to-flat) |
-| Ring Wall | headthicknessattop | 2.4mm | Wall thickness at top of ring |
-| Ring Inner Offset | headinneroffset | 0.25mm | Bore offset for taper |
+| Ring Bore | headinnerd | 9.8mm | Inner bore diameter (finger grip) |
+| Ring Width | headthicknessattop | 2.4mm | Width of ring at outer edge (after face cuts) |
+| Bore Offset | headinneroffset | 0.25mm | Bore center offset from ring center |
 | Chamfer | smoothedges | 0.3mm | Edge chamfer on ring faces |
 | Button Diameter | capd | 8.0mm | Decorative end button |
 | Button Height | capl | 1.0mm | Height of decorative button |
 
-*Note: The peg head ring is created by revolving a profile, then hollowing with a tapered bore. The hollow bore (~9.8mm) provides finger grip for fine tuning.*
+*Note: The peg head ring is created using a revolved profile construction. The hollow bore (~9.8mm) provides finger grip for fine tuning.*
 
-### **Ring Construction (from Onshape)**
+### **Ring Construction (Reference STEP)**
 
-The ring is created in three steps:
-1. **Revolve profile** (Sketch 8 → Revolve 1): Creates outer ring shape using `headouterd`, `headjoinl`, `headjoind`
-2. **Hollow cut** (Sketch 9 → Extrude 8): Removes material to create hollow ring, wall thickness = `headthicknessattop/2` = 1.2mm
-3. **Bore cut** (Sketch 10 → Extrude 9): Creates `headinnerd` (9.8mm) bore, positioned at `headjoinl + headouterd/2 + headinneroffset`
+The peg head geometry is imported from a reference STEP file (`reference/peghead-and-shaft.step`) exported from Onshape, then combined with a new shaft and worm thread.
 
-### **Integral Shaft + Worm (Cast as One Piece)**
+**Construction steps:**
+1. **Import peg head STEP:** Contains ring, pip, join, cap, and shoulder
+2. **Cut at Z=0:** Keep only Z ≤ 0 (peg head portion), discard original shaft
+3. **Add new shaft:** 3.5mm diameter (fits inside worm root of 3.75mm)
+4. **Add worm thread:** Import from `reference/worm_m0.5_z1.step`, position at Z=0
+5. **Add M2 tap hole:** At shaft end for retention screw
 
-The peg head, shaft, and worm thread are cast/machined as a single piece. Structure from outside to inside frame:
+**Reference STEP orientation:** Shaft along Z, peg head at Z ≤ 0
+**Assembly orientation:** Rotated -90° around Y so shaft is along X, pip at -X
 
-| Section | Variable | Diameter | Length | Description |
-|---------|----------|----------|--------|-------------|
-| Button | capd/capl | 8.0mm | 1.0mm | Decorative end (outside frame) |
-| Ring | headouterd | 12.5mm OD | 7.8mm | Finger grip |
-| Join | headjoind/headjoinl | 3.5mm | 3.0mm | Connects ring to shaft |
-| **Cap** | capd/capl | **8.0mm** | **1.0mm** | **Sits against frame, stops push-in** |
-| **Entry shaft** | shoulderd/shoulderl | **6.0mm** | **1.2mm** | **Through worm entry hole (6.2mm)** |
-| Worm thread | - | 6.0mm OD | 7.0mm | Cylindrical worm, in frame cavity |
-| Bearing shaft | shankd/shanklength | 3.8mm | 2.4mm | Through peg bearing hole (4.0mm) |
-| Screw hole | - | M2 tap | 3mm deep | Retention screw at shaft end |
+### **Integral Shaft + Worm (Combined from STEP files)**
+
+The peg head and worm are combined from reference STEP files with a new shaft section.
+
+| Section | Diameter | Length | Z Position | Description |
+|---------|----------|--------|------------|-------------|
+| Peg head | - | - | Z ≤ 0 | Imported from STEP (ring, pip, cap, shoulder) |
+| Worm thread | 6.0mm OD / 3.5mm shaft | 7.8mm | Z = 0 to 7.8 | Butted against shoulder, 0.1mm clearance each side in 8mm cavity |
+| Shaft gap | 3.5mm | 0.2mm | Z = 7.8 to 8.0 | Gap between worm end and frame cavity end |
+| Bearing shaft | 3.5mm | 1.0mm | Z = 8.0 to 9.0 | Through bearing wall (1mm thick) |
+| Shaft extension | 3.5mm | 0.1mm | Z = 9.0 to 9.1 | Beyond frame for washer clearance |
+| M2 tap hole | 1.6mm | 4mm deep | At Z = 9.1 | Retention screw |
+
+**Total shaft length:** 9.1mm (from Z=0 to Z=9.1)
 
 **Key dimensions:**
+- Worm (7.8mm) + gap (0.2mm) = 8.0mm fills 8mm cavity with 0.1mm clearance each side
+- Shaft diameter (3.5mm) < worm root (3.75mm) → worm fits over shaft
+- Shaft (3.5mm) < peg bearing hole (4.0mm) → 0.5mm clearance
 - Cap (8mm) > worm entry hole (6.2mm) → stops push-in
-- Entry shaft (6mm) < worm entry hole (6.2mm) → passes through with 0.2mm clearance
-- Bearing shaft (3.8mm) < peg bearing hole (4.0mm) → passes through with 0.2mm clearance
 
 ### **Worm Thread Geometry**
 
-The worm thread is machined onto the shaft using the reference geometry from `worm_m0.5_z1.step`:
+The worm thread is imported from `reference/worm_m0.5_z1.step` (regenerate at 7.8mm length):
 
 * **Type:** Cylindrical
 * **Outer Diameter (tip):** 6.0mm
 * **Pitch Diameter:** 5.0mm
-* **Root Diameter:** 3.75mm (worminnerd)
-* **Length:** 7.0mm
+* **Root Diameter:** 3.75mm (shaft must be ≤ this)
+* **Shaft Diameter:** 3.5mm (0.25mm clearance inside worm)
+* **Length:** 7.8mm (0.1mm clearance each side in 8mm cavity)
 * **Lead:** 1.57mm (π/2)
 * **Lead Angle:** 5.7°
-* **Thread depth:** 1.75mm (threaddepth from Onshape)
 
 ### **Shaft Retention**
 
@@ -511,6 +518,7 @@ Before manufacturing, verify:
 
 | File | Description |
 |------|-------------|
+| `peghead-and-shaft.step` | Complete peg head + shaft reference geometry (from Onshape) |
 | `worm_m0.5_z1.step` | Cylindrical worm reference geometry (for machining cast shaft) |
 | `wheel_m0.5_z13.step` | 13-tooth worm wheel (separate part) |
 | `75mm-globoid.json` | Gear calculator parameters |

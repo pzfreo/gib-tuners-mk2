@@ -1,168 +1,126 @@
 """Peg head assembly geometry.
 
-The peg head is cast as a single piece with (from outside to inside frame):
-- Decorative button (outside)
-- Ring head (finger grip with hollow bore)
-- Cap (sits against frame, stops push-in)
-- Entry shaft (passes through worm entry hole)
-- Integral worm thread (in cavity)
-- Bearing shaft (through peg bearing hole on opposite side)
-- M2 tapped hole for retention screw
+The peg head is constructed by combining:
+1. Reference peg head STEP (ring, pip, cap, shoulder) - cut at Z=0
+2. New shaft sized to fit inside worm root
+3. Reference worm STEP positioned at Z=0 (butted against shoulder)
+4. M2 tap hole at shaft end
 
-Note: The worm thread geometry is complex (globoid) and should be
-imported from the reference STEP file for actual manufacturing.
-This module creates a simplified representation for assembly visualization.
+Structure (from peg head toward bearing end):
+- Peg head (Z ≤ 0): ring, pip, join, cap, shoulder from STEP
+- Worm (Z = 0 to 7.8): butted against shoulder, 0.1mm clearance each side
+- Shaft gap (Z = 7.8 to 8.0): to frame cavity end
+- Bearing shaft (Z = 8.0 to 9.0): through bearing wall
+- Extension (Z = 9.0 to 9.1): beyond frame for washer clearance
+- M2 tap hole at Z = 9.1
+
+Total shaft: 9.1mm from shoulder to end
 """
+
+from pathlib import Path
 
 from build123d import (
     Align,
     Axis,
+    Box,
     Cylinder,
     Location,
     Part,
+    import_step,
 )
 
-from ..config.parameters import BuildConfig, Hand
+from ..config.parameters import BuildConfig
+
+# Reference STEP file locations
+REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
+PEG_HEAD_STEP = REFERENCE_DIR / "peghead-and-shaft.step"
+WORM_STEP = REFERENCE_DIR / "worm_m0.5_z1.step"
+
+# Current worm STEP length (until regenerated at target length)
+WORM_STEP_LENGTH = 7.0
 
 
-def create_peg_head(config: BuildConfig, include_worm_detail: bool = False) -> Part:
+def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     """Create the peg head assembly geometry.
 
+    Combines peg head STEP, new shaft, and worm STEP.
+
     The peg head is oriented with:
-    - Worm axis along X (horizontal)
-    - Button/ring on the left (-X), outside frame
-    - Shaft extending right (+X), into frame
+    - Shaft axis along Z (before rotation for assembly)
+    - Peg head at Z ≤ 0, shaft/worm at Z > 0
+
+    For assembly, rotate -90° around Y to align shaft with X axis.
 
     Args:
         config: Build configuration
-        include_worm_detail: If True, creates detailed worm geometry (slow).
-                           If False, creates simplified cylindrical representation.
+        include_worm: If True, includes worm thread geometry
 
     Returns:
         Peg head Part
+
+    Raises:
+        FileNotFoundError: If reference STEP files are not found
     """
+    if not PEG_HEAD_STEP.exists():
+        raise FileNotFoundError(
+            f"Peg head STEP not found: {PEG_HEAD_STEP}\n"
+            "Please ensure peghead-and-shaft.step is in the reference/ directory."
+        )
+
     params = config.peg_head
-    worm = config.gear.worm
     scale = config.scale
 
-    # Scaled dimensions - ring
-    ring_od = params.ring_od * scale
-    ring_bore = params.ring_bore * scale
-    ring_width = params.ring_width * scale
+    # Import peg head and cut at Z=0 (keep Z ≤ 0)
+    peg_head_full = import_step(PEG_HEAD_STEP)
 
-    # Button
-    button_d = params.button_diameter * scale
-    button_h = params.button_height * scale
+    keep_box = Box(20, 20, 30, align=(Align.CENTER, Align.CENTER, Align.MAX))
+    keep_box = keep_box.locate(Location((0, 0, 0)))
+    peg_head = peg_head_full & keep_box
 
-    # Cap (stop against frame)
-    cap_d = params.cap_diameter * scale
-    cap_h = params.cap_length * scale
+    # Get shaft dimensions from params
+    shaft_dia = params.shaft_diameter
+    shaft_length = params.shaft_length  # Computed property: 9.1mm
 
-    # Entry shaft (through worm entry hole)
-    entry_d = params.entry_shaft_diameter * scale
-    entry_h = params.entry_shaft_length * scale
-
-    # Worm
-    worm_od = worm.tip_diameter * scale
-    worm_length = worm.length * scale
-
-    # Bearing shaft
-    bearing_d = params.bearing_diameter * scale
-    bearing_h = params.bearing_length * scale
-
-    # Build from left to right (negative X to positive X)
-    # Ring head is centered at X=0 for positioning
-
-    # Button (leftmost, outside)
-    button = Cylinder(
-        radius=button_d / 2,
-        height=button_h,
+    # Create new shaft
+    new_shaft = Cylinder(
+        radius=shaft_dia / 2,
+        height=shaft_length,
         align=(Align.CENTER, Align.CENTER, Align.MIN),
     )
-    button = button.rotate(Axis.Y, -90)  # Align along X axis
-    button = button.locate(Location((-ring_width / 2 - button_h, 0, 0)))
+    new_shaft = new_shaft.locate(Location((0, 0, 0)))  # Bottom at Z=0
 
-    # Ring head - simplified as a cylinder with bore
-    ring_outer = Cylinder(
-        radius=ring_od / 2,
-        height=ring_width,
-        align=(Align.CENTER, Align.CENTER, Align.CENTER),
+    # Combine peg head and shaft
+    result = peg_head + new_shaft
+
+    # Add worm if requested and STEP exists
+    if include_worm and WORM_STEP.exists():
+        worm = import_step(WORM_STEP)
+        # Worm STEP is centered at origin, shift so bottom is at Z=0
+        worm_half = WORM_STEP_LENGTH / 2
+        worm_positioned = worm.locate(Location((0, 0, worm_half)))
+        result = result + worm_positioned
+
+    # Add M2 tap hole at shaft end
+    tap_hole = Cylinder(
+        radius=params.tap_drill / 2,
+        height=params.tap_depth + 0.1,
+        align=(Align.CENTER, Align.CENTER, Align.MAX),
     )
-    ring_outer = ring_outer.rotate(Axis.Y, 90)  # Align along X
+    tap_hole = tap_hole.locate(Location((0, 0, shaft_length)))
+    result = result - tap_hole
 
-    ring_inner = Cylinder(
-        radius=ring_bore / 2,
-        height=ring_width + 2,
-        align=(Align.CENTER, Align.CENTER, Align.CENTER),
-    )
-    ring_inner = ring_inner.rotate(Axis.Y, 90)
+    # Rotate for assembly orientation (shaft along X, pip at -X)
+    result = result.rotate(Axis.Y, -90)
 
-    ring = ring_outer - ring_inner
+    # Apply scale if needed
+    if scale != 1.0:
+        result = result.scale(scale)
 
-    # Cap (sits against frame, stops push-in)
-    x_pos = ring_width / 2
-    cap = Cylinder(
-        radius=cap_d / 2,
-        height=cap_h,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    cap = cap.rotate(Axis.Y, 90)
-    cap = cap.locate(Location((x_pos, 0, 0)))
-    x_pos += cap_h
-
-    # Entry shaft (through worm entry hole in frame wall)
-    entry_shaft = Cylinder(
-        radius=entry_d / 2,
-        height=entry_h,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    entry_shaft = entry_shaft.rotate(Axis.Y, 90)
-    entry_shaft = entry_shaft.locate(Location((x_pos, 0, 0)))
-    x_pos += entry_h
-
-    # Worm section (simplified as cylinder)
-    worm_section = Cylinder(
-        radius=worm_od / 2,
-        height=worm_length,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    worm_section = worm_section.rotate(Axis.Y, 90)
-    worm_section = worm_section.locate(Location((x_pos, 0, 0)))
-    x_pos += worm_length
-
-    # Bearing shaft (through peg bearing hole on opposite side)
-    bearing_shaft = Cylinder(
-        radius=bearing_d / 2,
-        height=bearing_h,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    bearing_shaft = bearing_shaft.rotate(Axis.Y, 90)
-    bearing_shaft = bearing_shaft.locate(Location((x_pos, 0, 0)))
-    x_pos += bearing_h
-
-    # Screw hole (M2 tapped, simplified as cylinder)
-    screw_hole_d = 1.6 * scale  # M2 tap drill
-    screw_hole_depth = params.screw_length * scale
-
-    screw_hole = Cylinder(
-        radius=screw_hole_d / 2,
-        height=screw_hole_depth,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    screw_hole = screw_hole.rotate(Axis.Y, -90)  # Point into shaft
-    screw_hole = screw_hole.locate(Location((x_pos, 0, 0)))
-
-    # Combine all parts
-    peg_head = button + ring + cap + entry_shaft + worm_section + bearing_shaft
-    peg_head = peg_head - screw_hole
-
-    return peg_head
+    return result
 
 
 def create_peg_head_simplified(config: BuildConfig) -> Part:
-    """Create a simplified peg head for quick visualization.
-
-    This is faster than the full geometry and useful for assembly checks.
+    """Create peg head without worm detail for quick visualization.
 
     Args:
         config: Build configuration
@@ -170,4 +128,4 @@ def create_peg_head_simplified(config: BuildConfig) -> Part:
     Returns:
         Simplified peg head Part
     """
-    return create_peg_head(config, include_worm_detail=False)
+    return create_peg_head(config, include_worm=False)
