@@ -33,8 +33,8 @@ class DDCutParams:
 class FrameParams:
     """Parameters for an N-gang frame (1 to N tuning stations)."""
     # Box section dimensions (as manufactured)
-    box_outer: float = 10.35  # Outer dimension of square tube
-    wall_thickness: float = 1.1  # Wall thickness
+    box_outer: float = 10.0  # Outer dimension of square tube
+    wall_thickness: float = 1.0  # Wall thickness
 
     # Housing dimensions
     housing_length: float = 16.2  # Length of each rigid box section
