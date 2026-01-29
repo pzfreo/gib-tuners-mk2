@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate worm and wheel STEP files from gear calculator JSON.
 
-Run this when 7.5mm-cyl.json parameters change.
+Run this when worm_gear.json parameters change.
 Requires: pip install wormgear
 """
 
@@ -21,29 +21,19 @@ def main() -> int:
 
     REFERENCE_DIR.mkdir(exist_ok=True)
 
-    print(f"Regenerating gears from {GEAR_JSON.name}...\n")
+    print(f"Regenerating gears from {GEAR_JSON.name}...")
+    print(f"Output directory: {REFERENCE_DIR}\n")
 
-    # Generate worm
-    print("=== Worm ===")
+    # Generate both worm and wheel in one run (more efficient, also generates mesh alignment)
     result = subprocess.run(
-        ["wormgear", str(GEAR_JSON), "--worm-only", "-o", str(REFERENCE_DIR)],
+        ["wormgear", str(GEAR_JSON), "-o", str(REFERENCE_DIR)],
         capture_output=False,
     )
     if result.returncode != 0:
-        print("Error generating worm")
+        print("Error generating gears")
         return 1
 
-    # Generate wheel
-    print("\n=== Wheel ===")
-    result = subprocess.run(
-        ["wormgear", str(GEAR_JSON), "--wheel-only", "-o", str(REFERENCE_DIR)],
-        capture_output=False,
-    )
-    if result.returncode != 0:
-        print("Error generating wheel")
-        return 1
-
-    print("\nDone. STEP files updated in reference/")
+    print("\nDone. Files updated in reference/")
     return 0
 
 

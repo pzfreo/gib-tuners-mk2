@@ -162,6 +162,47 @@ def calculate_mesh_rotation(
     return best_rotation
 
 
+def calculate_mesh_rotation_analytical(
+    num_teeth: int,
+    lead: float,
+    z_offset: float = 0.0,
+) -> tuple[float, float]:
+    """Calculate optimal wheel rotation analytically.
+
+    For a worm gear mesh, the optimal wheel rotation aligns a tooth valley
+    with the worm thread at the contact point. This is derived from:
+    1. Base alignment: 180° / num_teeth (centers a valley at mesh point)
+    2. Z-offset correction: when axes are at different Z heights, the contact
+       point shifts along the worm helix
+
+    Args:
+        num_teeth: Number of wheel teeth
+        lead: Worm lead in mm (axial advance per revolution = π × module × num_starts)
+        z_offset: wheel_axis_z - worm_axis_z in mm (positive = wheel higher)
+
+    Returns:
+        Tuple of (rotation_plus, rotation_minus) in degrees for both sign options.
+        Test both to determine which gives less interference for your geometry.
+    """
+    # Base alignment: center a tooth valley at the mesh point
+    base = 180.0 / num_teeth
+
+    # Z-offset correction: shift along worm helix
+    # When wheel is higher than worm, contact shifts along worm thread
+    # This is equivalent to a rotation of (z_offset / lead) × 360° on the worm
+    # which requires (z_offset / lead) × (360° / num_teeth) wheel rotation to compensate
+    z_correction = 0.0
+    if z_offset != 0.0:
+        z_correction = (z_offset / lead) * (360.0 / num_teeth)
+
+    # Normalize to [0, tooth_pitch)
+    tooth_pitch = 360.0 / num_teeth
+    rotation_plus = (base + z_correction) % tooth_pitch
+    rotation_minus = (base - z_correction) % tooth_pitch
+
+    return (rotation_plus, rotation_minus)
+
+
 def create_wheel_placeholder(config: BuildConfig) -> Part:
     """Create a placeholder wheel for when STEP file is unavailable.
 
