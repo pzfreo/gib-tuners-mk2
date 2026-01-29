@@ -93,22 +93,43 @@ def create_eclip(
     return outer - inner
 
 
-def create_wheel_eclip(config: BuildConfig) -> Part:
-    """Create the E-clip used to retain the wheel on the string post.
+def create_wheel_retention_washer(config: BuildConfig) -> Part:
+    """Create the washer used to retain the wheel on the string post.
 
-    DIN 6799 M2.5 (~6mm OD) from spec.
+    5mm OD, 2.2mm ID, 0.5mm thick (same as peg washer).
 
     Args:
         config: Build configuration
 
     Returns:
-        E-clip Part
+        Washer Part
+    """
+    # Using same dimensions as peg retention washer
+    return create_washer(
+        outer_diameter=5.0,
+        inner_diameter=2.2,
+        thickness=0.5,
+        scale=config.scale,
+    )
+
+
+def create_wheel_retention_screw(config: BuildConfig) -> Part:
+    """Create the M2 screw used to retain the wheel on the string post.
+
+    Threads into the M2 tap bore in the bottom of the DD section.
+
+    Args:
+        config: Build configuration
+
+    Returns:
+        Screw Part
     """
     params = config.string_post
-    return create_eclip(
-        outer_diameter=params.eclip_od,
-        inner_diameter=params.eclip_groove_diameter,
-        thickness=0.6,
+    return create_pan_head_screw(
+        thread_diameter=2.0,
+        length=params.thread_length,
+        head_diameter=3.8,
+        head_height=1.3,
         scale=config.scale,
     )
 

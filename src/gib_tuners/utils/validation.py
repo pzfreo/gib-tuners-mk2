@@ -178,25 +178,26 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
         message=f"Center distance ({center_distance}mm) verified in engineering spec",
     ))
 
-    # 10. E-clip retains wheel
-    eclip_od = post.eclip_od
-    wheel_bore = gear.wheel.bore.diameter
+    # 10. M2 tap bore fits through DD across-flats
+    tap_bore = post.tap_bore_diameter
+    across_flats = gear.wheel.bore.across_flats
     checks.append(ValidationCheck(
-        name="E-clip retains wheel",
-        passed=eclip_od > wheel_bore,
-        expected=f"E-clip OD > wheel bore",
-        actual=f"{eclip_od}mm E-clip vs {wheel_bore}mm bore",
-        message=f"E-clip ({eclip_od}mm) must be larger than wheel bore ({wheel_bore}mm)",
+        name="M2 tap bore fits through DD",
+        passed=across_flats > tap_bore,
+        expected=f"DD across-flats > tap bore diameter",
+        actual=f"{across_flats}mm across-flats vs {tap_bore}mm tap bore",
+        message=f"M2 tap bore ({tap_bore}mm) must fit through DD across-flats ({across_flats}mm)",
     ))
 
-    # 11. Wheel slides over E-clip shaft
-    eclip_shaft = post.eclip_shaft_diameter
+    # 11. Washer retains wheel on post
+    washer_od_post = 5.0  # Assumed M2 washer OD
+    wheel_bore = gear.wheel.bore.diameter
     checks.append(ValidationCheck(
-        name="Wheel slides over E-clip shaft",
-        passed=wheel_bore > eclip_shaft,
-        expected=f"wheel bore > E-clip shaft",
-        actual=f"{wheel_bore}mm bore vs {eclip_shaft}mm shaft",
-        message=f"Wheel bore ({wheel_bore}mm) must be larger than E-clip shaft ({eclip_shaft}mm)",
+        name="Washer retains wheel",
+        passed=washer_od_post > wheel_bore,
+        expected=f"washer OD > wheel bore diameter",
+        actual=f"{washer_od_post}mm washer vs {wheel_bore}mm bore",
+        message=f"Washer ({washer_od_post}mm) must be larger than wheel bore ({wheel_bore}mm)",
     ))
 
     # 12. Gear modules match

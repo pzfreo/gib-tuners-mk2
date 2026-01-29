@@ -118,8 +118,7 @@ class TestStringPostGeometry:
             params.cap_height +
             params.post_height +
             params.bearing_length +
-            params.dd_cut_length +
-            params.eclip_shaft_length
+            params.dd_cut_length
         )
         assert abs(params.total_length - expected) < 0.01
 

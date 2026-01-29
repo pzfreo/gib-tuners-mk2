@@ -43,11 +43,11 @@ class TestSpecValidation:
         assert hole - shaft >= 0.2  # 0.2mm clearance
 
     def test_wheel_passes_through_bottom_hole(self, config):
-        """Spec check: Wheel OD (7.0mm) passes through bottom hole (8.0mm)."""
+        """Spec check: Wheel OD (7.5mm) passes through bottom hole (8.0mm)."""
         wheel_od = config.gear.wheel.tip_diameter
         wheel_hole = config.frame.wheel_inlet_hole
         assert wheel_hole > wheel_od
-        assert wheel_hole - wheel_od >= 1.0  # 1.0mm clearance
+        assert wheel_hole - wheel_od >= 0.5  # 0.5mm clearance
 
     def test_post_shaft_fits_in_top_hole(self, config):
         """Spec check: Post shaft (4.0mm) fits in top hole (4.2mm)."""
@@ -76,11 +76,11 @@ class TestSpecValidation:
 
     def test_center_distance_geometry(self, config):
         """Spec check: Center distance geometry is valid per spec Section 9."""
-        # The center distance (5.5mm) is intentionally larger than half frame width
+        # The center distance (5.75mm) is intentionally larger than half frame width
         # because the worm passes through holes in the walls. The spec validates
         # this geometry explicitly in Section 9.
         cd = config.gear.center_distance
-        assert cd == 5.5  # Per spec
+        assert cd == 5.75  # Per spec (updated for 13-tooth wheel)
 
     def test_center_distance_calculation(self, config):
         """Spec check: CD = (worm PD + wheel PD) / 2."""
@@ -96,17 +96,18 @@ class TestSpecValidation:
         wheel_module = config.gear.wheel.module
         assert worm_module == wheel_module
 
-    def test_eclip_retains_wheel(self, config):
-        """Spec check: E-clip OD (6mm) larger than wheel bore (3mm)."""
-        eclip = config.string_post.eclip_od
-        bore = config.gear.wheel.bore.diameter
-        assert eclip > bore
+    def test_m2_thread_fits_through_dd_bore(self, config):
+        """Spec check: M2 thread (1.6mm tap) passes through DD across-flats (2.5mm)."""
+        tap_bore = config.string_post.tap_bore_diameter
+        across_flats = config.gear.wheel.bore.across_flats
+        assert across_flats > tap_bore
 
-    def test_wheel_slides_over_eclip_shaft(self, config):
-        """Spec check: Wheel bore (3mm) larger than E-clip shaft (2.5mm)."""
+    def test_washer_retains_wheel(self, config):
+        """Spec check: M2 washer (~5mm OD) larger than DD bore (3.5mm)."""
+        # Assume ~5mm washer OD for M2
+        washer_od = 5.0
         bore = config.gear.wheel.bore.diameter
-        shaft = config.string_post.eclip_shaft_diameter
-        assert bore > shaft
+        assert washer_od > bore
 
 
 class TestValidationOutput:

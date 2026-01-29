@@ -126,9 +126,23 @@ def create_frame(config: BuildConfig) -> Part:
         frame = frame - hole
 
     # Drill sandwich pattern for each housing
+    # Worm and wheel axes are offset from housing center by center_distance/2
+    # to achieve proper mesh while centering the mechanism in the housing.
+    # Post axis is offset toward -Y (string tension pulls this way)
+    # Worm axis is offset toward +Y (wheel swings into worm under load)
     center_distance = config.gear.center_distance * scale
+    extra_backlash = config.gear.extra_backlash * scale
+    effective_cd = center_distance - extra_backlash
+
+    # Y offsets from housing center
+    post_y_offset = -effective_cd / 2  # Post toward -Y (nut/bridge end)
+    worm_y_offset = effective_cd / 2   # Worm toward +Y
 
     for housing_y in housing_centers:
+        # Calculate actual Y positions for this housing
+        post_y = housing_y + post_y_offset
+        worm_y = housing_y + worm_y_offset
+
         # Post bearing hole (top/mounting plate) - Z axis, from top
         # Posts emerge upward through this hole
         post_hole_d = config.with_tolerance(frame_params.post_bearing_hole) * scale
@@ -138,7 +152,7 @@ def create_frame(config: BuildConfig) -> Part:
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
         post_hole = post_hole.rotate(Axis.X, 180)  # Point downward
-        post_hole = post_hole.locate(Location((0, housing_y, 0.1)))
+        post_hole = post_hole.locate(Location((0, post_y, 0.1)))
         frame = frame - post_hole
 
         # Wheel inlet hole (bottom) - Z axis, from bottom
@@ -149,7 +163,7 @@ def create_frame(config: BuildConfig) -> Part:
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
         # Start below bottom surface (-box_outer - 0.1) and drill upward through wall
-        wheel_hole = wheel_hole.locate(Location((0, housing_y, -box_outer - 0.1)))
+        wheel_hole = wheel_hole.locate(Location((0, post_y, -box_outer - 0.1)))
         frame = frame - wheel_hole
 
         # Worm entry and bearing holes (sides) - X axis
@@ -177,7 +191,7 @@ def create_frame(config: BuildConfig) -> Part:
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
         entry_hole = entry_hole.rotate(Axis.Y, 90)
-        entry_hole = entry_hole.locate(Location((entry_x, housing_y, worm_z)))
+        entry_hole = entry_hole.locate(Location((entry_x, worm_y, worm_z)))
         frame = frame - entry_hole
 
         # Bearing hole (smaller, for peg shaft)
@@ -187,7 +201,7 @@ def create_frame(config: BuildConfig) -> Part:
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
         bearing_hole = bearing_hole.rotate(Axis.Y, 90)
-        bearing_hole = bearing_hole.locate(Location((bearing_x, housing_y, worm_z)))
+        bearing_hole = bearing_hole.locate(Location((bearing_x, worm_y, worm_z)))
         frame = frame - bearing_hole
 
     # Etch "L" or "R" on inside surface of mounting plate to identify hand
@@ -201,8 +215,11 @@ def create_frame(config: BuildConfig) -> Part:
     text_y = 2.0 * scale
 
     # Create text flat on XY plane, extrude upward, position on inside of mounting plate
+    # Text is on the underside, so mirror it in X so it reads correctly from below
     text_sketch = Text(letter, font_size=text_height, align=(Align.CENTER, Align.CENTER))
     text_solid = extrude(text_sketch, etch_depth)
+    # Mirror in X so text reads correctly when viewed from below (-Z direction)
+    text_solid = text_solid.mirror(Plane.YZ)
     # Rotate 90 deg around Z so text reads along Y axis (frame length direction)
     text_solid = text_solid.rotate(Axis.Z, -90)
     # Move text so it cuts into inside surface of mounting plate (at Z=-wall)
