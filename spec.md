@@ -27,11 +27,13 @@ The build123d script shall support the following parameters:
 |-----------|---------|-------------|
 | `box_outer` | 10.35mm | Outer dimension of square tube (as manufactured) |
 | `wall_thickness` | 1.1mm | Wall thickness (as manufactured) |
-| `total_length` | 145.0mm | Overall frame length |
 | `housing_length` | 16.2mm | Length of each rigid box section |
-| `end_length` | 10.0mm | Length from frame end to first/last housing center |
-| `num_housings` | 5 | Number of tuner positions |
+| `end_length` | 10.0mm | Length from frame end to first/last housing edge (symmetric) |
+| `num_housings` | 5 | Number of tuner positions (1 to N) |
 | `tuner_pitch` | 27.2mm | Center-to-center spacing between adjacent tuners |
+| `total_length` | *computed* | = 2 * end_length + housing_length + (num_housings - 1) * pitch |
+
+**Note:** `total_length` is computed from the other parameters, ensuring symmetric ends regardless of the number of housings.
 
 ### **Tolerance Profiles**
 | Profile | Hole Tolerance | Use Case |
@@ -52,13 +54,48 @@ The build123d script shall support the following parameters:
 * **Material:** CZ121 Brass Box Section (10.35mm x 10.35mm x 1.1mm wall, as manufactured).
 * **Total Length:** 145.0mm.
 * **Internal Cavity:** 8.15mm x 8.15mm (10.35mm outer - 2×1.1mm walls).
-* **End Length:** 10.0mm from frame end to first/last housing center.
+* **End Length:** 10.0mm from frame end to first/last housing edge (symmetric ends).
 * **Topology:**
   * **5x Rigid Housings:** 16.2mm long sections of full box profile to resist gear tension.
-  * **Connectors:** Top and Side walls milled away between housings, leaving only the **Bottom Plate** (1.1mm thick) to connect the unit.
+  * **Connectors:** Walls milled away between housings, leaving only the **Mounting Plate** (1.1mm thick) at Z=0 to connect the unit.
   * **Tuner Pitch:** 27.2mm center-to-center spacing between adjacent tuners.
+* **Hand Identification:** "R" or "L" etched on inside surface of mounting plate (3mm tall, 0.3mm deep) near frame end at Y=2mm. Visible from below when looking into mechanism cavity.
 
-### **Mounting Holes (Fixed - Historic)**
+### **Coordinate System**
+
+```
+     PLAYER'S VIEW (looking down at installed tuner)
+     ================================================
+
+        ↑ Posts stick up into air (+Z direction)
+        |
+   ─────┴─────  Z=0: Mounting plate (TOP, visible from above)
+   │ mechanism │     - Mounting screw holes
+   │  cavity   │     - Post bearing holes (posts emerge upward)
+   │    ●────→ │     - "R"/"L" etching on INSIDE (Z=-wall surface)
+   └───────────┘  Z=-box_outer: Bottom (embedded in headstock)
+        |              - Wheel inlet hole ONLY (for assembly)
+        ↓
+     [WOOD CAVITY]
+
+   Z-axis convention:
+   - Z=0        : Mounting plate surface (visible, sits on headstock)
+   - Z=-wall    : Inside surface of mounting plate (where "R"/"L" goes)
+   - Z=-box_outer+wall : Inside surface of bottom plate
+   - Z=-box_outer : Bottom surface (inside wood cavity)
+```
+
+| Item | Z Location | Notes |
+|------|------------|-------|
+| Mounting plate surface | Z=0 | Visible from above |
+| Mounting holes | Z=0 to Z=-wall | Drilled through top plate |
+| Post bearing holes | Z=0 to Z=-wall | Posts emerge upward (+Z) |
+| "R"/"L" etching | Z=-wall | Inside surface of mounting plate |
+| Worm entry (RH) | RIGHT side (+X) | Larger ø6.2mm hole |
+| Peg bearing (RH) | LEFT side (-X) | Smaller ø4.0mm hole |
+| Wheel inlet | Z=-box_outer | Bottom plate, for assembly |
+
+### **Mounting Holes**
 
 * **Quantity:** 6 holes
 * **Diameter:** ø3.0mm (clearance for mushroom-head bolts)
@@ -66,22 +103,25 @@ The build123d script shall support the following parameters:
 
 | Hole # | Y Position (from frame start) | Description |
 |--------|-------------------------------|-------------|
-| 1 | 4.5mm | Before Housing 1 |
+| 1 | 5.0mm | Before Housing 1 (centered in 0-10mm gap) |
 | 2 | 31.7mm | Between Housing 1 & 2 |
 | 3 | 58.9mm | Between Housing 2 & 3 |
 | 4 | 86.1mm | Between Housing 3 & 4 |
 | 5 | 113.3mm | Between Housing 4 & 5 |
-| 6 | 140.5mm | After Housing 5 |
+| 6 | 140.0mm | After Housing 5 (centered in 135-145mm gap) |
 
-### **Housing Positions (Fixed - Historic)**
+### **Housing Positions (Symmetric)**
+
+Housing positions are calculated to ensure symmetric 10mm ends:
+- First center = (total_length - (num_housings - 1) * pitch) / 2 = (145 - 108.8) / 2 = 18.1mm
 
 | Housing # | Center Y Position | Description |
 |-----------|-------------------|-------------|
-| 1 | 15.1mm | First tuner |
-| 2 | 42.3mm | Second tuner |
-| 3 | 69.5mm | Third tuner |
-| 4 | 96.7mm | Fourth tuner |
-| 5 | 123.9mm | Fifth tuner |
+| 1 | 18.1mm | First tuner |
+| 2 | 45.3mm | Second tuner |
+| 3 | 72.5mm | Third tuner (frame center) |
+| 4 | 99.7mm | Fourth tuner |
+| 5 | 126.9mm | Fifth tuner |
 
 ### **The "Sandwich" Drilling Pattern (Per Housing)**
 

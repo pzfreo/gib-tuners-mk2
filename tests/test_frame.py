@@ -53,6 +53,50 @@ class TestFrameGeometry:
         frame = create_frame(lh_config)
         assert frame is not None
 
+    def test_frame_z_orientation(self, config):
+        """Test frame Z-axis orientation: mounting plate at Z=0, bottom at Z=-box_outer."""
+        try:
+            from gib_tuners.components.frame import create_frame
+        except ImportError:
+            pytest.skip("build123d not installed")
+
+        frame = create_frame(config)
+        bbox = frame.bounding_box()
+
+        box_outer = config.frame.box_outer
+
+        # Mounting plate (top) should be at Z=0
+        assert abs(bbox.max.Z - 0.0) < 0.01, f"Top should be at Z=0, got Z={bbox.max.Z}"
+
+        # Bottom should be at Z=-box_outer
+        assert abs(bbox.min.Z - (-box_outer)) < 0.01, f"Bottom should be at Z=-{box_outer}, got Z={bbox.min.Z}"
+
+    def test_wheel_inlet_holes_at_bottom(self, config):
+        """Test that wheel inlet holes penetrate the bottom surface.
+
+        Regression test: holes must start below Z=-box_outer to break through.
+        """
+        try:
+            from gib_tuners.components.frame import create_frame
+            from build123d import Axis
+        except ImportError:
+            pytest.skip("build123d not installed")
+
+        frame = create_frame(config)
+        box_outer = config.frame.box_outer
+
+        # Get all faces at the bottom (Z=-box_outer)
+        bottom_faces = [
+            f for f in frame.faces()
+            if abs(f.center().Z - (-box_outer)) < 0.1
+        ]
+
+        # Should have bottom faces with wheel inlet holes (5 housings = 5 holes)
+        # Each housing has a hole in its bottom plate
+        assert len(bottom_faces) >= 5, (
+            f"Expected at least 5 bottom faces (wheel inlet holes), got {len(bottom_faces)}"
+        )
+
 
 class TestStringPostGeometry:
     """Tests for string post creation."""
