@@ -25,8 +25,9 @@ class TestFrameParams:
     def test_default_values(self):
         """Test default frame parameters match spec."""
         params = FrameParams()
-        assert params.box_outer == 10.35
-        assert params.wall_thickness == 1.1
+        # Updated to standard 10x10x1 box section (real measurements TBD)
+        assert params.box_outer == 10.0
+        assert params.wall_thickness == 1.0
         assert params.total_length == 145.0
         assert params.housing_length == 16.2
         assert params.num_housings == 5
@@ -35,7 +36,7 @@ class TestFrameParams:
     def test_box_inner(self):
         """Test internal cavity calculation."""
         params = FrameParams()
-        expected = 10.35 - 2 * 1.1  # 8.15
+        expected = 10.0 - 2 * 1.0  # 8.0
         assert abs(params.box_inner - expected) < 0.01
 
     def test_housing_centers(self):
@@ -75,11 +76,11 @@ class TestDDCutParams:
     """Tests for DD cut parameters."""
 
     def test_default_values(self):
-        """Test default DD cut parameters."""
+        """Test default DD cut parameters (updated for 7.5mm wheel)."""
         params = DDCutParams()
-        assert params.diameter == 3.0
-        assert params.flat_depth == 0.6
-        assert params.across_flats == 1.8
+        assert params.diameter == 3.5
+        assert params.flat_depth == 0.5
+        assert params.across_flats == 2.5
 
 
 class TestToleranceProfiles:
@@ -146,13 +147,13 @@ class TestLoadGearParams:
         assert gear.worm.tip_diameter == 6.0
         assert gear.worm.length == 7.0
 
-        # Check wheel params
+        # Check wheel params (updated for 7.5mm wheel)
         assert gear.wheel.module == 0.5
-        assert gear.wheel.num_teeth == 12
-        assert gear.wheel.tip_diameter == 7.0
+        assert gear.wheel.num_teeth == 13
+        assert gear.wheel.tip_diameter == 7.5
         assert gear.wheel.face_width == 6.0
 
-        # Check assembly params
-        assert gear.center_distance == 5.5
+        # Check assembly params (updated for 5.75mm CD)
+        assert gear.center_distance == 5.75
         assert gear.pressure_angle_deg == 25.0
-        assert gear.ratio == 12
+        assert gear.ratio == 13

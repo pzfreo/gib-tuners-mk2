@@ -1,12 +1,14 @@
 """String post geometry.
 
-The string post is a stepped shaft with:
-- Decorative cap (top)
-- Visible post section (above frame)
+The string post is a stepped shaft with (from bottom to top):
+- DD cut gear interface (mates with wheel) with M2 tap bore from bottom
 - Frame bearing section
-- DD cut gear interface (mates with wheel)
-- E-clip retention section
+- Visible post section (above frame)
+- Decorative cap (top)
 - String hole (cross-drilled)
+
+Assembly: Post inserted from above, wheel slides up from below onto DD section,
+M2 washer and nut thread onto the tap bore to retain wheel.
 """
 
 from build123d import (
@@ -25,7 +27,7 @@ def create_string_post(config: BuildConfig) -> Part:
     """Create the string post geometry.
 
     The post is oriented along the Z axis with:
-    - Z=0 at the bottom of the E-clip groove
+    - Z=0 at the bottom of the DD section (with M2 tap bore)
     - Positive Z going up toward the cap
 
     Args:
@@ -49,10 +51,9 @@ def create_string_post(config: BuildConfig) -> Part:
 
     dd_length = params.dd_cut_length * scale
 
-    eclip_shaft_d = params.eclip_shaft_diameter * scale
-    eclip_shaft_h = params.eclip_shaft_length * scale
-    eclip_groove_d = params.eclip_groove_diameter * scale
-    eclip_groove_w = params.eclip_groove_width * scale
+    # M2 tap bore: 1.6mm pilot hole diameter, thread_length deep
+    tap_bore_d = 1.6 * scale  # M2 tap drill size
+    tap_bore_depth = params.thread_length * scale
 
     string_hole_d = params.string_hole_diameter * scale
     string_hole_pos = params.string_hole_position * scale
@@ -60,25 +61,7 @@ def create_string_post(config: BuildConfig) -> Part:
     # Build from bottom up
     z = 0.0
 
-    # E-clip groove (at bottom)
-    groove = Cylinder(
-        radius=eclip_groove_d / 2,
-        height=eclip_groove_w,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    groove = groove.locate(Location((0, 0, z)))
-    z += eclip_groove_w
-
-    # E-clip shaft section
-    eclip_shaft = Cylinder(
-        radius=eclip_shaft_d / 2,
-        height=eclip_shaft_h - eclip_groove_w,  # Already have groove width
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    eclip_shaft = eclip_shaft.locate(Location((0, 0, z)))
-    z += eclip_shaft_h - eclip_groove_w
-
-    # DD cut section
+    # DD cut section (mates with wheel) - starts at Z=0
     dd_params = params.dd_cut
     dd_section = create_dd_cut_shaft(dd_params, dd_length, scale)
     dd_section = dd_section.locate(Location((0, 0, z)))
@@ -111,11 +94,20 @@ def create_string_post(config: BuildConfig) -> Part:
     cap = cap.locate(Location((0, 0, z)))
 
     # Combine all sections
-    string_post = groove + eclip_shaft + dd_section + bearing + post + cap
+    string_post = dd_section + bearing + post + cap
+
+    # M2 tap bore - drilled up from bottom into DD section
+    tap_bore = Cylinder(
+        radius=tap_bore_d / 2,
+        height=tap_bore_depth + 0.1,  # Slightly deeper for clean cut
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
+    tap_bore = tap_bore.locate(Location((0, 0, -0.1)))
+    string_post = string_post - tap_bore
 
     # Cross-drill string hole
-    # Position is measured from frame top, which is at z = eclip_shaft_h + dd_length + bearing_h
-    frame_top_z = eclip_shaft_h + dd_length + bearing_h
+    # Position is measured from frame top, which is at z = dd_length + bearing_h
+    frame_top_z = dd_length + bearing_h
     hole_z = frame_top_z + string_hole_pos
 
     string_hole = Cylinder(

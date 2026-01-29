@@ -24,17 +24,17 @@ class ToleranceConfig:
 @dataclass(frozen=True)
 class DDCutParams:
     """Double-D cut parameters for anti-rotation interface."""
-    diameter: float = 3.0  # Nominal shaft/bore diameter
-    flat_depth: float = 0.6  # Depth of each flat
-    across_flats: float = 1.8  # Distance between flats
+    diameter: float = 3.5  # Nominal shaft/bore diameter
+    flat_depth: float = 0.5  # Depth of each flat (14% of diameter)
+    across_flats: float = 2.5  # Distance between flats
 
 
 @dataclass(frozen=True)
 class FrameParams:
     """Parameters for an N-gang frame (1 to N tuning stations)."""
-    # Box section dimensions (as manufactured)
-    box_outer: float = 10.35  # Outer dimension of square tube
-    wall_thickness: float = 1.1  # Wall thickness
+    # Box section dimensions (standard 10x10x1 until real measurements taken)
+    box_outer: float = 10.0  # Outer dimension of square tube
+    wall_thickness: float = 1.0  # Wall thickness
 
     # Housing dimensions
     housing_length: float = 16.2  # Length of each rigid box section
@@ -127,10 +127,10 @@ class WormParams:
 class WheelParams:
     """Parameters for the worm wheel."""
     module: float = 0.5
-    num_teeth: int = 12
-    pitch_diameter: float = 6.0
-    tip_diameter: float = 7.0
-    root_diameter: float = 4.75
+    num_teeth: int = 13
+    pitch_diameter: float = 6.5
+    tip_diameter: float = 7.5
+    root_diameter: float = 5.25
     face_width: float = 6.0
     bore: DDCutParams = DDCutParams()
 
@@ -140,10 +140,11 @@ class GearParams:
     """Combined gear set parameters."""
     worm: WormParams
     wheel: WheelParams
-    center_distance: float = 5.5
+    center_distance: float = 5.75
     pressure_angle_deg: float = 25.0
     backlash: float = 0.1
-    ratio: int = 12
+    extra_backlash: float = 0.0  # Additional backlash beyond gear design
+    ratio: int = 13
 
 
 @dataclass(frozen=True)
@@ -194,26 +195,23 @@ class StringPostParams:
     dd_cut: DDCutParams = DDCutParams()
     dd_cut_length: float = 6.0  # Matches wheel face width
 
-    # E-clip retention section
-    eclip_shaft_diameter: float = 2.5
-    eclip_shaft_length: float = 3.0
-    eclip_groove_diameter: float = 2.1
-    eclip_groove_width: float = 0.4
-    eclip_od: float = 6.0  # DIN 6799 M2.5
+    # M2 tap bore (drilled into bottom of DD section for screw retention)
+    thread_size: str = "M2"
+    tap_bore_diameter: float = 1.6  # M2 tap drill size
+    thread_length: float = 4.0  # Depth of tapped hole (for 4mm M2 screw)
 
     # String hole
     string_hole_diameter: float = 1.5
-    string_hole_position: float = 4.0  # From frame top
+    string_hole_position: float = 2.75  # Centered in visible post (post_height / 2)
 
     @property
     def total_length(self) -> float:
-        """Total length from cap to shaft end."""
+        """Total length from DD bottom to cap top."""
         return (
             self.cap_height +
             self.post_height +
             self.bearing_length +
-            self.dd_cut_length +
-            self.eclip_shaft_length
+            self.dd_cut_length
         )
 
 

@@ -17,7 +17,7 @@ from .tolerances import get_tolerance
 
 
 def load_gear_params(json_path: Path) -> GearParams:
-    """Load gear parameters from a JSON file (e.g., 7mm-globoid.json).
+    """Load gear parameters from a JSON file (e.g., 75mm-globoid.json).
 
     Args:
         json_path: Path to the gear JSON file
@@ -49,12 +49,16 @@ def load_gear_params(json_path: Path) -> GearParams:
         throat_curvature_radius=worm_data.get("throat_curvature_radius_mm", 3.0),
     )
 
-    # Parse wheel bore (DD cut)
+    # Parse wheel bore (DD cut) - updated for 7.5mm wheel
     wheel_features = features_data.get("wheel", {})
+    bore_diameter = wheel_features.get("bore_diameter_mm", 3.5)
+    # Calculate DD parameters: flat_depth ~14% of diameter, across_flats = diameter - 2*flat_depth
+    flat_depth = round(bore_diameter * 0.14, 1)  # ~0.5mm for 3.5mm bore
+    across_flats = round(bore_diameter - 2 * flat_depth, 1)  # ~2.5mm for 3.5mm bore
     wheel_bore = DDCutParams(
-        diameter=wheel_features.get("bore_diameter_mm", 3.0),
-        flat_depth=0.6,  # Standard DD cut
-        across_flats=1.8,
+        diameter=bore_diameter,
+        flat_depth=flat_depth,
+        across_flats=across_flats,
     )
 
     # Parse wheel parameters

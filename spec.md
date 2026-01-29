@@ -128,7 +128,7 @@ Housing positions are calculated to ensure symmetric 10mm ends:
 To enable assembly without soldering:
 
 1. **Bottom Face (Wheel Inlet):** ø8.0mm through-hole.
-   * *Function:* Allows the Worm Wheel (7.0mm OD) to be inserted from underneath.
+   * *Function:* Allows the Worm Wheel (7.5mm OD) to be inserted from underneath.
 2. **Top Face (Post Bearing):** ø4.2mm through-hole.
    * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft).
 3. **Side Faces (Worm Axle):** Asymmetric through-holes.
@@ -140,16 +140,16 @@ To enable assembly without soldering:
 
 * **Constraint:** The Worm Wheel must fit through the ø8.0mm hole in the bottom of the frame.
 * **Module:** **0.5**
-* **Gear Ratio:** **12:1** (single-start worm, 12-tooth wheel)
+* **Gear Ratio:** **13:1** (single-start worm, 13-tooth wheel)
 * **Pressure Angle:** **25°**
-* **Worm Type:** **Globoid** (improved contact pattern vs cylindrical)
+* **Worm Type:** **Cylindrical**
 
 ### **1\. Worm (Driver) - Integral to Peg Head**
 
 The worm thread is cast/machined as part of the peg head assembly (not a separate gear).
 
 * **Reference geometry:** `worm_m0.5_z1.step` (for tooth profile)
-* **Type:** Globoid (throat reduction 0.1mm, curvature radius 3mm)
+* **Type:** Cylindrical
 * **Outer Diameter (tip):** **6.0mm**
 * **Pitch Diameter:** 5.0mm
 * **Root Diameter:** 3.75mm
@@ -163,12 +163,12 @@ The worm thread is cast/machined as part of the peg head assembly (not a separat
 
 ### **2\. Worm Wheel (Driven) - Separate Part**
 
-* **Source:** `wheel_m0.5_z12.step`
-* **Teeth:** 12
-* **Outer Diameter (tip):** **7.0mm**
-* **Pitch Diameter:** 6.0mm
-* **Root Diameter:** 4.75mm
-* **Bore:** **ø3.0mm DD cut** (double-D for anti-rotation)
+* **Source:** `wheel_m0.5_z13.step`
+* **Teeth:** 13
+* **Outer Diameter (tip):** **7.5mm**
+* **Pitch Diameter:** 6.5mm
+* **Root Diameter:** 5.25mm
+* **Bore:** **ø3.5mm DD cut** (double-D for anti-rotation)
 * **Face Width:** **6.0mm**
 * **Material:** Brass
 
@@ -176,25 +176,25 @@ The wheel is a separate component that slides onto the string post and enables s
 
 ### **DD Cut Bore Interface (Wheel Only)**
 
-* **Wheel bore:** ø3.0mm DD cut → mates with 3.0mm DD cut on string post
-* **Flat depth:** ~0.6mm (each side)
-* **Across flats:** ~1.8mm
+* **Wheel bore:** ø3.5mm DD cut → mates with 3.5mm DD cut on string post
+* **Flat depth:** ~0.5mm (each side, 14% of diameter)
+* **Across flats:** ~2.5mm
 
 The DD cut is created by milling two parallel flats on the string post shaft.
 
 ### **Center Distance Calculation**
 
 * CD = (Worm PD + Wheel PD) / 2
-* CD = (5.0mm + 6.0mm) / 2 = **5.5mm**
+* CD = (5.0mm + 6.5mm) / 2 = **5.75mm**
 
 ### **Assembly Parameters**
 
 | Parameter | Value |
 |-----------|-------|
-| Centre Distance | 5.5mm |
+| Centre Distance | 5.75mm |
 | Pressure Angle | 25° |
 | Backlash | 0.1mm |
-| Ratio | 12:1 |
+| Ratio | 13:1 |
 
 ## **4\. Component C: The Peg Head Assembly**
 
@@ -280,57 +280,56 @@ The worm thread is machined onto the shaft using the reference geometry from `wo
 * **Stock:** 8.0mm round brass/steel bar.
 * **Cap:** Decorative 7.5mm cap with chamfered edges.
 * **Top Section:** 6.0mm visible post (runs in the Top Face hole).
-* **Gear Interface:** 3.0mm DD cut section to mate with Worm Wheel DD bore.
-* **Retention:** M2.5 E-clip on shaft below wheel.
-* **String Hole:** ø1.5mm cross-hole, positioned 4mm from frame top.
+* **Gear Interface:** 3.5mm DD cut section to mate with Worm Wheel DD bore.
+* **Retention:** M2 tap bore in bottom of DD section for nut + washer.
+* **String Hole:** ø1.5mm cross-hole, centered in visible post (2.75mm from frame top).
 
-### **String Post Dimensions (Top to Bottom)**
+### **String Post Dimensions (Bottom to Top)**
 
 | Section | Diameter | Length | Description |
 |---------|----------|--------|-------------|
-| Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
-| Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
-| String hole | ø1.5mm | through | Cross-drilled, 4mm from frame top |
+| Wheel interface | 3.5mm DD cut | 6.0mm | Mates with wheel DD bore |
+| M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
 | Frame bearing | 4.0mm | 1.0mm | Runs in ø4.2mm top frame hole |
-| Washer seat | 4.0mm | — | Washer sits here to space wheel |
-| Wheel interface | 3.0mm DD cut | 6.0mm | Mates with wheel DD bore |
-| E-clip section | 2.5mm round | ~3mm | Wheel slides over this |
-| E-clip groove | ~2.1mm | 0.4mm | DIN 6799 M2.5 E-clip seats here |
+| Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
+| String hole | ø1.5mm | through | Cross-drilled, centered in post (2.75mm from frame) |
+| Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
 
-**Total length:** ~17mm (cap to shaft end)
+**Total length:** ~13.5mm (DD bottom to cap top)
 
 ### **DD Cut Shaft Interface**
 
-The string post has a 3.0mm DD cut section to mate with the wheel's DD bore:
+The string post has a 3.5mm DD cut section to mate with the wheel's DD bore:
 
-* **Shaft diameter:** 3.0mm
-* **Flat depth:** ~0.6mm (each side)
-* **Across flats:** ~1.8mm
+* **Shaft diameter:** 3.5mm
+* **Flat depth:** ~0.5mm (each side, 14% of diameter)
+* **Across flats:** ~2.5mm
 * **Length:** 6mm (matches wheel width)
 
-### **Stepped Shaft for E-clip Retention**
+### **M2 Tap Bore Retention**
 
-Below the DD section, the shaft steps down to allow wheel assembly:
+The DD section has an M2 tapped hole drilled up from the bottom:
 
-* **DD section:** 3.0mm (wheel engages here)
-* **Step-down:** 2.5mm round (wheel slides over this, 3mm bore > 2.5mm shaft)
-* **E-clip groove:** ~2.1mm diameter, 0.4mm wide
-* **E-clip:** DIN 6799 M2.5 (~6mm OD, retains wheel)
+* **Tap drill:** ø1.6mm (for M2 thread)
+* **Depth:** 4mm (for standard M2 × 4mm screw)
+* **Hardware:** M2 × 4mm machine screw + M2 washer (~5mm OD)
+
+An M2 screw threads into the tap bore from below, with a washer to retain the wheel.
 
 ### **String Post Retention**
 
 * **Pull-up prevention:** 7.5mm cap cannot pass through 4.2mm frame hole
-* **Pull-down prevention:** E-clip at shaft end
-  * E-clip OD: ~6mm (larger than 3mm DD bore)
-  * Wheel sits on shoulder between 3mm DD and 2.5mm round
-* **Wheel retention:** Washer above wheel, E-clip below wheel
+* **Pull-down prevention:** M2 screw + washer in tap bore
+  * Washer OD: ~5mm (larger than 3.5mm DD bore)
+  * Screw holds washer in place
+* **Wheel retention:** Bearing shoulder above wheel, M2 screw + washer below wheel
 
 ### **String Post Assembly Sequence**
 
-1. Insert string post down through frame (4mm shaft through ø4.2mm hole)
-2. Place washer on shaft below frame
-3. Slide wheel up onto 3mm DD section (slides over 2.5mm section)
-4. Snap E-clip into groove to retain wheel
+1. Insert string post from above through frame (4mm bearing through ø4.2mm hole)
+2. Slide wheel up from below through inlet (8mm) onto DD section
+3. Place M2 washer on bottom of DD
+4. Thread M2 screw into tap bore to retain wheel
 
 ## **6\. Manufacturing Process (Step-by-Step)**
 
@@ -351,9 +350,9 @@ Below the DD section, the shaft steps down to allow wheel assembly:
 
 The wheel is manufactured from STEP file generated by gear calculator:
 
-* **Source:** `wheel_m0.5_z12.step`
-* 12 teeth, 6mm width
-* ø3.0mm DD cut bore (built into STEP)
+* **Source:** `wheel_m0.5_z13.step`
+* 13 teeth, 6mm width
+* ø3.5mm DD cut bore (built into STEP)
 
 *Note: Worm is integral to peg head casting - see Phase 3.*
 
@@ -374,21 +373,21 @@ Investment cast peg head with integral shaft and worm thread:
    * 7.5mm cap (1mm high, chamfered)
    * 6mm visible post (5.5mm high)
    * 4mm frame bearing section (1mm, through frame)
-   * 3mm DD cut gear interface (6mm, for wheel)
-   * 2.5mm round section (~3mm, for E-clip)
-   * E-clip groove (2.1mm dia, 0.4mm wide)
-2. Mill DD flats on 3mm shaft section
-3. Cross-drill ø1.5mm string hole (4mm from frame top)
+   * 3.5mm DD cut gear interface (6mm, for wheel)
+   * M2 thread section (~3mm, for nut retention)
+2. Mill DD flats on 3.5mm shaft section
+3. Thread M2 on bottom section
+4. Cross-drill ø1.5mm string hole (4mm from frame top)
 
 ### **Phase 5: Assembly (The "Sandwich" Logic)**
 
 1. **Insert Peg Head Assembly:** Slide **Peg Head + Worm** through **Entry Hole** (ø6.2mm). The ø3.8mm shaft passes through opposite **Bearing Hole** (ø4.0mm).
 2. **Secure Peg Head:** Place **5mm washer** on shaft end, thread **M2 × 3mm pan head screw** to retain.
-3. **Insert Post:** Slide **String Post** down through **Top Hole** (ø4.2mm).
-4. **Place Post Washer:** Add washer on post shaft below frame to space wheel.
-5. **Insert Wheel:** Slide **Worm Wheel** up through **Bottom Hole** (ø8mm) onto post's 3mm DD section.
-6. **Secure Wheel:** Snap **M2.5 E-clip** into groove on shaft end.
-7. **Complete:** Peg head secured with M2 screw + washer, wheel secured with E-clip.
+3. **Insert Post:** Slide **String Post** from above through **Top Hole** (ø4.2mm).
+4. **Insert Wheel:** Slide **Worm Wheel** up through **Bottom Hole** (ø8mm) onto post's 3.5mm DD section.
+5. **Place Post Washer:** Add **M2 washer** (~5mm OD) on threaded section below wheel.
+6. **Secure Wheel:** Thread **M2 hex nut** onto post thread to retain wheel.
+7. **Complete:** Peg head secured with M2 screw + washer, wheel secured with M2 nut + washer.
 
 ## **7\. The Left Hand (LH) Variant**
 
@@ -413,6 +412,41 @@ Investment cast peg head with integral shaft and worm thread:
   * Worm Axis (side holes): Offset from post axis by **5.5mm** (= center distance).
   * *Note:* Frame is 10.35mm wide, internal cavity is 8.15mm. Worm axis at X = 5.5mm from post axis places the side holes off-center.
 
+### **Y-Axis Offset for Worm/Wheel Engagement**
+
+The worm and wheel axes are offset from the housing center along Y to achieve proper center distance while centering the mechanism within each housing. This also provides a preload mechanism where string tension takes up backlash.
+
+```
+     HOUSING (16.2mm along Y)
+     ========================
+
+     Y=0 end (toward nut/bridge)              Y=145 end
+     String pulls this way ←
+       |                                           |
+       |    POST        WORM                       |
+       |      │   5.75mm   │                       |
+       |      │<---------->│                       |
+       |      ●            ●                       |
+       |   -2.875mm    +2.875mm                    |
+       |      from housing center                  |
+       |                                           |
+
+     String tension pulls post toward -Y.
+     Post pivots at top bearing, wheel (at bottom) swings +Y into worm.
+```
+
+| Item | Y Position | Notes |
+|------|------------|-------|
+| Housing center | housing_y | Computed from frame parameters |
+| Post axis | housing_y - CD/2 | Offset toward -Y (nut end) by 2.875mm |
+| Worm axis | housing_y + CD/2 | Offset toward +Y (bridge end) by 2.875mm |
+| Center distance | 5.75mm | Between worm and wheel axes |
+| Extra backlash | configurable | Parameter for additional play beyond gear design |
+
+**Preload mechanism:** String tension pulls the string post toward -Y (toward the nut/bridge). The post pivots at its top bearing, causing the wheel (at the bottom of the post) to swing toward +Y, pushing into the worm and taking up backlash.
+
+**Both RH and LH variants:** Use the same offset directions (post toward -Y, worm toward +Y from housing center).
+
 ---
 
 ## **9\. Geometry Validation Checklist**
@@ -422,17 +456,17 @@ Before manufacturing, verify:
 - [x] Worm OD (6.0mm) fits within internal cavity height (8.15mm) ✓ 2.15mm clearance
 - [x] Worm OD (6.0mm) passes through entry hole (6.2mm) ✓ 0.2mm clearance
 - [x] Peg head shaft (3.8mm) fits in bearing hole (4.0mm) ✓ 0.2mm clearance
-- [x] Wheel OD (7.0mm) passes through bottom hole (8.0mm) ✓ 1.0mm clearance
+- [x] Wheel OD (7.5mm) passes through bottom hole (8.0mm) ✓ 0.5mm clearance
 - [x] Post shaft (4.0mm) fits in top bearing hole (4.2mm) ✓ 0.2mm clearance
 - [x] Post cap (7.5mm) stops pull-through top hole (4.2mm) ✓
 - [x] Peg head shoulder (8mm) stops pull-in through entry hole (6.2mm) ✓
 - [x] M2 screw + washer (5mm OD) stops peg pull-out through bearing hole (4.0mm) ✓
-- [x] Center distance (5.5mm) fits within frame geometry ✓
+- [x] Center distance (5.75mm) fits within frame geometry ✓
 - [x] Sandwich assembly sequence verified ✓
 - [x] Worm integral to peg head casting ✓
-- [x] 3.0mm DD cut bore in wheel (for string post) ✓
-- [x] Wheel slides over 2.5mm section (3mm bore > 2.5mm shaft) ✓
-- [x] E-clip (6mm OD) retains wheel (larger than 3mm DD bore) ✓
+- [x] 3.5mm DD cut bore in wheel (for string post) ✓
+- [x] M2 thread (2mm) passes through wheel DD across-flats (2.5mm) ✓
+- [x] M2 washer (5mm OD) retains wheel (larger than 3.5mm DD bore) ✓
 - [x] Custom wheel STEP file generated ✓
 
 ### **Gear Mesh Validation**
@@ -440,26 +474,26 @@ Before manufacturing, verify:
 | Parameter | Worm | Wheel | Check |
 |-----------|------|-------|-------|
 | Module | 0.5 | 0.5 | ✓ Match |
-| Pitch Diameter | 5.0mm | 6.0mm | — |
-| Center Distance | — | — | 5.5mm ✓ |
+| Pitch Diameter | 5.0mm | 6.5mm | — |
+| Center Distance | — | — | 5.75mm ✓ |
 | Pressure Angle | 25° | 25° | ✓ Match |
-| Worm Type | Globoid (integral) | — | Improved contact |
+| Worm Type | Cylindrical (integral) | — | Simple machining |
 
 ### **Hardware List (per tuner)**
 
 | Item | Specification | Qty |
 |------|---------------|-----|
-| Peg head + worm | Cast brass, integral globoid worm, 3.8mm shaft | 1 |
-| Worm wheel | Custom STEP, M0.5, 12T, 7.0mm OD, 3.0mm DD bore | 1 |
+| Peg head + worm | Cast brass, integral cylindrical worm, 3.8mm shaft | 1 |
+| Worm wheel | Custom STEP, M0.5, 13T, 7.5mm OD, 3.5mm DD bore | 1 |
 | Peg retention screw | M2 × 3mm pan head | 1 |
 | Peg retention washer | 5mm OD, 2.2mm ID, 0.5mm thick | 1 |
-| Wheel retention E-clip | DIN 6799 M2.5 (~6mm OD) | 1 |
-| Post spacing washer | ~4mm ID, spacing wheel on post | 1 |
+| Post retention screw | M2 × 4mm pan head | 1 |
+| Post retention washer | M2 washer (~5mm OD, ~2.2mm ID) | 1 |
 
 ### **Source Files**
 
 | File | Description |
 |------|-------------|
-| `worm_m0.5_z1.step` | Globoid worm reference geometry (for machining cast shaft) |
-| `wheel_m0.5_z12.step` | 12-tooth worm wheel (separate part) |
-| `7mm-globoid.json` | Gear calculator parameters |
+| `worm_m0.5_z1.step` | Cylindrical worm reference geometry (for machining cast shaft) |
+| `wheel_m0.5_z13.step` | 13-tooth worm wheel (separate part) |
+| `75mm-globoid.json` | Gear calculator parameters |

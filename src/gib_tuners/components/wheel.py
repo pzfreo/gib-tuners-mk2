@@ -1,6 +1,6 @@
 """Worm wheel handling.
 
-The wheel geometry comes from a generated STEP file (wheel_m0.5_z12.step).
+The wheel geometry comes from a generated STEP file (wheel_m0.5_z13.step).
 This module provides functions to:
 - Load the wheel from STEP
 - Modify the bore (e.g., apply DD cut)

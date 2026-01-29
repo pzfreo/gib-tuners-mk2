@@ -7,7 +7,7 @@ Parametric CAD project for historic guitar tuner restoration using build123d. Th
 ## Key Files
 
 - `spec.md` - Master engineering specification (source of truth for all dimensions)
-- `7mm-globoid.json` - Gear calculator parameters for worm/wheel
+- `75mm-globoid.json` - Gear calculator parameters for worm/wheel (13T, 7.5mm wheel)
 - `src/gib_tuners/config/parameters.py` - All dataclasses defining component geometry
 - `src/gib_tuners/config/tolerances.py` - Tolerance profiles for different manufacturing methods
 
@@ -83,10 +83,33 @@ pytest --cov=src/gib_tuners tests/
 ## Reference Files
 
 The `reference/` directory contains:
-- `worm_m0.5_z1.step` - Globoid worm reference geometry
-- `wheel_m0.5_z12.step` - 12-tooth worm wheel
+- `worm_m0.5_z1.step` - Cylindrical worm reference geometry
+- `wheel_m0.5_z13.step` - 13-tooth worm wheel (7.5mm OD)
 - `rhframe.step` - Reference right-hand frame geometry
 - `peg.dxf`, `pegsmall.dxf` - Peg head profile references
+
+## Incremental Assembly Workflow
+
+**This is a complex CAD project. Work incrementally with user approval at each step.**
+
+1. **One component at a time**: Create/fix each component in isolation. Do not move to the next until the user approves the current one.
+
+2. **Visualize and verify**: After each change, run the debug script to visualize. Wait for user confirmation that it looks correct.
+
+3. **Single housing first**: Work with `num_housings=1` until the single-unit assembly is approved. Only then expand to the full 5-gang.
+
+4. **Separate debug files**: Use `scripts/debug_assembly.py` for incremental testing. Do not modify `assembly/tuner_unit.py` or `assembly/gang_assembly.py` until the positioning is verified and approved.
+
+5. **Approval checkpoints**:
+   - [ ] Frame (APPROVED)
+   - [ ] String post at origin
+   - [ ] Wheel mated to post (DD alignment)
+   - [ ] Post+wheel positioned in single-housing frame
+   - [ ] Peg head added to single-housing assembly
+   - [ ] Hardware (washers, M2 nut, screw)
+   - [ ] Full 5-gang assembly
+
+6. **Do not batch changes**: Even if you think you know the fix, implement one step, show results, wait for approval.
 
 ## Key Dimensions (from spec.md)
 
@@ -99,5 +122,5 @@ The `reference/` directory contains:
 | Num housings | 5 (default) | Tuning stations (1 to N) |
 | Tuner pitch | 27.2mm | Center-to-center spacing |
 | Total length | *computed* | 145.0mm for 5 housings |
-| Center distance | 5.5mm | Worm-to-wheel axis distance |
-| Gear module | 0.5 | M0.5 globoid worm drive |
+| Center distance | 5.75mm | Worm-to-wheel axis distance |
+| Gear module | 0.5 | M0.5 cylindrical worm drive |
