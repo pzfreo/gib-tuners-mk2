@@ -25,8 +25,8 @@ The build123d script shall support the following parameters:
 ### **Frame Parameters**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `box_outer` | 10.35mm | Outer dimension of square tube (as manufactured) |
-| `wall_thickness` | 1.1mm | Wall thickness (as manufactured) |
+| `box_outer` | 10.0mm | Outer dimension of square tube |
+| `wall_thickness` | 1.0mm | Wall thickness |
 | `housing_length` | 16.2mm | Length of each rigid box section |
 | `end_length` | 10.0mm | Length from frame end to first/last housing edge (symmetric) |
 | `num_housings` | 5 | Number of tuner positions (1 to N) |
@@ -51,13 +51,13 @@ The build123d script shall support the following parameters:
 
 ## **2\. Component A: The Reinforced Frame**
 
-* **Material:** CZ121 Brass Box Section (10.35mm x 10.35mm x 1.1mm wall, as manufactured).
+* **Material:** CZ121 Brass Box Section (10.0mm x 10.0mm x 1.0mm wall).
 * **Total Length:** 145.0mm.
-* **Internal Cavity:** 8.15mm x 8.15mm (10.35mm outer - 2×1.1mm walls).
+* **Internal Cavity:** 8.0mm x 8.0mm (10.0mm outer - 2×1.0mm walls).
 * **End Length:** 10.0mm from frame end to first/last housing edge (symmetric ends).
 * **Topology:**
   * **5x Rigid Housings:** 16.2mm long sections of full box profile to resist gear tension.
-  * **Connectors:** Walls milled away between housings, leaving only the **Mounting Plate** (1.1mm thick) at Z=0 to connect the unit.
+  * **Connectors:** Walls milled away between housings, leaving only the **Mounting Plate** (1.0mm thick) at Z=0 to connect the unit.
   * **Tuner Pitch:** 27.2mm center-to-center spacing between adjacent tuners.
 * **Hand Identification:** "R" or "L" etched on inside surface of mounting plate (3mm tall, 0.3mm deep) near frame end at Y=2mm. Visible from below when looking into mechanism cavity.
 
@@ -88,12 +88,12 @@ The build123d script shall support the following parameters:
 | Item | Z Location | Notes |
 |------|------------|-------|
 | Mounting plate surface | Z=0 | Visible from above |
-| Mounting holes | Z=0 to Z=-wall | Drilled through top plate |
-| Post bearing holes | Z=0 to Z=-wall | Posts emerge upward (+Z) |
-| "R"/"L" etching | Z=-wall | Inside surface of mounting plate |
+| Mounting holes | Z=0 to Z=-1.0 | Drilled through top plate |
+| Post bearing holes | Z=0 to Z=-1.0 | Posts emerge upward (+Z) |
+| "R"/"L" etching | Z=-1.0 | Inside surface of mounting plate |
 | Worm entry (RH) | RIGHT side (+X) | Larger ø6.2mm hole |
 | Peg bearing (RH) | LEFT side (-X) | Smaller ø4.0mm hole |
-| Wheel inlet | Z=-box_outer | Bottom plate, for assembly |
+| Wheel inlet | Z=-10.0 | Bottom plate, for assembly |
 
 ### **Mounting Holes**
 
@@ -143,14 +143,14 @@ To enable assembly without soldering:
 * **Module:** **0.5**
 * **Gear Ratio:** **13:1** (single-start worm, 13-tooth wheel)
 * **Pressure Angle:** **25°**
-* **Worm Type:** **Cylindrical**
+* **Worm Type:** **Cylindrical** (default) or **Globoid** (for improved contact)
 
 ### **1\. Worm (Driver) - Integral to Peg Head**
 
 The worm thread is cast/machined as part of the peg head assembly (not a separate gear).
 
 * **Reference geometry:** `worm_m0.5_z1.step` (for tooth profile)
-* **Type:** Cylindrical
+* **Type:** Cylindrical (default) or Globoid
 * **Outer Diameter (tip):** **6.0mm**
 * **Pitch Diameter:** 5.0mm
 * **Root Diameter:** 3.75mm
@@ -170,7 +170,7 @@ The worm thread is cast/machined as part of the peg head assembly (not a separat
 * **Pitch Diameter:** 6.5mm
 * **Root Diameter:** 5.25mm
 * **Bore:** **ø3.5mm DD cut** (double-D for anti-rotation)
-* **Face Width:** **6.0mm**
+* **Face Width:** **7.5mm**
 * **Material:** Brass
 
 The wheel is a separate component that slides onto the string post and enables sandwich assembly.
@@ -312,14 +312,14 @@ The worm thread is imported from `reference/worm_m0.5_z1.step` (regenerate at 7.
 
 | Section | Diameter | Length | Description |
 |---------|----------|--------|-------------|
-| Wheel interface | 3.5mm DD cut | 6.0mm | Mates with wheel DD bore |
+| Wheel interface | 3.5mm DD cut | 7.5mm | Mates with wheel DD bore (matches wheel width) |
 | M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
 | Frame bearing | 4.0mm | 1.0mm | Runs in ø4.2mm top frame hole |
 | Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
 | String hole | ø1.5mm | through | Cross-drilled, centered in post (2.75mm from frame) |
 | Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
 
-**Total length:** ~13.5mm (DD bottom to cap top)
+**Total length:** ~15.0mm (DD bottom to cap top)
 
 ### **DD Cut Shaft Interface**
 
@@ -328,7 +328,7 @@ The string post has a 3.5mm DD cut section to mate with the wheel's DD bore:
 * **Shaft diameter:** 3.5mm
 * **Flat depth:** ~0.5mm (each side, 14% of diameter)
 * **Across flats:** ~2.5mm
-* **Length:** 6mm (matches wheel width)
+* **Length:** 7.5mm (matches wheel width)
 
 ### **M2 Tap Bore Retention**
 
@@ -397,7 +397,7 @@ Investment cast peg head with integral shaft and worm thread:
    * 7.5mm cap (1mm high, chamfered)
    * 6mm visible post (5.5mm high)
    * 4mm frame bearing section (1mm, through frame)
-   * 3.5mm DD cut gear interface (6mm, for wheel)
+   * 3.5mm DD cut gear interface (7.5mm, matches wheel width)
    * M2 thread section (~3mm, for nut retention)
 2. Mill DD flats on 3.5mm shaft section
 3. Thread M2 on bottom section
@@ -426,15 +426,15 @@ Investment cast peg head with integral shaft and worm thread:
 * **Center Distance (CD):** Distance from Worm Axis to Post Axis.
   * CD = (Pitch Dia Worm + Pitch Dia Wheel) / 2
   * CD = (5.0mm + 6.5mm) / 2 = **5.75mm**.
-* **Vertical Alignment:**
-  * Internal Cavity: Z = 1.0mm (floor) to Z = 9.0mm (ceiling), height = 8.0mm.
-  * Worm Axis Height: **Z = 5.0mm** (Centered in box and cavity).
+* **Vertical Alignment:** (using Section 2 coordinate system: Z=0 at mounting plate)
+  * Internal Cavity: Z = -1.0mm (ceiling) to Z = -9.0mm (floor), height = 8.0mm.
+  * Worm Axis Height: **Z = -5.0mm** (Centered in cavity).
   * Worm Clearance: 8.0mm cavity - 6.0mm worm OD = **2.0mm total** (1.0mm top/bottom).
-  * Wheel Pitch Plane: **Z = 5.0mm** (Must align with worm).
+  * Wheel Pitch Plane: **Z = -5.0mm** (Must align with worm).
 * **Horizontal Hole Offset:**
   * Post Axis (top/bottom holes): X = 0 (centered on frame width).
-  * Worm Axis (side holes): Offset from post axis by **5.5mm** (= center distance).
-  * *Note:* Frame is 10.35mm wide, internal cavity is 8.15mm. Worm axis at X = 5.5mm from post axis places the side holes off-center.
+  * Worm Axis (side holes): Offset from post axis by **5.75mm** (= center distance).
+  * *Note:* Frame is 10.0mm wide, internal cavity is 8.0mm. Worm axis at X = 5.75mm from post axis places the side holes off-center.
 
 ### **Y-Axis Offset for Worm/Wheel Engagement**
 
@@ -477,7 +477,7 @@ The worm and wheel axes are offset from the housing center along Y to achieve pr
 
 Before manufacturing, verify:
 
-- [x] Worm OD (6.0mm) fits within internal cavity height (8.15mm) ✓ 2.15mm clearance
+- [x] Worm OD (6.0mm) fits within internal cavity height (8.0mm) ✓ 2.0mm clearance
 - [x] Worm OD (6.0mm) passes through entry hole (6.2mm) ✓ 0.2mm clearance
 - [x] Peg head shaft (3.8mm) fits in bearing hole (4.0mm) ✓ 0.2mm clearance
 - [x] Wheel OD (7.5mm) passes through bottom hole (8.0mm) ✓ 0.5mm clearance
@@ -501,7 +501,7 @@ Before manufacturing, verify:
 | Pitch Diameter | 5.0mm | 6.5mm | — |
 | Center Distance | — | — | 5.75mm ✓ |
 | Pressure Angle | 25° | 25° | ✓ Match |
-| Worm Type | Cylindrical (integral) | — | Simple machining |
+| Worm Type | Cylindrical or Globoid | — | Configurable |
 
 ### **Hardware List (per tuner)**
 
