@@ -71,34 +71,7 @@ Examples:
         default=180,
         help="Animation steps (default: 180)",
     )
-    parser.add_argument(
-        "--export-blender",
-        action="store_true",
-        help="Export to Blender (GLB + Animation Script)",
-    )
     return parser.parse_args()
-
-
-def b3d_to_trimesh(shape, name="part", color=None):
-    """Convert build123d shape to trimesh."""
-    import trimesh
-    import tempfile
-    from build123d import export_stl
-    
-    with tempfile.NamedTemporaryFile(suffix=".stl") as tmp:
-        export_stl(shape, tmp.name)
-        mesh = trimesh.load(tmp.name, file_type="stl")
-    
-    mesh.metadata["name"] = name
-    if color:
-        # Simple color handling
-        c = [int(x * 255) for x in color[:3]]
-        if len(color) > 3:
-            c.append(int(color[3] * 255))
-        else:
-            c.append(255)
-        mesh.visual.face_colors = c
-    return mesh
 
 
 def main() -> int:
@@ -106,7 +79,7 @@ def main() -> int:
 
     # Check for required packages
     try:
-        from bd_animation import AnimationGroup, clone, normalize_track
+        from bd_animation import AnimationGroup, clone
         from ocp_vscode import show, Animation
     except ImportError as e:
         print(f"Error: Missing package - {e}")
@@ -171,9 +144,6 @@ def main() -> int:
     effective_cd = assembly["effective_cd"]
     translation_y = housing_y - effective_cd / 2
 
-    wheel_pivot_loc = Location((0, translation_y, wheel_z))
-    wheel_pivot_vec = (0, translation_y, wheel_z)
-
     # Peg head pivot: X-axis at worm shaft center
     box_outer = frame_params.box_outer * scale
     box_inner = frame_params.box_inner * scale
@@ -190,186 +160,9 @@ def main() -> int:
         peg_x = -(half_inner - worm_clearance)
 
     peg_y = center_distance + translation_y
-    peg_pivot_loc = Location((peg_x, peg_y, worm_z))
-    peg_pivot_vec = (peg_x, peg_y, worm_z)
 
     print(f"  Wheel pivot: (0, {translation_y:.2f}, {wheel_z:.2f})")
     print(f"  Peg pivot: ({peg_x:.2f}, {peg_y:.2f}, {worm_z:.2f})")
-
-    # Export Logic
-    if args.export_blender:
-        print("\nExporting to Blender...")
-        try:
-            import trimesh
-            from trimesh.transformations import translation_matrix
-        except ImportError:
-            print("Error: trimesh is required. Install with: pip install trimesh[easy]")
-            return 1
-
-        # Groups define pivots
-        # Everything else is static (frame)
-        groups = {
-            "peg_group": {
-                "pivot": peg_pivot_vec,
-                "parts": [peg_head, peg_washer, peg_screw],
-                "names": ["peg_head", "peg_washer", "peg_screw"]
-            },
-            "wheel_group": {
-                "pivot": wheel_pivot_vec,
-                "parts": [wheel, string_post, wheel_washer, wheel_screw],
-                "names": ["wheel", "string_post", "wheel_washer", "wheel_screw"]
-            }
-        }
-        
-        scene = trimesh.Scene()
-        
-        # 1. Export Static Parts (Frame)
-        print("  Processing static parts...")
-        frame_mesh = b3d_to_trimesh(frame, "frame", color=(0.5, 0.5, 0.5))
-        scene.add_geometry(frame_mesh, node_name="frame", geom_name="frame_geo")
-        
-        # 2. Export Moving Parts (Re-centered)
-        print("  Processing moving parts...")
-        for grp_name, data in groups.items():
-            pivot = data["pivot"]
-            # Inverse translation to center geometry at origin
-            center_loc = Location((-pivot[0], -pivot[1], -pivot[2]))
-            
-            for part, name in zip(data["parts"], data["names"]):
-                if part is None: continue
-                # Move part to local origin (centered on pivot)
-                centered_part = part.moved(center_loc)
-                mesh = b3d_to_trimesh(centered_part, name, color=(0.8, 0.6, 0.2))
-                
-                # Add to scene with transform placing it back at pivot
-                # We append suffix to node name to make it easy to find
-                scene.add_geometry(
-                    mesh, 
-                    node_name=name, 
-                    geom_name=f"{name}_geo",
-                    transform=translation_matrix(pivot)
-                )
-
-        glb_filename = "tuner_anim_model.glb"
-        scene.export(glb_filename)
-        print(f"  Saved model: {glb_filename}")
-
-        # 3. Generate Blender Script
-        # We need the animation data
-        steps = args.steps
-        duration = args.duration
-        
-        # Calculate tracks (same as below)
-        worm_direction = -1 if config.hand == Hand.RIGHT else 1
-        wheel_direction = -1 if config.hand == Hand.RIGHT else 1
-        worm_total_deg = args.worm_revs * 359.9
-        wheel_total_deg = args.worm_revs * 359.9 / ratio
-        
-        # Generate frames
-        # Blender default is 24 fps
-        fps = 24
-        total_frames = int(duration * fps)
-        
-        worm_track = []
-        wheel_track = []
-        
-        for i in range(total_frames + 1):
-            t = i / total_frames
-            w_angle = float(np.radians(t * worm_total_deg * worm_direction))
-            wh_angle = float(np.radians(t * wheel_total_deg * wheel_direction))
-            worm_track.append((i + 1, w_angle))
-            wheel_track.append((i + 1, wh_angle))
-            
-        # Calculate absolute path to ensure Blender finds the file
-        import os
-        abs_glb_path = os.path.abspath(glb_filename).replace("\\", "/")
-
-        script_content = f"""import bpy
-import math
-
-# Config
-glb_path = "{abs_glb_path}"
-fps = {fps}
-total_frames = {total_frames}
-
-# Animation Data (Frame, Angle in Radians)
-# Peg Head: Rotate around X
-worm_track = {worm_track}
-peg_pivot = {list(peg_pivot_vec)}
-
-# Wheel/Post: Rotate around Z
-wheel_track = {wheel_track}
-wheel_pivot = {list(wheel_pivot_vec)}
-
-def create_and_animate_pivot(name, location, track, axis_index, child_names):
-    # Create Empty object directly in data
-    empty = bpy.data.objects.new(name, None)
-    empty.empty_display_type = 'PLAIN_AXES'
-    empty.location = location
-    
-    # Link to the current scene collection
-    bpy.context.scene.collection.objects.link(empty)
-    
-    # Parent Children
-    for child_name in child_names:
-        child = bpy.data.objects.get(child_name)
-        if child:
-            child.parent = empty
-            child.matrix_parent_inverse = empty.matrix_world.inverted()
-            
-    # Animate Empty
-    empty.rotation_mode = 'XYZ'
-    print(f"Animating {name}...")
-    for f, angle in track:
-        empty.rotation_euler[axis_index] = angle
-        empty.keyframe_insert(data_path="rotation_euler", frame=f)
-
-def setup_animation():
-    # Clear existing
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    
-    # Import GLB
-    bpy.ops.import_scene.gltf(filepath=glb_path)
-    
-    # Set Framerate
-    bpy.context.scene.render.fps = fps
-    bpy.context.scene.frame_end = total_frames
-    
-    # Apply Animation using Parent Empties
-    
-    # Peg Group (Rotate around X -> axis 0)
-    create_and_animate_pivot(
-        "PegPivot", 
-        peg_pivot, 
-        worm_track, 
-        0, 
-        {groups['peg_group']['names']}
-    )
-                
-    # Wheel Group (Rotate around Z -> axis 2)
-    create_and_animate_pivot(
-        "WheelPivot", 
-        wheel_pivot, 
-        wheel_track, 
-        2, 
-        {groups['wheel_group']['names']}
-    )
-
-    print("Animation setup complete.")
-
-if __name__ == "__main__":
-    setup_animation()
-"""
-        py_filename = "tuner_anim_setup.py"
-        with open(py_filename, "w") as f:
-            f.write(script_content)
-        print(f"  Saved script: {py_filename}")
-        print("\nTo use in Blender:")
-        print(f"1. Open Blender")
-        print(f"2. Go to Scripting tab")
-        print(f"3. Open '{py_filename}'")
-        print(f"4. Run script")
-        return 0
 
     # Clone parts for animation (no origin transform - keep positions from assembly)
     frame_cloned = clone(frame, color=(0.3, 0.5, 1.0, 0.3))  # Blue, transparent
