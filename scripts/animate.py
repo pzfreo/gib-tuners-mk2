@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from build123d import Location
 
 from gib_tuners.config.defaults import create_default_config
-from gib_tuners.config.parameters import Hand
+from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 
 REFERENCE_DIR = Path(__file__).parent.parent / "reference"
@@ -71,6 +71,17 @@ Examples:
         default=180,
         help="Animation steps (default: 180)",
     )
+    worm_z_group = parser.add_mutually_exclusive_group()
+    worm_z_group.add_argument(
+        "--force-centered-worm",
+        action="store_true",
+        help="Force worm centered in frame (override globoid/hobbing auto-alignment)",
+    )
+    worm_z_group.add_argument(
+        "--force-aligned-worm",
+        action="store_true",
+        help="Force worm aligned with wheel center (even for cylindrical worms)",
+    )
     return parser.parse_args()
 
 
@@ -89,9 +100,19 @@ def main() -> int:
     # Create 1-gang config
     hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
     base_config = create_default_config(scale=args.scale, hand=hand)
+
+    # Determine worm Z mode from CLI flags
+    if args.force_centered_worm:
+        worm_z_mode = WormZMode.CENTERED
+    elif args.force_aligned_worm:
+        worm_z_mode = WormZMode.ALIGNED
+    else:
+        worm_z_mode = base_config.gear.worm_z_mode  # AUTO (from JSON hints)
+
     config = replace(
         base_config,
-        frame=replace(base_config.frame, num_housings=1)
+        frame=replace(base_config.frame, num_housings=1),
+        gear=replace(base_config.gear, worm_z_mode=worm_z_mode),
     )
 
     scale = config.scale
