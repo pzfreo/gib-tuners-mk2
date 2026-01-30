@@ -5,13 +5,26 @@ All dimensions are in millimeters. Parameters are frozen for immutability.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Tuple
+from typing import Optional, Tuple
 
 
 class Hand(Enum):
     """Handedness of the tuner assembly."""
     RIGHT = "right"
     LEFT = "left"
+
+
+class WormType(Enum):
+    """Worm geometry type."""
+    CYLINDRICAL = "cylindrical"
+    GLOBOID = "globoid"
+
+
+class WormZMode(Enum):
+    """Worm Z-positioning mode override."""
+    AUTO = "auto"        # Auto-detect from worm type and virtual_hobbing
+    CENTERED = "centered"  # Force centered in frame (default for cylindrical)
+    ALIGNED = "aligned"   # Force aligned with wheel (required for globoid)
 
 
 @dataclass(frozen=True)
@@ -107,7 +120,7 @@ class FrameParams:
 
 @dataclass(frozen=True)
 class WormParams:
-    """Parameters for the cylindrical worm (integral to peg head)."""
+    """Parameters for the worm (integral to peg head)."""
     module: float = 0.5
     num_starts: int = 1
     pitch_diameter: float = 5.0
@@ -117,6 +130,7 @@ class WormParams:
     lead_angle_deg: float = 5.71
     length: float = 7.8  # 0.1mm clearance each side in 8mm frame cavity
     hand: Hand = Hand.RIGHT
+    worm_type: WormType = WormType.CYLINDRICAL
 
     # Globoid-specific
     throat_reduction: float = 0.1
@@ -146,6 +160,8 @@ class GearParams:
     extra_backlash: float = 0.0  # Additional backlash beyond gear design
     ratio: int = 13
     mesh_rotation_deg: float = 0.0  # Wheel rotation for optimal mesh alignment
+    virtual_hobbing: bool = False  # If true, auto-aligns worm with wheel center
+    worm_z_mode: WormZMode = WormZMode.AUTO  # Override worm Z positioning
 
 
 @dataclass(frozen=True)

@@ -28,6 +28,7 @@ from build123d import (
 )
 
 from ..config.parameters import BuildConfig, Hand
+from ..config.defaults import calculate_worm_z
 
 
 def create_frame(config: BuildConfig) -> Part:
@@ -172,7 +173,7 @@ def create_frame(config: BuildConfig) -> Part:
         worm_entry_d = config.with_tolerance(frame_params.worm_entry_hole) * scale
         peg_bearing_d = config.with_tolerance(frame_params.peg_bearing_hole) * scale
 
-        worm_z = -box_outer / 2  # Centered in box height (negative Z)
+        worm_z = calculate_worm_z(config)  # Position based on gear configuration
 
         # Determine side based on hand
         if config.hand == Hand.RIGHT:

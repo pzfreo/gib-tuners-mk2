@@ -15,6 +15,8 @@ from .parameters import (
     ToleranceConfig,
     WheelParams,
     WormParams,
+    WormType,
+    WormZMode,
 )
 from .tolerances import get_tolerance
 
@@ -25,6 +27,68 @@ REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
 
 # Clearance for worm entry hole (allows worm to pass through frame hole)
 WORM_ENTRY_CLEARANCE = 0.2  # 0.1mm per side
+
+
+def requires_worm_alignment(config: "BuildConfig") -> bool:
+    """Check if worm must align with wheel center (globoid or virtual hobbing).
+
+    Returns True if:
+    - worm.worm_type == GLOBOID, or
+    - gear.virtual_hobbing == True
+
+    When True, the worm Z-position should match the wheel center for proper meshing.
+    """
+    return (
+        config.gear.worm.worm_type == WormType.GLOBOID or
+        config.gear.virtual_hobbing
+    )
+
+
+def calculate_worm_z(config: "BuildConfig") -> float:
+    """Calculate worm Z position based on gear configuration.
+
+    Args:
+        config: Build configuration with gear and frame parameters
+
+    Returns:
+        Z-coordinate for worm axis position
+
+    Positioning logic (in order of precedence):
+    1. If worm_z_mode == CENTERED: center in frame
+    2. If worm_z_mode == ALIGNED: align with wheel center
+    3. If worm_z_mode == AUTO: auto-detect based on globoid/virtual_hobbing
+    """
+    scale = config.scale
+    box_outer = config.frame.box_outer * scale
+    worm_z_mode = config.gear.worm_z_mode
+
+    # Check explicit overrides first
+    if worm_z_mode == WormZMode.CENTERED:
+        return -box_outer / 2
+
+    if worm_z_mode == WormZMode.ALIGNED:
+        # Calculate wheel_z
+        post_params = config.string_post
+        gear_params = config.gear
+        dd_h = post_params.dd_cut_length * scale
+        bearing_h = post_params.bearing_length * scale
+        post_z_offset = -(dd_h + bearing_h)
+        face_width = gear_params.wheel.face_width * scale
+        return post_z_offset + face_width / 2
+
+    # AUTO mode: detect based on worm type and virtual_hobbing
+    if requires_worm_alignment(config):
+        # Aligned: calculate wheel_z
+        post_params = config.string_post
+        gear_params = config.gear
+        dd_h = post_params.dd_cut_length * scale
+        bearing_h = post_params.bearing_length * scale
+        post_z_offset = -(dd_h + bearing_h)
+        face_width = gear_params.wheel.face_width * scale
+        return post_z_offset + face_width / 2
+
+    # Default: centered in frame
+    return -box_outer / 2
 
 
 def load_mesh_alignment(module: float) -> dict:
@@ -61,6 +125,13 @@ def load_gear_params(json_path: Path) -> GearParams:
     features_data = data.get("features", {})
     manufacturing_data = data.get("manufacturing", {})
 
+    # Parse worm type
+    worm_type_str = worm_data.get("type", "cylindrical")
+    worm_type = WormType.GLOBOID if worm_type_str == "globoid" else WormType.CYLINDRICAL
+
+    # Parse virtual hobbing flag
+    virtual_hobbing = manufacturing_data.get("virtual_hobbing", False)
+
     # Parse worm parameters
     worm = WormParams(
         module=worm_data["module_mm"],
@@ -72,6 +143,7 @@ def load_gear_params(json_path: Path) -> GearParams:
         lead_angle_deg=worm_data["lead_angle_deg"],
         length=manufacturing_data.get("worm_length_mm", 7.0),
         hand=Hand.RIGHT if worm_data.get("hand", "right") == "right" else Hand.LEFT,
+        worm_type=worm_type,
         throat_reduction=worm_data.get("throat_reduction_mm", 0.1),
         throat_curvature_radius=worm_data.get("throat_curvature_radius_mm", 3.0),
     )
@@ -113,6 +185,7 @@ def load_gear_params(json_path: Path) -> GearParams:
         backlash=assembly_data["backlash_mm"],
         ratio=assembly_data["ratio"],
         mesh_rotation_deg=mesh_rotation_base,
+        virtual_hobbing=virtual_hobbing,
     )
 
 
@@ -172,18 +245,13 @@ def create_default_config(
 
     # Calculate Z-offset correction for mesh rotation
     # The mesh_alignment JSON gives optimal rotation for Z-aligned axes (worm and wheel at same Z).
-    # In the actual assembly, the wheel and worm are at different Z heights, so we need to correct.
+    # In the actual assembly, the wheel and worm may be at different Z heights, so we need to correct.
     #
-    # From tuner_unit.py:
-    #   post_z_offset = -(dd_h + bearing_h)
-    #   wheel_z = post_z_offset + face_width / 2  (wheel center)
-    #   worm_z = -box_outer / 2  (worm axis)
-    #   z_offset = wheel_z - worm_z
+    # When worm is aligned with wheel (globoid, virtual_hobbing, or force-aligned),
+    # z_offset = 0 and no correction is needed.
     #
-    # Z offset is perpendicular to worm axis. Due to helix geometry:
-    #   effective_axial_shift = z_offset × tan(lead_angle)
-    #   worm_rotation = (effective_axial_shift / lead) × 360°
-    #   wheel_rotation = worm_rotation / ratio
+    # When worm is centered in frame (cylindrical, no hobbing),
+    # we calculate the Z offset and apply helix geometry correction.
     dd_h = string_post.dd_cut_length
     bearing_h = string_post.bearing_length
     face_width = gear.wheel.face_width
@@ -194,8 +262,24 @@ def create_default_config(
 
     post_z_offset = -(dd_h + bearing_h)
     wheel_z = post_z_offset + face_width / 2
-    worm_z = -box_outer / 2
-    z_offset = wheel_z - worm_z
+    worm_z_centered = -box_outer / 2
+
+    # Determine if worm will be aligned with wheel or centered
+    # Check mode first, then auto-detect
+    worm_z_mode = gear.worm_z_mode
+    worm_aligned = (
+        worm_z_mode == WormZMode.ALIGNED or
+        (worm_z_mode == WormZMode.AUTO and (
+            gear.worm.worm_type == WormType.GLOBOID or gear.virtual_hobbing
+        ))
+    )
+
+    if worm_aligned:
+        # Worm and wheel at same Z, no correction needed
+        z_offset = 0.0
+    else:
+        # Worm centered in frame, calculate offset
+        z_offset = wheel_z - worm_z_centered
 
     # Convert Z offset to wheel rotation using lead angle geometry
     effective_axial_shift = z_offset * math.tan(lead_angle_rad)
@@ -214,6 +298,8 @@ def create_default_config(
         extra_backlash=gear.extra_backlash,
         ratio=gear.ratio,
         mesh_rotation_deg=final_mesh_rotation,
+        virtual_hobbing=gear.virtual_hobbing,
+        worm_z_mode=gear.worm_z_mode,
     )
 
     return BuildConfig(

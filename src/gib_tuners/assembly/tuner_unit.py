@@ -19,6 +19,7 @@ from build123d import (
 )
 
 from ..config.parameters import BuildConfig, Hand
+from ..config.defaults import calculate_worm_z
 from ..components.peg_head import create_peg_head
 from ..components.string_post import create_string_post
 from ..components.wheel import calculate_mesh_rotation, create_wheel_placeholder, load_wheel
@@ -106,10 +107,10 @@ def create_tuner_unit(
     # Peg head - worm axis is horizontal (X), offset from post by center_distance in Y
     peg_head = create_peg_head(config)
 
-    # Worm axis height is at frame center
-    # Frame spans Z=0 (top) to Z=-box_outer (bottom)
-    # Worm axis is centered in the cavity at Z = -box_outer / 2
-    worm_z = -box_outer / 2
+    # Worm axis Z position depends on gear configuration
+    # - Cylindrical worms: centered in frame at Z = -box_outer / 2
+    # - Globoid/hobbed worms: aligned with wheel center for proper meshing
+    worm_z = calculate_worm_z(config)
 
     # After -90° Y rotation in create_peg_head:
     # - Shoulder (local Z=0) at local X=0

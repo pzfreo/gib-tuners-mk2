@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from gib_tuners.config.defaults import create_default_config
-from gib_tuners.config.parameters import Hand
+from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.config.tolerances import TOLERANCE_PROFILES
 from gib_tuners.components.frame import create_frame
 from gib_tuners.components.peg_head import create_peg_head
@@ -131,6 +131,18 @@ Examples:
         help="Verbose output",
     )
 
+    worm_z_group = parser.add_mutually_exclusive_group()
+    worm_z_group.add_argument(
+        "--force-centered-worm",
+        action="store_true",
+        help="Force worm centered in frame (override globoid/hobbing auto-alignment)",
+    )
+    worm_z_group.add_argument(
+        "--force-aligned-worm",
+        action="store_true",
+        help="Force worm aligned with wheel center (even for cylindrical worms)",
+    )
+
     return parser.parse_args()
 
 
@@ -190,12 +202,20 @@ def main() -> int:
         hand=Hand.RIGHT,
     )
 
-    # Adjust num_housings for frame
-    if args.num_housings != 5:
-        config = replace(
-            config,
-            frame=replace(config.frame, num_housings=args.num_housings)
-        )
+    # Determine worm Z mode from CLI flags
+    if args.force_centered_worm:
+        worm_z_mode = WormZMode.CENTERED
+    elif args.force_aligned_worm:
+        worm_z_mode = WormZMode.ALIGNED
+    else:
+        worm_z_mode = config.gear.worm_z_mode  # AUTO (from JSON hints)
+
+    # Adjust num_housings for frame and worm_z_mode
+    config = replace(
+        config,
+        frame=replace(config.frame, num_housings=args.num_housings),
+        gear=replace(config.gear, worm_z_mode=worm_z_mode),
+    )
 
     # Create output directory
     output_dir = args.output_dir
