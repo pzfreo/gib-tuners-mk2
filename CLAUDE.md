@@ -58,7 +58,33 @@ The frame uses a player's-view orientation:
 
 ## Workflow Requirements
 
-**Keep spec.md in sync:** When changing geometry parameters in code, always update `spec.md` to match. The spec is the source of truth for dimensions and should accurately reflect what the code produces.
+### Keeping Spec and Code in Sync (CRITICAL)
+
+The spec and code must stay synchronized. When changing dimensions:
+
+1. **Code is the source of truth** for what gets built
+2. **spec.md documents** what the code produces
+3. **Both must match** - if they diverge, update spec.md to match code
+
+**Files that define dimensions:**
+- `src/gib_tuners/config/parameters.py` - Python dataclass defaults
+- `config/worm_gear.json` - Gear calculator parameters
+- `spec.md` - Human-readable specification (Sections 1a, 2, 3, 5, 8)
+
+**When changing a parameter:**
+1. Update code (`parameters.py` or `worm_gear.json`)
+2. Update `spec.md` sections that reference that parameter
+3. Update `CLAUDE.md` Key Dimensions table if affected
+4. Verify Section 8 derived dimensions still compute correctly
+5. Check Section 9 validation checklist clearances
+
+**Key cross-references in spec.md:**
+| Parameter | Sections |
+|-----------|----------|
+| `box_outer`, `wall_thickness` | 1a, 2, 8 |
+| `wheel.face_width` | 3, 5 (DD cut length must match) |
+| `worm_type` | 3, 9 |
+| Z coordinates | 2, 8 (must use same convention) |
 
 **Symmetric frame ends:** The frame must have symmetric ends (10mm each). The `total_length` is computed from `num_housings`, ensuring symmetric ends regardless of the number of tuning stations:
 ```
