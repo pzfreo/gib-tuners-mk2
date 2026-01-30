@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+"""Visualize tuner assembly in OCP viewer.
+
+Usage:
+    python scripts/viz.py                      # 5-gang RH at 1x
+    python scripts/viz.py -n 1                 # Single housing
+    python scripts/viz.py -n 3 --hand left     # 3-gang LH
+    python scripts/viz.py --scale 2.0          # 2x scale for prototyping
+    python scripts/viz.py --no-interference    # Skip interference check
+"""
+
+import argparse
+import sys
+from dataclasses import replace
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.parameters import Hand
+from gib_tuners.assembly.gang_assembly import (
+    create_positioned_assembly,
+    run_interference_report,
+    COLOR_MAP,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Visualize tuner assembly in OCP viewer",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    python scripts/viz.py                  # Default 5-gang RH
+    python scripts/viz.py -n 1             # Single housing for fit testing
+    python scripts/viz.py -n 3 --hand left # 3-gang left-hand
+    python scripts/viz.py --scale 2.0      # 2x scale prototype
+        """,
+    )
+    parser.add_argument(
+        "-n", "--num-housings",
+        type=int,
+        default=5,
+        choices=[1, 2, 3, 4, 5],
+        help="Number of housings (default: 5)",
+    )
+    parser.add_argument(
+        "--hand",
+        choices=["right", "left"],
+        default="right",
+        help="Hand variant (default: right)",
+    )
+    parser.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="Scale factor (default: 1.0, use 2.0 for FDM prototypes)",
+    )
+    parser.add_argument(
+        "--no-step",
+        action="store_true",
+        help="Use placeholder wheel instead of STEP file",
+    )
+    parser.add_argument(
+        "--no-interference",
+        action="store_true",
+        help="Skip interference check",
+    )
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+
+    try:
+        from ocp_vscode import show_object
+    except ImportError:
+        print("Error: ocp-vscode not installed")
+        print("Install with: pip install ocp-vscode")
+        print("Then open VS Code with the OCP CAD Viewer extension.")
+        return 1
+
+    # Config
+    hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
+    base_config = create_default_config(scale=args.scale, hand=hand)
+    config = replace(
+        base_config,
+        frame=replace(base_config.frame, num_housings=args.num_housings)
+    )
+
+    # Wheel STEP path
+    wheel_step = None
+    if not args.no_step:
+        wheel_step = Path(__file__).parent.parent / "reference" / "wheel_m0.5_z13.step"
+        if not wheel_step.exists():
+            print(f"Warning: {wheel_step} not found, using placeholder")
+            wheel_step = None
+
+    print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x ===")
+    print(f"Frame length: {config.frame.total_length:.1f}mm")
+
+    # Build assembly
+    assembly = create_positioned_assembly(config, wheel_step)
+
+    print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
+
+    # Display all parts with colors
+    for name, part in assembly["all_parts"].items():
+        base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
+        color, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
+        opts = {"color": color}
+        if alpha is not None:
+            opts["alpha"] = alpha
+        show_object(part, name=name, options=opts)
+
+    # Interference report
+    if not args.no_interference:
+        print()
+        run_interference_report(assembly)
+
+    print("\nVisualization sent to OCP viewer")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

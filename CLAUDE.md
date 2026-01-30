@@ -30,6 +30,23 @@ utils/           - Mirroring for LH/RH, validation
 - Scale factor applied via `BuildConfig`
 - RIGHT hand is the default; LEFT is a mirror
 
+## Code Reuse (CRITICAL)
+
+**Always start from existing working code. Never reinvent what already exists.**
+
+Before writing new code:
+1. **Check existing modules first** - Look in `assembly/`, `components/`, `utils/` for functions that do what you need
+2. **Reuse assembly functions** - Use `create_positioned_assembly()` from `gang_assembly.py` instead of duplicating positioning logic
+3. **Follow existing patterns** - New scripts should follow the same structure as `viz.py` and `build.py`
+
+Key reusable functions:
+- `create_positioned_assembly()` - Creates complete assembly with all parts positioned
+- `create_tuner_unit()` - Single tuner components at origin
+- `create_default_config()` - Config with all parameters from JSON
+- `mirror_for_left_hand()` - Creates LH variant from RH geometry
+
+**If you find yourself copying positioning math or component creation logic, STOP and use the existing assembly module instead.**
+
 ## Coordinate System
 
 The frame uses a player's-view orientation:
@@ -55,16 +72,20 @@ first_center = end_length + housing_length / 2 = 10 + 8.1 = 18.1mm
 
 ```bash
 # Production scale (1:1)
-python scripts/build_all.py --scale 1.0 --hand both
+python scripts/build.py --scale 1.0 --hand both
 
 # 2x prototype for FDM printing
-python scripts/build_all.py --scale 2.0 --tolerance prototype_fdm
+python scripts/build.py --scale 2.0 --tolerance prototype_fdm
 
-# Single hand variant
-python scripts/build_all.py --hand right
+# Single hand variant, STL only
+python scripts/build.py --hand right --format stl
 
 # Visualize in OCP viewer
-python scripts/visualize.py
+python scripts/viz.py -n 1              # 1-gang
+python scripts/viz.py                   # 5-gang (default)
+
+# Animate worm gear mechanism
+python scripts/animate.py --worm-revs 1
 ```
 
 ## Testing
@@ -98,7 +119,7 @@ The `reference/` directory contains:
 
 3. **Single housing first**: Work with `num_housings=1` until the single-unit assembly is approved. Only then expand to the full 5-gang.
 
-4. **Separate debug files**: Use `scripts/debug_assembly.py` for incremental testing. Do not modify `assembly/tuner_unit.py` or `assembly/gang_assembly.py` until the positioning is verified and approved.
+4. **Separate debug files**: Use `scripts/experiments/debug_assembly.py` for incremental testing. Do not modify `assembly/tuner_unit.py` or `assembly/gang_assembly.py` until the positioning is verified and approved.
 
 5. **Approval checkpoints**:
    - [ ] Frame (APPROVED)
