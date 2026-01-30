@@ -50,8 +50,8 @@ Examples:
     parser.add_argument(
         "--duration",
         type=float,
-        default=4.0,
-        help="Animation duration in seconds (default: 4.0)",
+        default=8.0,
+        help="Animation duration in seconds (default: 8.0)",
     )
     parser.add_argument(
         "--worm-revs",
@@ -112,7 +112,7 @@ def main() -> int:
     assembly = create_positioned_assembly(
         config,
         wheel_step_path=wheel_step,
-        include_hardware=False,  # No hardware for animation
+        include_hardware=True,
     )
 
     # Extract parts (1-gang, so tuner index is 1)
@@ -121,6 +121,10 @@ def main() -> int:
     string_post = all_parts["string_post_1"]
     wheel = all_parts["wheel_1"]
     peg_head = all_parts["peg_head_1"]
+    peg_washer = all_parts.get("peg_washer_1")
+    peg_screw = all_parts.get("peg_screw_1")
+    wheel_washer = all_parts.get("wheel_washer_1")
+    wheel_screw = all_parts.get("wheel_screw_1")
 
     # Calculate pivot points for animation from config
     # These must match the positioning in tuner_unit.py
@@ -163,23 +167,32 @@ def main() -> int:
     print(f"  Wheel pivot: (0, {translation_y:.2f}, {wheel_z:.2f})")
     print(f"  Peg pivot: ({peg_x:.2f}, {peg_y:.2f}, {worm_z:.2f})")
 
-    # Clone parts with proper origins for rotation
-    # Static parts don't need special origin handling
-    frame_cloned = clone(frame, color=(0.7, 0.7, 0.7))
+    # Clone parts for animation (no origin transform - keep positions from assembly)
+    frame_cloned = clone(frame, color=(0.3, 0.5, 1.0, 0.3))  # Blue, transparent
     post_cloned = clone(string_post, color=(0.8, 0.6, 0.3))
+    wheel_cloned = clone(wheel, color=(0.9, 0.8, 0.2))
+    peg_cloned = clone(peg_head, color=(0.6, 0.4, 0.2))
 
-    # Animated parts need origin at their rotation axis
-    wheel_cloned = clone(wheel, color=(0.9, 0.8, 0.2), origin=wheel_pivot)
-    peg_cloned = clone(peg_head, color=(0.6, 0.4, 0.2), origin=peg_pivot)
+    # Hardware
+    children = {
+        "frame": frame_cloned,
+        "string_post": post_cloned,
+        "wheel": wheel_cloned,
+        "peg_head": peg_cloned,
+    }
+
+    if peg_washer:
+        children["peg_washer"] = clone(peg_washer, color=(1, 1, 0))
+    if peg_screw:
+        children["peg_screw"] = clone(peg_screw, color=(0.8, 0.2, 0.2))
+    if wheel_washer:
+        children["wheel_washer"] = clone(wheel_washer, color=(1, 1, 0))
+    if wheel_screw:
+        children["wheel_screw"] = clone(wheel_screw, color=(0.8, 0.2, 0.2))
 
     # Create animation group
     anim_group = AnimationGroup(
-        children={
-            "frame": frame_cloned,
-            "string_post": post_cloned,
-            "wheel": wheel_cloned,
-            "peg_head": peg_cloned,
-        },
+        children=children,
         label="tuner",
     )
 
@@ -190,16 +203,33 @@ def main() -> int:
     steps = args.steps
     duration = args.duration
 
-    time_track = np.linspace(0, duration, steps + 1)
-    worm_track = np.linspace(0, args.worm_revs * 360, steps + 1)
-    wheel_track = np.linspace(0, args.worm_revs * 360 / ratio, steps + 1)
+    time_track = np.linspace(0, duration, steps + 1).tolist()
+    # RH: worm rotates one way, wheel rotates CW (negative Z)
+    # LH: mirror - opposite directions
+    worm_direction = -1 if config.hand == Hand.RIGHT else 1
+    wheel_direction = -1 if config.hand == Hand.RIGHT else 1
+
+    # For full wheel rotation: worm does 'ratio' rotations, wheel does 1
+    # Use 359.9° to avoid exact 360° boundary issues with animation looping
+    worm_total_deg = args.worm_revs * 359.9
+    wheel_total_deg = args.worm_revs * 359.9 / ratio
+
+    worm_track = (np.linspace(0, worm_total_deg, steps + 1) * worm_direction).tolist()
+    wheel_track = (np.linspace(0, wheel_total_deg, steps + 1) * wheel_direction).tolist()
 
     # Add rotation tracks
     # Peg head rotates around X axis (shaft axis)
-    animation.add_track("/tuner/peg_head", "rx", time_track, normalize_track(worm_track))
+    animation.add_track("/tuner/peg_head", "rx", time_track, worm_track)
 
-    # Wheel rotates around Z axis (post axis)
-    animation.add_track("/tuner/wheel", "rz", time_track, normalize_track(wheel_track))
+    # Peg washer and screw rotate with peg head
+    if peg_washer:
+        animation.add_track("/tuner/peg_washer", "rx", time_track, worm_track)
+    if peg_screw:
+        animation.add_track("/tuner/peg_screw", "rx", time_track, worm_track)
+
+    # Wheel and string post rotate together around Z axis (post axis)
+    animation.add_track("/tuner/wheel", "rz", time_track, wheel_track)
+    animation.add_track("/tuner/string_post", "rz", time_track, wheel_track)
 
     print(f"\nAnimation: {duration}s, {steps} steps")
     print("Sending to OCP viewer...")
