@@ -136,12 +136,12 @@ The `reference/` directory contains:
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| Frame outer | 10.35mm | Square tube dimension |
-| Wall thickness | 1.1mm | Tube wall |
+| Frame outer | 10.0mm | Square tube dimension |
+| Wall thickness | 1.0mm | Tube wall |
 | Housing length | 16.2mm | Each rigid box section |
 | End length | 10.0mm | Frame end to housing edge |
 | Num housings | 5 (default) | Tuning stations (1 to N) |
 | Tuner pitch | 27.2mm | Center-to-center spacing |
 | Total length | *computed* | 145.0mm for 5 housings |
 | Center distance | 5.75mm | Worm-to-wheel axis distance |
-| Gear module | 0.5 | M0.5 cylindrical worm drive |
+| Gear module | 0.5 | M0.5 worm drive (cylindrical or globoid) |
