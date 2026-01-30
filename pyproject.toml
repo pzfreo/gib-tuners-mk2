@@ -7,6 +7,9 @@ requires-python = ">=3.10"
 dependencies = [
     "build123d>=0.10.0",
     "ocp-vscode>=2.0.0",
+    "trimesh[easy]>=4.0.0",
+    "networkx>=3.0",
+    "xxhash>=3.0",
 ]
 
 [project.optional-dependencies]
