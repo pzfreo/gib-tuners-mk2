@@ -36,11 +36,13 @@ The build123d script shall support the following parameters:
 **Note:** `total_length` is computed from the other parameters, ensuring symmetric ends regardless of the number of housings.
 
 ### **Tolerance Profiles**
-| Profile | Hole Tolerance | Use Case |
-|---------|----------------|----------|
-| `production` | +0.05mm | Machined brass (final) |
-| `prototype_resin` | +0.10mm | 1:1 resin print validation |
-| `prototype_fdm` | +0.20mm | 2:1 FDM functional test |
+| Profile | Bearing Holes | Clearance Holes | Use Case |
+|---------|---------------|-----------------|----------|
+| `production` | +0.05mm (reamed) | +0.20mm | Machined brass, 100N rated |
+| `prototype_resin` | +0.10mm | +0.20mm | 1:1 resin print validation |
+| `prototype_fdm` | +0.20mm | +0.30mm | 2:1 FDM functional test |
+
+*Bearing holes: post bearing (4.05mm), peg bearing (3.85mm). Clearance holes: worm entry (6.2mm), wheel inlet (8.0mm).*
 
 ### **Scale Parameter**
 | Parameter | Default | Description |
@@ -129,11 +131,11 @@ To enable assembly without soldering:
 
 1. **Bottom Face (Wheel Inlet):** ø8.0mm through-hole.
    * *Function:* Allows the Worm Wheel (7.5mm OD) to be inserted from underneath.
-2. **Top Face (Post Bearing):** ø4.2mm through-hole.
-   * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft).
+2. **Top Face (Post Bearing):** ø4.05mm through-hole (reamed).
+   * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft, +0.05mm clearance).
 3. **Side Faces (Worm Axle):** Asymmetric through-holes.
    * **Entry Side:** ø6.2mm (entry shaft 6.0mm + 0.2mm clearance).
-   * **Bearing Side:** ø4.0mm (bearing shaft 3.8mm + 0.2mm clearance).
+   * **Bearing Side:** ø3.85mm (bearing shaft 3.8mm + 0.05mm clearance, reamed).
    * *Note:* For RH frame, entry is on RIGHT side (+X). LH frame is mirrored.
    * *Retention:* Cap (8mm) sits against frame exterior, cannot pass through 6.2mm hole.
 
@@ -314,7 +316,7 @@ The worm thread is imported from `reference/worm_m0.5_z1.step` (regenerate at 7.
 |---------|----------|--------|-------------|
 | Wheel interface | 3.5mm DD cut | 7.5mm | Mates with wheel DD bore (matches wheel width) |
 | M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
-| Frame bearing | 4.0mm | 1.0mm | Runs in ø4.2mm top frame hole |
+| Frame bearing | 4.0mm | 1.0mm | Runs in ø4.05mm top frame hole (reamed) |
 | Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
 | String hole | ø1.5mm | through | Cross-drilled, centered in post (2.75mm from frame) |
 | Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
@@ -359,15 +361,15 @@ An M2 screw threads into the tap bore from below, with a washer to retain the wh
 
 ### **Phase 1: Frame Machining (Mill/Drill)**
 
-1. **Cut Stock:** Cut 10.35mm Box section to 145mm.
+1. **Cut Stock:** Cut 10.0mm Box section to 145mm.
 2. **Mill Profile:** Clamp stock. Mill away the Top and Side walls in the "Gap" sections to create the 5 isolated boxes.
 3. **Drill Vertical:**
-   * Drill **ø4.2mm** post bearing holes on Top Face (post shaft 4.0mm + 0.2mm clearance).
+   * Drill & ream **ø4.05mm** post bearing holes on Top Face (post shaft 4.0mm + 0.05mm clearance).
    * Drill **ø8.0mm** wheel inlet holes on Bottom Face.
    * Drill **ø3.0mm** mounting holes on Bottom Plate at specified Y positions.
 4. **Drill Horizontal (Asymmetric):**
    * Drill **ø6.2mm** worm entry holes on one side (worm OD 6.0mm + 0.2mm clearance).
-   * Drill **ø4.0mm** peg shaft bearing holes on opposite side (shaft 3.8mm + 0.2mm clearance).
+   * Drill & ream **ø3.85mm** peg shaft bearing holes on opposite side (shaft 3.8mm + 0.05mm clearance).
 5. **Finish:** Deburr internal edges.
 
 ### **Phase 2: Wheel Production**
@@ -479,12 +481,12 @@ Before manufacturing, verify:
 
 - [x] Worm OD (6.0mm) fits within internal cavity height (8.0mm) ✓ 2.0mm clearance
 - [x] Worm OD (6.0mm) passes through entry hole (6.2mm) ✓ 0.2mm clearance
-- [x] Peg head shaft (3.8mm) fits in bearing hole (4.0mm) ✓ 0.2mm clearance
+- [x] Peg head shaft (3.8mm) fits in bearing hole (3.85mm) ✓ 0.05mm clearance (reamed)
 - [x] Wheel OD (7.5mm) passes through bottom hole (8.0mm) ✓ 0.5mm clearance
-- [x] Post shaft (4.0mm) fits in top bearing hole (4.2mm) ✓ 0.2mm clearance
-- [x] Post cap (7.5mm) stops pull-through top hole (4.2mm) ✓
+- [x] Post shaft (4.0mm) fits in top bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
+- [x] Post cap (7.5mm) stops pull-through top hole (4.05mm) ✓
 - [x] Peg head shoulder (8mm) stops pull-in through entry hole (6.2mm) ✓
-- [x] M2 screw + washer (5mm OD) stops peg pull-out through bearing hole (4.0mm) ✓
+- [x] M2 screw + washer (5mm OD) stops peg pull-out through bearing hole (3.85mm) ✓
 - [x] Center distance (5.75mm) fits within frame geometry ✓
 - [x] Sandwich assembly sequence verified ✓
 - [x] Worm integral to peg head casting ✓
