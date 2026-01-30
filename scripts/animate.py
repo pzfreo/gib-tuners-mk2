@@ -79,7 +79,7 @@ def main() -> int:
 
     # Check for required packages
     try:
-        from bd_animation import AnimationGroup, clone, normalize_track
+        from bd_animation import AnimationGroup, clone
         from ocp_vscode import show, Animation
     except ImportError as e:
         print(f"Error: Missing package - {e}")
@@ -144,8 +144,6 @@ def main() -> int:
     effective_cd = assembly["effective_cd"]
     translation_y = housing_y - effective_cd / 2
 
-    wheel_pivot = Location((0, translation_y, wheel_z))
-
     # Peg head pivot: X-axis at worm shaft center
     box_outer = frame_params.box_outer * scale
     box_inner = frame_params.box_inner * scale
@@ -162,7 +160,6 @@ def main() -> int:
         peg_x = -(half_inner - worm_clearance)
 
     peg_y = center_distance + translation_y
-    peg_pivot = Location((peg_x, peg_y, worm_z))
 
     print(f"  Wheel pivot: (0, {translation_y:.2f}, {wheel_z:.2f})")
     print(f"  Peg pivot: ({peg_x:.2f}, {peg_y:.2f}, {worm_z:.2f})")
