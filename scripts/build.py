@@ -26,7 +26,7 @@ from pathlib import Path
 # Add src to path for development
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand
 from gib_tuners.config.tolerances import TOLERANCE_PROFILES
 from gib_tuners.components.frame import create_frame
@@ -131,6 +131,13 @@ Examples:
         help="Verbose output",
     )
 
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'm0.5_z13'). Outputs to output/<name>/",
+    )
+
     return parser.parse_args()
 
 
@@ -183,11 +190,16 @@ def main() -> int:
     build_rh = args.hand in ("right", "both")
     build_lh = args.hand in ("left", "both")
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Create RH configuration (always needed as base)
     config = create_default_config(
         scale=args.scale,
         tolerance=args.tolerance,
         hand=Hand.RIGHT,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
     )
 
     # Adjust num_housings for frame
@@ -197,11 +209,15 @@ def main() -> int:
             frame=replace(config.frame, num_housings=args.num_housings)
         )
 
-    # Create output directory
+    # Create output directory (subdirectory per gear config)
     output_dir = args.output_dir
+    if args.gear:
+        output_dir = output_dir / args.gear
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    gear_label = args.gear or "default"
     print(f"Building components at {args.scale}x scale, {args.tolerance} tolerance")
+    print(f"Gear config: {gear_label}")
     print(f"Hands: {args.hand}, Format: {args.format}")
     print(f"Output directory: {output_dir}")
     print()
@@ -251,12 +267,14 @@ def main() -> int:
     if "wheel" in components_to_build:
         print("Building wheel...")
         try:
-            if args.wheel_step.exists():
-                rh_wheel = load_wheel(args.wheel_step)
+            # Use gear config wheel STEP if available, else CLI arg, else placeholder
+            wheel_step = gear_paths.wheel_step or args.wheel_step
+            if wheel_step and wheel_step.exists():
+                rh_wheel = load_wheel(wheel_step)
                 if args.scale != 1.0:
                     rh_wheel = rh_wheel.scale(args.scale)
             else:
-                print(f"  Warning: {args.wheel_step} not found, using placeholder")
+                print(f"  Warning: wheel STEP not found, using placeholder")
                 rh_wheel = create_wheel_placeholder(config)
 
             if build_rh:

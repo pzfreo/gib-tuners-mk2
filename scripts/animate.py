@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from build123d import Location
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 
@@ -71,6 +71,12 @@ Examples:
         default=180,
         help="Animation steps (default: 180)",
     )
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'm0.5_z13')",
+    )
     return parser.parse_args()
 
 
@@ -86,9 +92,17 @@ def main() -> int:
         print("Install with: pip install git+https://github.com/bernhard-42/bd_animation.git")
         return 1
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Create 1-gang config
     hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
-    base_config = create_default_config(scale=args.scale, hand=hand)
+    base_config = create_default_config(
+        scale=args.scale,
+        hand=hand,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
+    )
     config = replace(
         base_config,
         frame=replace(base_config.frame, num_housings=1)
@@ -104,8 +118,8 @@ def main() -> int:
 
     # Build assembly using same code as viz.py
     print("\nBuilding assembly...")
-    wheel_step = REFERENCE_DIR / "wheel_m0.5_z13.step"
-    if not wheel_step.exists():
+    wheel_step = gear_paths.wheel_step
+    if wheel_step is None or not wheel_step.exists():
         wheel_step = None
         print("  Warning: wheel STEP not found, using placeholder")
 

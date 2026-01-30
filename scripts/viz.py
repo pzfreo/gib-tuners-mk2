@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand
 from gib_tuners.assembly.gang_assembly import (
     create_positioned_assembly,
@@ -66,6 +66,12 @@ Examples:
         action="store_true",
         help="Skip interference check",
     )
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'm0.5_z13'). Looks in config/<name>/worm_gear.json",
+    )
     return parser.parse_args()
 
 
@@ -80,23 +86,32 @@ def main() -> int:
         print("Then open VS Code with the OCP CAD Viewer extension.")
         return 1
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Config
     hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
-    base_config = create_default_config(scale=args.scale, hand=hand)
+    base_config = create_default_config(
+        scale=args.scale,
+        hand=hand,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
+    )
     config = replace(
         base_config,
         frame=replace(base_config.frame, num_housings=args.num_housings)
     )
 
-    # Wheel STEP path
+    # Wheel STEP path (from gear config or fallback)
     wheel_step = None
     if not args.no_step:
-        wheel_step = Path(__file__).parent.parent / "reference" / "wheel_m0.5_z13.step"
-        if not wheel_step.exists():
-            print(f"Warning: {wheel_step} not found, using placeholder")
+        wheel_step = gear_paths.wheel_step
+        if wheel_step is None or not wheel_step.exists():
+            print(f"Warning: wheel STEP not found, using placeholder")
             wheel_step = None
 
-    print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x ===")
+    gear_label = args.gear or "default"
+    print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x [{gear_label}] ===")
     print(f"Frame length: {config.frame.total_length:.1f}mm")
 
     # Build assembly
