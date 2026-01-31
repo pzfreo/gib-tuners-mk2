@@ -102,6 +102,34 @@ def list_gear_configs() -> list:
     return sorted(configs)
 
 
+def load_tuner_config(config_dir: Optional[Path]) -> dict:
+    """Load tuner config overrides from tuner_config.json.
+
+    This allows per-gear-config overrides for frame, string_post, and peg_head
+    parameters that may need to change with different gear designs.
+
+    Args:
+        config_dir: Config directory containing tuner_config.json
+
+    Returns:
+        Dict with frame/string_post/peg_head overrides, or empty dict if not found
+
+    Example tuner_config.json:
+        {
+            "frame": {"box_outer": 12.0},
+            "string_post": {"bearing_diameter": 4.5},
+            "peg_head": {"shaft_diameter": 4.5}
+        }
+    """
+    if config_dir is None:
+        return {}
+    config_path = config_dir / "tuner_config.json"
+    if config_path.exists():
+        with open(config_path) as f:
+            return json.load(f)
+    return {}
+
+
 def requires_worm_alignment(config: "BuildConfig") -> bool:
     """Check if worm must align with wheel center (globoid or virtual hobbing).
 
@@ -338,22 +366,34 @@ def create_default_config(
         # Fallback to hardcoded defaults if JSON not found
         gear = GearParams(worm=WormParams(), wheel=WheelParams())
 
+    # Load tuner config overrides (allows per-gear-config customization)
+    tuner_overrides = load_tuner_config(config_dir)
+    frame_overrides = tuner_overrides.get("frame", {})
+    string_post_overrides = tuner_overrides.get("string_post", {})
+    peg_head_overrides = tuner_overrides.get("peg_head", {})
+
     # Create component params first (needed to derive frame hole sizes)
     # Use default wall_thickness from FrameParams for bearing dimensions
-    default_wall = FrameParams().wall_thickness
+    default_wall = frame_overrides.get("wall_thickness", FrameParams().wall_thickness)
 
     # Derive StringPostParams - bearing_length must match frame wall_thickness
-    string_post = StringPostParams(
-        dd_cut=gear.wheel.bore,
-        dd_cut_length=gear.wheel.face_width,
-        bearing_length=default_wall,  # Auto-sync with frame
-    )
+    # Apply any overrides from tuner_config.json
+    string_post_kwargs = {
+        "dd_cut": gear.wheel.bore,
+        "dd_cut_length": gear.wheel.face_width,
+        "bearing_length": default_wall,
+    }
+    string_post_kwargs.update(string_post_overrides)
+    string_post = StringPostParams(**string_post_kwargs)
 
     # Derive PegHeadParams - bearing_wall must match frame wall_thickness
-    peg_head = PegHeadParams(
-        worm_length=gear.worm.length,
-        bearing_wall=default_wall,  # Auto-sync with frame
-    )
+    # Apply any overrides from tuner_config.json
+    peg_head_kwargs = {
+        "worm_length": gear.worm.length,
+        "bearing_wall": default_wall,
+    }
+    peg_head_kwargs.update(peg_head_overrides)
+    peg_head = PegHeadParams(**peg_head_kwargs)
 
     # Derive FrameParams with bearing holes from component dimensions + clearance
     # All bearing holes use BEARING_CLEARANCE for tight fit (can be reamed if needed)
@@ -361,11 +401,13 @@ def create_default_config(
     peg_bearing_hole = peg_head.shaft_diameter + BEARING_CLEARANCE
     post_bearing_hole = string_post.bearing_diameter + BEARING_CLEARANCE
 
-    frame = FrameParams(
-        worm_entry_hole=worm_entry_hole,
-        peg_bearing_hole=peg_bearing_hole,
-        post_bearing_hole=post_bearing_hole,
-    )
+    frame_kwargs = {
+        "worm_entry_hole": worm_entry_hole,
+        "peg_bearing_hole": peg_bearing_hole,
+        "post_bearing_hole": post_bearing_hole,
+    }
+    frame_kwargs.update(frame_overrides)
+    frame = FrameParams(**frame_kwargs)
 
     # Validate: worm must fit through entry hole during assembly
     if gear.worm.tip_diameter >= worm_entry_hole:
