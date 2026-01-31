@@ -1,0 +1,12 @@
+{
+  "_comment": "Optional per-gear overrides. Remove sections to use defaults.",
+  "frame": {
+    "wall_thickness": 1.1
+  },
+  "string_post": {
+    "bearing_diameter": 5.0
+  },
+  "peg_head": {
+    "shaft_diameter": 4.0
+  }
+}

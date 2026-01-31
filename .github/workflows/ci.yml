@@ -47,11 +47,11 @@ jobs:
           pip install -e .
 
       - name: Build assemblies
-        run: python scripts/build.py --hand both --verbose --num-housings 1
+        run: python scripts/build.py --gear balanced --hand both --verbose --num-housings 1
 
       - name: Upload STEP files
         uses: actions/upload-artifact@v4
         with:
           name: step-files
-          path: output/
+          path: output/balanced/
           retention-days: 30

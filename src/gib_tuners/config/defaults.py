@@ -46,29 +46,29 @@ def resolve_gear_config(gear_name: Optional[str] = None) -> GearConfigPaths:
     """Resolve gear config paths from name.
 
     Args:
-        gear_name: Config name (e.g., 'balanced') or None for default
+        gear_name: Config name (e.g., 'balanced') - REQUIRED
 
     Returns:
         GearConfigPaths with all resolved paths
 
     Raises:
-        FileNotFoundError if config doesn't exist
+        ValueError: If gear_name is None
+        FileNotFoundError: If config doesn't exist
     """
     if gear_name is None:
-        # Default: root config/worm_gear.json (balanced M0.6 config)
-        wheel_step = REFERENCE_DIR / "wheel_m0.6_z10.step"
-        worm_step = REFERENCE_DIR / "worm_m0.6_z1.step"
-        return GearConfigPaths(
-            json_path=DEFAULT_GEAR_JSON,
-            config_dir=None,
-            wheel_step=wheel_step if wheel_step.exists() else None,
-            worm_step=worm_step if worm_step.exists() else None,
+        available = list_gear_configs()
+        raise ValueError(
+            f"Gear config name required. Available: {', '.join(available)}"
         )
 
     config_dir = CONFIG_DIR / gear_name
     json_path = config_dir / "worm_gear.json"
     if not json_path.exists():
-        raise FileNotFoundError(f"Gear config not found: {json_path}")
+        available = list_gear_configs()
+        raise FileNotFoundError(
+            f"Gear config '{gear_name}' not found.\n"
+            f"Available: {', '.join(available)}"
+        )
 
     # Check for STEP files in config dir (named by module/teeth)
     wheel_step = None

@@ -84,8 +84,14 @@ Examples:
     parser.add_argument(
         "--gear",
         type=str,
-        default=None,
-        help="Gear config name (e.g., 'balanced')",
+        required=True,
+        help="Gear config name (e.g., 'balanced'). Use --list-gears to see options.",
+    )
+
+    parser.add_argument(
+        "--list-gears",
+        action="store_true",
+        help="List available gear configurations and exit",
     )
     worm_z_group = parser.add_mutually_exclusive_group()
     worm_z_group.add_argument(
@@ -102,6 +108,13 @@ Examples:
 
 
 def main() -> int:
+    # Handle --list-gears before argparse requires --gear
+    if "--list-gears" in sys.argv:
+        from gib_tuners.config.defaults import list_gear_configs
+        configs = list_gear_configs()
+        print("Available gear configs:", ", ".join(configs) if configs else "(none)")
+        return 0
+
     args = parse_args()
 
     # Check for required packages
@@ -130,7 +143,7 @@ def main() -> int:
     if wheel_step is None:
         print("Warning: wheel STEP not found, using placeholder")
 
-    gear_label = args.gear or "default"
+    gear_label = args.gear
 
     # Determine which hands to build
     if args.hand == "both":
@@ -181,15 +194,20 @@ def main() -> int:
     print(f"Wheel rotation: {args.worm_revs * 360 / ratio:.1f}°")
 
     # Calculate offset for side-by-side display
+    # LH on left (-X), RH on right (+X) so peg heads face outward
     frame_width = config.frame.box_outer * scale
-    spacing = frame_width * 2
+    spacing = frame_width * 4  # Double spacing to avoid clashing
 
     # Build animation children from all assemblies
     all_children = {}
 
     for asm_idx, (hand, cfg, assembly) in enumerate(assemblies):
         hand_label = "rh" if hand == Hand.RIGHT else "lh"
-        x_offset = asm_idx * spacing if len(assemblies) > 1 else 0
+        # LH on left (-X), RH on right (+X) so peg heads face outward
+        if len(assemblies) > 1:
+            x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
+        else:
+            x_offset = 0
         all_parts = assembly["all_parts"]
 
         # Clone frame
@@ -239,8 +257,9 @@ def main() -> int:
     for asm_idx, (hand, cfg, assembly) in enumerate(assemblies):
         hand_label = "rh" if hand == Hand.RIGHT else "lh"
 
-        # Direction depends on hand
-        worm_direction = -1 if hand == Hand.RIGHT else 1
+        # Peg (worm) rotates same direction for both hands
+        # Wheel rotation is opposite for LH because mirrored helix
+        worm_direction = -1
         wheel_direction = -1 if hand == Hand.RIGHT else 1
 
         worm_track = (np.linspace(0, worm_total_deg, steps + 1) * worm_direction).tolist()

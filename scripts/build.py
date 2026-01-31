@@ -134,8 +134,14 @@ Examples:
     parser.add_argument(
         "--gear",
         type=str,
-        default=None,
-        help="Gear config name (e.g., 'balanced'). Outputs to output/<name>/",
+        required=True,
+        help="Gear config name (e.g., 'balanced'). Use --list-gears to see options.",
+    )
+
+    parser.add_argument(
+        "--list-gears",
+        action="store_true",
+        help="List available gear configurations and exit",
     )
 
     worm_z_group = parser.add_mutually_exclusive_group()
@@ -190,6 +196,13 @@ def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[P
 
 def main() -> int:
     """Main entry point."""
+    # Handle --list-gears before argparse requires --gear
+    if "--list-gears" in sys.argv:
+        from gib_tuners.config.defaults import list_gear_configs
+        configs = list_gear_configs()
+        print("Available gear configs:", ", ".join(configs) if configs else "(none)")
+        return 0
+
     args = parse_args()
 
     # Determine which components to build
@@ -230,12 +243,10 @@ def main() -> int:
     )
 
     # Create output directory (subdirectory per gear config)
-    output_dir = args.output_dir
-    if args.gear:
-        output_dir = output_dir / args.gear
+    output_dir = args.output_dir / args.gear
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    gear_label = args.gear or "default"
+    gear_label = args.gear
     print(f"Building components at {args.scale}x scale, {args.tolerance} tolerance")
     print(f"Gear config: {gear_label}")
     print(f"Hands: {args.hand}, Format: {args.format}")

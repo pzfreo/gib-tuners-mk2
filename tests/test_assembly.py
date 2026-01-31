@@ -18,8 +18,8 @@ class TestAssemblyInterference:
 
     @pytest.fixture
     def gear_paths(self):
-        """Return gear config paths (uses default/balanced config)."""
-        return resolve_gear_config()
+        """Return gear config paths (uses balanced config)."""
+        return resolve_gear_config("balanced")
 
     def test_single_housing_no_interference(self, gear_paths):
         """Test that a single-housing assembly has no interference."""

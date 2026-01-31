@@ -71,8 +71,14 @@ Examples:
     parser.add_argument(
         "--gear",
         type=str,
-        default=None,
-        help="Gear config name (e.g., 'balanced'). Looks in config/<name>/",
+        required=True,
+        help="Gear config name (e.g., 'balanced'). Use --list-gears to see options.",
+    )
+
+    parser.add_argument(
+        "--list-gears",
+        action="store_true",
+        help="List available gear configurations and exit",
     )
     worm_z_group = parser.add_mutually_exclusive_group()
     worm_z_group.add_argument(
@@ -89,6 +95,13 @@ Examples:
 
 
 def main() -> int:
+    # Handle --list-gears before argparse requires --gear
+    if "--list-gears" in sys.argv:
+        from gib_tuners.config.defaults import list_gear_configs
+        configs = list_gear_configs()
+        print("Available gear configs:", ", ".join(configs) if configs else "(none)")
+        return 0
+
     args = parse_args()
 
     try:
@@ -119,7 +132,7 @@ def main() -> int:
         if wheel_step is None:
             print("Warning: wheel STEP not found, using placeholder")
 
-    gear_label = args.gear or "default"
+    gear_label = args.gear
 
     # Determine which hands to build
     if args.hand == "both":
@@ -157,13 +170,17 @@ def main() -> int:
         assemblies.append((hand, config, assembly))
 
     # Calculate offset for side-by-side display
+    # LH on left (-X), RH on right (+X) so peg heads face outward
     frame_width = assemblies[0][1].frame.box_outer * args.scale
-    spacing = frame_width * 2  # Gap between assemblies
+    spacing = frame_width * 4  # Double spacing to avoid clashing
 
     # Display all parts with colors
     for i, (hand, config, assembly) in enumerate(assemblies):
         hand_label = "RH" if hand == Hand.RIGHT else "LH"
-        x_offset = i * spacing if len(assemblies) > 1 else 0
+        if len(assemblies) > 1:
+            x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
+        else:
+            x_offset = 0
 
         if i == 0:
             print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
