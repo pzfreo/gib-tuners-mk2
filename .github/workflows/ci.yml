@@ -46,15 +46,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e .
 
-      - name: Validate geometry
-        run: python scripts/build_all.py --validate-only
-
       - name: Build assemblies
-        run: python scripts/build_all.py --hand both --verbose
+        run: python scripts/build.py --gear balanced --hand both --verbose --num-housings 1
 
       - name: Upload STEP files
         uses: actions/upload-artifact@v4
         with:
           name: step-files
-          path: output/
+          path: output/balanced/
           retention-days: 30

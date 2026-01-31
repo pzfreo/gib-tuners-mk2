@@ -15,6 +15,7 @@ from build123d import (
     Compound,
     Location,
     Part,
+    Plane,
     Rotation,
 )
 
@@ -89,11 +90,19 @@ def create_tuner_unit(
     else:
         wheel = create_wheel_placeholder(config)
 
+    # Mirror wheel for LH variant (creates left-hand helix per spec Section 7)
+    if config.hand == Hand.LEFT:
+        wheel = wheel.mirror(Plane.YZ)
+
     wheel_params = config.gear.wheel
     face_width = wheel_params.face_width * scale
 
     # Apply mesh rotation from config (pre-calculated for optimal tooth alignment)
+    # For LH, negate rotation because mirroring changes tooth angular positions:
+    # tooth at θ → tooth at (180° - θ), so optimal rotation becomes -mesh_rotation
     mesh_rotation = config.gear.mesh_rotation_deg
+    if config.hand == Hand.LEFT:
+        mesh_rotation = -mesh_rotation
     if mesh_rotation != 0.0:
         wheel = wheel.rotate(Axis.Z, mesh_rotation)
 
@@ -135,13 +144,13 @@ def create_tuner_unit(
 
     # X offset: position shoulder so worm is centered in cavity
     # For RH: worm entry on +X, cap on +X, shaft exits -X
-    # For LH: mirror (worm entry on -X, cap on -X, shaft exits +X)
+    # For LH: mirror about YZ plane (creates left-hand thread per spec Section 7)
     if config.hand == Hand.RIGHT:
         peg_x = half_inner - worm_clearance  # Shoulder at +X side
     else:
-        # LH: peg head rotated 180° around Z, so shoulder at -X
+        # LH: mirror peg head about YZ plane for left-hand thread, position at -X
+        peg_head = peg_head.mirror(Plane.YZ)
         peg_x = -(half_inner - worm_clearance)
-        peg_head = peg_head.rotate(Axis.Z, 180)
 
     # Y offset: worm axis is offset from post axis by center_distance
     # Post is at Y=0, worm at Y=+center_distance
