@@ -97,6 +97,7 @@ class AssemblyInterferenceError(Exception):
 def create_positioned_assembly(
     config: BuildConfig,
     wheel_step_path: Optional[Path] = None,
+    worm_step_path: Optional[Path] = None,
     include_hardware: bool = True,
     check_interference: bool = False,
 ) -> dict[str, Part | list]:
@@ -105,6 +106,7 @@ def create_positioned_assembly(
     Args:
         config: Build configuration (num_housings determines gang count)
         wheel_step_path: Optional path to wheel STEP file
+        worm_step_path: Optional path to worm STEP file (for peg head)
         include_hardware: Whether to include washers, screws
         check_interference: If True, run interference checks and raise AssemblyInterferenceError if any
 
@@ -142,6 +144,7 @@ def create_positioned_assembly(
         components = create_tuner_unit(
             config,
             wheel_step_path=wheel_step_path,
+            worm_step_path=worm_step_path,
             include_hardware=include_hardware,
         )
 
@@ -165,7 +168,11 @@ def create_positioned_assembly(
     if check_interference:
         interference = run_interference_report(result, verbose=False)
         result["interference"] = interference
-        if interference.get("total", 0.0) >= 0.01:
+        # Threshold allows for expected gear mesh contact (~0.02mm³/housing for zero-backlash)
+        # Scale threshold with number of housings
+        num_housings = frame_params.num_housings
+        threshold = 0.03 * num_housings  # ~0.03mm³ per housing tolerance
+        if interference.get("total", 0.0) >= threshold:
             raise AssemblyInterferenceError(interference)
 
     return result

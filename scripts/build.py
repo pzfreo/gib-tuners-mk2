@@ -26,7 +26,7 @@ from pathlib import Path
 # Add src to path for development
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.config.tolerances import TOLERANCE_PROFILES
 from gib_tuners.components.frame import create_frame
@@ -131,6 +131,13 @@ Examples:
         help="Verbose output",
     )
 
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'balanced'). Outputs to output/<name>/",
+    )
+
     worm_z_group = parser.add_mutually_exclusive_group()
     worm_z_group.add_argument(
         "--force-centered-worm",
@@ -195,11 +202,16 @@ def main() -> int:
     build_rh = args.hand in ("right", "both")
     build_lh = args.hand in ("left", "both")
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Create RH configuration (always needed as base)
     config = create_default_config(
         scale=args.scale,
         tolerance=args.tolerance,
         hand=Hand.RIGHT,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
     )
 
     # Determine worm Z mode from CLI flags
@@ -217,11 +229,15 @@ def main() -> int:
         gear=replace(config.gear, worm_z_mode=worm_z_mode),
     )
 
-    # Create output directory
+    # Create output directory (subdirectory per gear config)
     output_dir = args.output_dir
+    if args.gear:
+        output_dir = output_dir / args.gear
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    gear_label = args.gear or "default"
     print(f"Building components at {args.scale}x scale, {args.tolerance} tolerance")
+    print(f"Gear config: {gear_label}")
     print(f"Hands: {args.hand}, Format: {args.format}")
     print(f"Output directory: {output_dir}")
     print()
@@ -253,7 +269,11 @@ def main() -> int:
     if "peg_head" in components_to_build:
         print("Building peg head...")
         try:
-            rh_peg_head = create_peg_head(config)
+            rh_peg_head = create_peg_head(
+                config,
+                worm_step_path=gear_paths.worm_step,
+                worm_length=config.gear.worm.length,
+            )
 
             if build_rh:
                 basename = "peg_head_rh"
@@ -271,12 +291,14 @@ def main() -> int:
     if "wheel" in components_to_build:
         print("Building wheel...")
         try:
-            if args.wheel_step.exists():
-                rh_wheel = load_wheel(args.wheel_step)
+            # Use gear config wheel STEP if available, else CLI arg fallback
+            wheel_step = gear_paths.wheel_step or args.wheel_step
+            if wheel_step and wheel_step.exists():
+                rh_wheel = load_wheel(wheel_step)
                 if args.scale != 1.0:
                     rh_wheel = rh_wheel.scale(args.scale)
             else:
-                print(f"  Warning: {args.wheel_step} not found, using placeholder")
+                print("  Warning: wheel STEP not found, using placeholder")
                 rh_wheel = create_wheel_placeholder(config)
 
             if build_rh:

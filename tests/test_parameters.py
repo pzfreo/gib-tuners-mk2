@@ -25,8 +25,8 @@ class TestFrameParams:
     def test_default_values(self):
         """Test default frame parameters match spec."""
         params = FrameParams()
-        # Box section dimensions as manufactured
-        assert params.box_outer == 10.35
+        # Box section dimensions (measured: 10x10 outer, 7.8x7.8 inner)
+        assert params.box_outer == 10.0
         assert params.wall_thickness == 1.1
         assert params.total_length == 145.0
         assert params.housing_length == 16.2
@@ -36,7 +36,7 @@ class TestFrameParams:
     def test_box_inner(self):
         """Test internal cavity calculation."""
         params = FrameParams()
-        expected = 10.35 - 2 * 1.1  # 8.15
+        expected = 10.0 - 2 * 1.1  # 7.8
         assert abs(params.box_inner - expected) < 0.01
 
     def test_housing_centers(self):
@@ -140,23 +140,23 @@ class TestLoadGearParams:
 
         gear = load_gear_params(gear_json_path)
 
-        # Check worm params
-        assert gear.worm.module == 0.5
+        # Check worm params (balanced M0.6 config)
+        assert gear.worm.module == 0.6
         assert gear.worm.num_starts == 1
-        assert gear.worm.pitch_diameter == 5.0
-        assert gear.worm.tip_diameter == 6.0
+        assert gear.worm.pitch_diameter == 5.8
+        assert gear.worm.tip_diameter == 7.0
         assert gear.worm.length == 7.8
 
-        # Check wheel params (updated for 7.5mm wheel)
-        assert gear.wheel.module == 0.5
-        assert gear.wheel.num_teeth == 13
-        assert gear.wheel.tip_diameter == 7.5
-        assert gear.wheel.face_width == 7.5  # Wider to center worm contact
+        # Check wheel params (balanced 10T wheel)
+        assert gear.wheel.module == 0.6
+        assert gear.wheel.num_teeth == 10
+        assert gear.wheel.tip_diameter == 7.2
+        assert gear.wheel.face_width == 7.6
 
-        # Check assembly params (updated for 5.75mm CD)
-        assert gear.center_distance == 5.75
-        assert gear.pressure_angle_deg == 25.0
-        assert gear.ratio == 13
+        # Check assembly params (balanced config)
+        assert gear.center_distance == 5.9
+        assert gear.pressure_angle_deg == 20.0
+        assert gear.ratio == 10
 
 
 class TestDerivedParameters:
@@ -170,13 +170,13 @@ class TestDerivedParameters:
         config = create_default_config(gear_json_path=gear_json_path)
         assert config.string_post.dd_cut_length == config.gear.wheel.face_width
 
-    def test_worm_entry_hole_derived_from_tip_diameter(self, gear_json_path):
-        """Test that worm_entry_hole is derived from worm tip diameter."""
+    def test_worm_entry_hole_derived_from_shoulder_diameter(self, gear_json_path):
+        """Test that worm_entry_hole is derived from peg shoulder diameter."""
         if not gear_json_path.exists():
             pytest.skip("Gear JSON file not found")
 
         config = create_default_config(gear_json_path=gear_json_path)
-        expected = config.gear.worm.tip_diameter + 0.2  # WORM_ENTRY_CLEARANCE
+        expected = config.peg_head.shoulder_diameter + 0.05  # BEARING_CLEARANCE
         assert config.frame.worm_entry_hole == expected
 
     def test_worm_fits_through_entry_hole(self, gear_json_path):

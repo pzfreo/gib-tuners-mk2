@@ -1,15 +1,15 @@
 {
   "worm": {
-    "module_mm": 0.5,
+    "module_mm": 0.6,
     "num_starts": 1,
-    "pitch_diameter_mm": 5,
-    "tip_diameter_mm": 6,
-    "root_diameter_mm": 3.75,
-    "lead_mm": 1.5707963267948966,
-    "lead_angle_deg": 5.710593137499643,
-    "addendum_mm": 0.5,
-    "dedendum_mm": 0.625,
-    "thread_thickness_mm": 0.6853981633974483,
+    "pitch_diameter_mm": 5.8,
+    "tip_diameter_mm": 7,
+    "root_diameter_mm": 4.3,
+    "lead_mm": 1.8849555921538759,
+    "lead_angle_deg": 5.9061411137705,
+    "addendum_mm": 0.6,
+    "dedendum_mm": 0.75,
+    "thread_thickness_mm": 0.9424777960769379,
     "hand": "right",
     "profile_shift": 0,
     "type": "cylindrical",
@@ -17,21 +17,21 @@
     "throat_curvature_radius_mm": null
   },
   "wheel": {
-    "module_mm": 0.5,
-    "num_teeth": 13,
-    "pitch_diameter_mm": 6.5,
-    "tip_diameter_mm": 7.5,
-    "root_diameter_mm": 5.25,
-    "addendum_mm": 0.5,
-    "dedendum_mm": 0.625,
+    "module_mm": 0.6,
+    "num_teeth": 10,
+    "pitch_diameter_mm": 6,
+    "tip_diameter_mm": 7.2,
+    "root_diameter_mm": 4.5,
+    "addendum_mm": 0.6,
+    "dedendum_mm": 0.75,
     "profile_shift": 0
   },
   "assembly": {
-    "centre_distance_mm": 5.75,
-    "pressure_angle_deg": 25,
-    "backlash_mm": 0.1,
+    "centre_distance_mm": 5.9,
+    "pressure_angle_deg": 20,
+    "backlash_mm": 0,
     "hand": "right",
-    "ratio": 13
+    "ratio": 10
   },
   "features": {
     "worm": {
@@ -39,7 +39,7 @@
     },
     "wheel": {
       "bore_type": "custom",
-      "bore_diameter_mm": 3.5,
+      "bore_diameter_mm": 3.25,
       "anti_rotation": "ddcut"
     }
   },
@@ -48,7 +48,7 @@
     "virtual_hobbing": false,
     "hobbing_steps": 72,
     "worm_length_mm": 7.8,
-    "wheel_width_mm": 7.5
+    "wheel_width_mm": 7.6
   },
   "schema_version": "2.0"
 }

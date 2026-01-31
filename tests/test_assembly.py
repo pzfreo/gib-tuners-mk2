@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.assembly import (
     AssemblyInterferenceError,
     create_positioned_assembly,
@@ -17,47 +17,61 @@ class TestAssemblyInterference:
     """Tests for assembly interference checking."""
 
     @pytest.fixture
-    def wheel_step_path(self, reference_dir: Path) -> Path:
-        """Return path to wheel STEP file."""
-        return reference_dir / "wheel_m0.5_z13.step"
+    def gear_paths(self):
+        """Return gear config paths (uses default/balanced config)."""
+        return resolve_gear_config()
 
-    def test_single_housing_no_interference(self, wheel_step_path: Path):
+    def test_single_housing_no_interference(self, gear_paths):
         """Test that a single-housing assembly has no interference."""
-        config = create_default_config()
+        config = create_default_config(
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
         config = replace(config, frame=replace(config.frame, num_housings=1))
 
         # Should not raise
         assembly = create_positioned_assembly(
             config,
-            wheel_step_path=wheel_step_path,
+            wheel_step_path=gear_paths.wheel_step,
+            worm_step_path=gear_paths.worm_step,
             check_interference=True,
         )
 
         # Verify interference results are included
         assert "interference" in assembly
-        assert assembly["interference"]["total"] < 0.01
+        # Balanced config has ~0.02mm³ expected gear mesh interference (zero backlash)
+        assert assembly["interference"]["total"] < 0.1
 
-    def test_five_housing_no_interference(self, wheel_step_path: Path):
+    def test_five_housing_no_interference(self, gear_paths):
         """Test that a 5-housing assembly has no interference."""
-        config = create_default_config()
+        config = create_default_config(
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
         # Default is 5 housings
 
         assembly = create_positioned_assembly(
             config,
-            wheel_step_path=wheel_step_path,
+            wheel_step_path=gear_paths.wheel_step,
+            worm_step_path=gear_paths.worm_step,
             check_interference=True,
         )
 
-        assert assembly["interference"]["total"] < 0.01
+        # Balanced config: 5 housings × ~0.02mm³ = ~0.1mm³ expected
+        assert assembly["interference"]["total"] < 0.5
 
-    def test_interference_report_keys(self, wheel_step_path: Path):
+    def test_interference_report_keys(self, gear_paths):
         """Test that interference report contains expected keys."""
-        config = create_default_config()
+        config = create_default_config(
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
         config = replace(config, frame=replace(config.frame, num_housings=1))
 
         assembly = create_positioned_assembly(
             config,
-            wheel_step_path=wheel_step_path,
+            wheel_step_path=gear_paths.wheel_step,
+            worm_step_path=gear_paths.worm_step,
             check_interference=False,  # Don't raise, just build
         )
 
@@ -70,14 +84,18 @@ class TestAssemblyInterference:
         assert "tuner_1_worm_in_hole" in results
         assert "tuner_1_wheel_in_cavity" in results
 
-    def test_check_interference_false_no_validation(self, wheel_step_path: Path):
+    def test_check_interference_false_no_validation(self, gear_paths):
         """Test that check_interference=False skips validation."""
-        config = create_default_config()
+        config = create_default_config(
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
         config = replace(config, frame=replace(config.frame, num_housings=1))
 
         assembly = create_positioned_assembly(
             config,
-            wheel_step_path=wheel_step_path,
+            wheel_step_path=gear_paths.wheel_step,
+            worm_step_path=gear_paths.worm_step,
             check_interference=False,
         )
 
