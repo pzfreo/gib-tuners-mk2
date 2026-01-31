@@ -16,6 +16,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from build123d import Location
+
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.assembly.gang_assembly import (
@@ -46,9 +48,9 @@ Examples:
     )
     parser.add_argument(
         "--hand",
-        choices=["right", "left"],
+        choices=["right", "left", "both"],
         default="right",
-        help="Hand variant (default: right)",
+        help="Hand variant (default: right). 'both' shows L & R side by side",
     )
     parser.add_argument(
         "--scale",
@@ -100,30 +102,15 @@ def main() -> int:
     # Resolve gear config paths
     gear_paths = resolve_gear_config(args.gear)
 
-    # Config
-    hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
-    base_config = create_default_config(
-        scale=args.scale,
-        hand=hand,
-        gear_json_path=gear_paths.json_path,
-        config_dir=gear_paths.config_dir,
-    )
-
     # Determine worm Z mode from CLI flags
     if args.force_centered_worm:
         worm_z_mode = WormZMode.CENTERED
     elif args.force_aligned_worm:
         worm_z_mode = WormZMode.ALIGNED
     else:
-        worm_z_mode = base_config.gear.worm_z_mode  # AUTO (from JSON hints)
+        worm_z_mode = None  # Will use config default
 
-    config = replace(
-        base_config,
-        frame=replace(base_config.frame, num_housings=args.num_housings),
-        gear=replace(base_config.gear, worm_z_mode=worm_z_mode),
-    )
-
-    # Wheel STEP path (from gear config)
+    # Wheel/worm STEP paths
     wheel_step = None
     worm_step = None
     if not args.no_step:
@@ -133,27 +120,72 @@ def main() -> int:
             print("Warning: wheel STEP not found, using placeholder")
 
     gear_label = args.gear or "default"
+
+    # Determine which hands to build
+    if args.hand == "both":
+        hands = [Hand.RIGHT, Hand.LEFT]
+    else:
+        hands = [Hand.RIGHT if args.hand == "right" else Hand.LEFT]
+
     print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x [{gear_label}] ===")
-    print(f"Frame length: {config.frame.total_length:.1f}mm")
 
-    # Build assembly
-    assembly = create_positioned_assembly(config, wheel_step, worm_step_path=worm_step)
+    assemblies = []
+    for hand in hands:
+        base_config = create_default_config(
+            scale=args.scale,
+            hand=hand,
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
 
-    print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
+        if worm_z_mode is not None:
+            base_config = replace(
+                base_config,
+                gear=replace(base_config.gear, worm_z_mode=worm_z_mode),
+            )
+
+        config = replace(
+            base_config,
+            frame=replace(base_config.frame, num_housings=args.num_housings),
+        )
+
+        if hand == hands[0]:
+            print(f"Frame length: {config.frame.total_length:.1f}mm")
+
+        # Build assembly
+        assembly = create_positioned_assembly(config, wheel_step, worm_step_path=worm_step)
+        assemblies.append((hand, config, assembly))
+
+    # Calculate offset for side-by-side display
+    frame_width = assemblies[0][1].frame.box_outer * args.scale
+    spacing = frame_width * 2  # Gap between assemblies
 
     # Display all parts with colors
-    for name, part in assembly["all_parts"].items():
-        base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
-        color, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
-        opts = {"color": color}
-        if alpha is not None:
-            opts["alpha"] = alpha
-        show_object(part, name=name, options=opts)
+    for i, (hand, config, assembly) in enumerate(assemblies):
+        hand_label = "RH" if hand == Hand.RIGHT else "LH"
+        x_offset = i * spacing if len(assemblies) > 1 else 0
 
-    # Interference report
-    if not args.no_interference:
-        print()
-        run_interference_report(assembly)
+        if i == 0:
+            print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
+
+        for name, part in assembly["all_parts"].items():
+            # Offset part if showing both hands
+            if x_offset != 0:
+                part = part.move(Location((x_offset, 0, 0)))
+
+            base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
+            color, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
+            opts = {"color": color}
+            if alpha is not None:
+                opts["alpha"] = alpha
+
+            display_name = f"{hand_label}_{name}" if len(assemblies) > 1 else name
+            show_object(part, name=display_name, options=opts)
+
+        # Interference report
+        if not args.no_interference:
+            print(f"\n{hand_label} Interference:")
+            run_interference_report(assembly)
 
     print("\nVisualization sent to OCP viewer")
     return 0
