@@ -105,7 +105,13 @@ def create_tuner_unit(
     components["wheel"] = wheel
 
     # Peg head - worm axis is horizontal (X), offset from post by center_distance in Y
-    peg_head = create_peg_head(config)
+    worm_params = config.gear.worm
+    worm_length = worm_params.length * scale
+    peg_head = create_peg_head(
+        config,
+        worm_step_path=worm_step_path,
+        worm_length=worm_params.length,  # Unscaled - create_peg_head handles scaling
+    )
 
     # Worm axis Z position depends on gear configuration
     # - Cylindrical worms: centered in frame at Z = -box_outer / 2
@@ -123,8 +129,6 @@ def create_tuner_unit(
     # - Worm length is worm_params.length
     # - Clearance each side = (box_inner - worm_length) / 2
     # - Shoulder should be at X = half_inner - clearance
-    worm_params = config.gear.worm
-    worm_length = worm_params.length * scale
     box_inner = frame.box_inner * scale
     half_inner = box_inner / 2
     worm_clearance = (box_inner - worm_length) / 2

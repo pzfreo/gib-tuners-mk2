@@ -2,6 +2,7 @@
 
 import json
 import math
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +12,7 @@ from .parameters import (
     FrameParams,
     GearParams,
     Hand,
+    PegHeadParams,
     StringPostParams,
     ToleranceConfig,
     WheelParams,
@@ -20,13 +22,84 @@ from .parameters import (
 )
 from .tolerances import get_tolerance
 
-# Default gear parameters JSON - single source of truth for gear geometry
-DEFAULT_GEAR_JSON = Path(__file__).parent.parent.parent.parent / "config" / "worm_gear.json"
-# Reference directory for mesh alignment JSON files (output from wormgear optimizer)
+# Directory paths
+CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
 REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
 
-# Clearance for worm entry hole (allows worm to pass through frame hole)
-WORM_ENTRY_CLEARANCE = 0.2  # 0.1mm per side
+# Default gear parameters JSON - single source of truth for gear geometry
+DEFAULT_GEAR_JSON = CONFIG_DIR / "worm_gear.json"
+
+# Bearing hole clearance (tight fit, can be reamed at assembly if needed)
+BEARING_CLEARANCE = 0.05  # 0.025mm per side
+
+
+@dataclass
+class GearConfigPaths:
+    """Paths for a gear configuration."""
+    json_path: Path              # worm_gear.json
+    config_dir: Optional[Path]   # Config directory (None for legacy root config)
+    wheel_step: Optional[Path]   # wheel STEP if exists
+    worm_step: Optional[Path]    # worm STEP if exists
+
+
+def resolve_gear_config(gear_name: Optional[str] = None) -> GearConfigPaths:
+    """Resolve gear config paths from name.
+
+    Args:
+        gear_name: Config name (e.g., 'balanced') or None for default
+
+    Returns:
+        GearConfigPaths with all resolved paths
+
+    Raises:
+        FileNotFoundError if config doesn't exist
+    """
+    if gear_name is None:
+        # Default: root config/worm_gear.json (balanced M0.6 config)
+        wheel_step = REFERENCE_DIR / "wheel_m0.6_z10.step"
+        worm_step = REFERENCE_DIR / "worm_m0.6_z1.step"
+        return GearConfigPaths(
+            json_path=DEFAULT_GEAR_JSON,
+            config_dir=None,
+            wheel_step=wheel_step if wheel_step.exists() else None,
+            worm_step=worm_step if worm_step.exists() else None,
+        )
+
+    config_dir = CONFIG_DIR / gear_name
+    json_path = config_dir / "worm_gear.json"
+    if not json_path.exists():
+        raise FileNotFoundError(f"Gear config not found: {json_path}")
+
+    # Check for STEP files in config dir (named by module/teeth)
+    wheel_step = None
+    worm_step = None
+    for f in config_dir.glob("wheel_*.step"):
+        wheel_step = f
+        break
+    for f in config_dir.glob("worm_*.step"):
+        worm_step = f
+        break
+
+    return GearConfigPaths(
+        json_path=json_path,
+        config_dir=config_dir,
+        wheel_step=wheel_step,
+        worm_step=worm_step,
+    )
+
+
+def list_gear_configs() -> list:
+    """List available gear configurations.
+
+    Returns:
+        List of config directory names that contain worm_gear.json
+    """
+    configs = []
+    if CONFIG_DIR.exists():
+        for item in CONFIG_DIR.iterdir():
+            if item.is_dir() and (item / "worm_gear.json").exists():
+                configs.append(item.name)
+    return sorted(configs)
 
 
 def requires_worm_alignment(config: "BuildConfig") -> bool:
@@ -91,15 +164,50 @@ def calculate_worm_z(config: "BuildConfig") -> float:
     return -box_outer / 2
 
 
-def load_mesh_alignment(module: float) -> dict:
+def load_mesh_alignment(module: float, config_dir: Optional[Path] = None) -> dict:
     """Load mesh alignment data from wormgear optimizer output.
 
+    Checks for data in this order:
+    1. config_dir/geometry_analysis_m{module}.json (new format, nested)
+    2. config_dir/mesh_alignment.json (old format)
+    3. reference/mesh_alignment_m{module}.json (legacy fallback)
+
     Args:
-        module: Gear module in mm (e.g., 0.5)
+        module: Gear module in mm (e.g., 0.6)
+        config_dir: Optional config directory to check first
 
     Returns:
         Dict with optimal_rotation_deg, tooth_pitch_deg, etc., or empty dict if not found
     """
+    # Check config directory first
+    if config_dir:
+        # New format: geometry_analysis_m{module}.json with nested mesh_alignment
+        geometry_json = config_dir / f"geometry_analysis_m{module}.json"
+        if geometry_json.exists():
+            with open(geometry_json) as f:
+                data = json.load(f)
+                # New format has mesh_alignment nested
+                if "mesh_alignment" in data:
+                    return data["mesh_alignment"]
+                return data
+
+        # Old format: mesh_alignment.json at root level
+        mesh_json = config_dir / "mesh_alignment.json"
+        if mesh_json.exists():
+            with open(mesh_json) as f:
+                return json.load(f)
+
+    # Fall back to reference directory
+    # Check new format first
+    geometry_json = REFERENCE_DIR / f"geometry_analysis_m{module}.json"
+    if geometry_json.exists():
+        with open(geometry_json) as f:
+            data = json.load(f)
+            if "mesh_alignment" in data:
+                return data["mesh_alignment"]
+            return data
+
+    # Legacy format
     mesh_json = REFERENCE_DIR / f"mesh_alignment_m{module}.json"
     if mesh_json.exists():
         with open(mesh_json) as f:
@@ -107,11 +215,12 @@ def load_mesh_alignment(module: float) -> dict:
     return {}
 
 
-def load_gear_params(json_path: Path) -> GearParams:
+def load_gear_params(json_path: Path, config_dir: Optional[Path] = None) -> GearParams:
     """Load gear parameters from a JSON file (e.g., config/worm_gear.json).
 
     Args:
         json_path: Path to the gear JSON file
+        config_dir: Optional config directory for mesh alignment lookup
 
     Returns:
         GearParams populated from JSON
@@ -174,7 +283,7 @@ def load_gear_params(json_path: Path) -> GearParams:
     # Load base mesh rotation from mesh_alignment JSON (wormgear optimizer output)
     # This is the optimal rotation for Z-aligned axes; will be adjusted for Z-offset in create_default_config
     module = worm_data["module_mm"]
-    mesh_alignment = load_mesh_alignment(module)
+    mesh_alignment = load_mesh_alignment(module, config_dir)
     mesh_rotation_base = mesh_alignment.get("optimal_rotation_deg", 0.0)
 
     return GearParams(
@@ -194,18 +303,22 @@ def create_default_config(
     tolerance: str = "production",
     hand: Hand = Hand.RIGHT,
     gear_json_path: Optional[Path] = None,
+    config_dir: Optional[Path] = None,
 ) -> BuildConfig:
     """Create a BuildConfig with defaults and optional overrides.
 
-    Derives dependent parameters from gear config:
+    Derives dependent parameters from gear and component configs:
     - dd_cut_length = wheel.face_width (they are the same)
-    - worm_entry_hole = worm.tip_diameter + clearance
+    - worm_entry_hole = peg_head.shoulder_diameter + BEARING_CLEARANCE
+    - peg_bearing_hole = peg_head.shaft_diameter + BEARING_CLEARANCE
+    - post_bearing_hole = string_post.bearing_diameter + BEARING_CLEARANCE
 
     Args:
         scale: Geometry scale factor (1.0 for production, 2.0 for FDM prototype)
         tolerance: Tolerance profile name
         hand: LEFT or RIGHT hand variant
         gear_json_path: Optional path to gear JSON file (defaults to config/worm_gear.json)
+        config_dir: Optional config directory for mesh alignment lookup
 
     Returns:
         Configured BuildConfig instance
@@ -220,23 +333,41 @@ def create_default_config(
         gear_json_path = DEFAULT_GEAR_JSON
 
     if gear_json_path.exists():
-        gear = load_gear_params(gear_json_path)
+        gear = load_gear_params(gear_json_path, config_dir)
     else:
         # Fallback to hardcoded defaults if JSON not found
         gear = GearParams(worm=WormParams(), wheel=WheelParams())
 
-    # Derive StringPostParams with dd_cut_length = wheel face width
+    # Create component params first (needed to derive frame hole sizes)
+    # Use default wall_thickness from FrameParams for bearing dimensions
+    default_wall = FrameParams().wall_thickness
+
+    # Derive StringPostParams - bearing_length must match frame wall_thickness
     string_post = StringPostParams(
+        dd_cut=gear.wheel.bore,
         dd_cut_length=gear.wheel.face_width,
+        bearing_length=default_wall,  # Auto-sync with frame
     )
 
-    # Derive FrameParams with worm_entry_hole = worm tip diameter + clearance
-    worm_entry_hole = gear.worm.tip_diameter + WORM_ENTRY_CLEARANCE
+    # Derive PegHeadParams - bearing_wall must match frame wall_thickness
+    peg_head = PegHeadParams(
+        worm_length=gear.worm.length,
+        bearing_wall=default_wall,  # Auto-sync with frame
+    )
+
+    # Derive FrameParams with bearing holes from component dimensions + clearance
+    # All bearing holes use BEARING_CLEARANCE for tight fit (can be reamed if needed)
+    worm_entry_hole = peg_head.shoulder_diameter + BEARING_CLEARANCE
+    peg_bearing_hole = peg_head.shaft_diameter + BEARING_CLEARANCE
+    post_bearing_hole = string_post.bearing_diameter + BEARING_CLEARANCE
+
     frame = FrameParams(
         worm_entry_hole=worm_entry_hole,
+        peg_bearing_hole=peg_bearing_hole,
+        post_bearing_hole=post_bearing_hole,
     )
 
-    # Validate: worm must fit through entry hole
+    # Validate: worm must fit through entry hole during assembly
     if gear.worm.tip_diameter >= worm_entry_hole:
         raise ValueError(
             f"Worm tip diameter ({gear.worm.tip_diameter}mm) must be less than "
@@ -309,4 +440,5 @@ def create_default_config(
         gear=gear,
         frame=frame,
         string_post=string_post,
+        peg_head=peg_head,
     )

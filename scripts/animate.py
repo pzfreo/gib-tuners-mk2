@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from build123d import Location
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 
@@ -71,6 +71,12 @@ Examples:
         default=180,
         help="Animation steps (default: 180)",
     )
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'balanced')",
+    )
     worm_z_group = parser.add_mutually_exclusive_group()
     worm_z_group.add_argument(
         "--force-centered-worm",
@@ -97,9 +103,17 @@ def main() -> int:
         print("Install with: pip install git+https://github.com/bernhard-42/bd_animation.git")
         return 1
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Create 1-gang config
     hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
-    base_config = create_default_config(scale=args.scale, hand=hand)
+    base_config = create_default_config(
+        scale=args.scale,
+        hand=hand,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
+    )
 
     # Determine worm Z mode from CLI flags
     if args.force_centered_worm:
@@ -118,21 +132,23 @@ def main() -> int:
     scale = config.scale
     ratio = config.gear.ratio
 
-    print(f"=== Worm Gear Animation ({args.hand.upper()}) @ {args.scale}x ===")
+    gear_label = args.gear or "default"
+    print(f"=== Worm Gear Animation ({args.hand.upper()}) @ {args.scale}x [{gear_label}] ===")
     print(f"Gear ratio: {ratio}:1")
     print(f"Worm revolutions: {args.worm_revs}")
     print(f"Wheel rotation: {args.worm_revs * 360 / ratio:.1f}°")
 
     # Build assembly using same code as viz.py
     print("\nBuilding assembly...")
-    wheel_step = REFERENCE_DIR / "wheel_m0.5_z13.step"
-    if not wheel_step.exists():
-        wheel_step = None
+    wheel_step = gear_paths.wheel_step
+    worm_step = gear_paths.worm_step
+    if wheel_step is None:
         print("  Warning: wheel STEP not found, using placeholder")
 
     assembly = create_positioned_assembly(
         config,
         wheel_step_path=wheel_step,
+        worm_step_path=worm_step,
         include_hardware=True,
     )
 

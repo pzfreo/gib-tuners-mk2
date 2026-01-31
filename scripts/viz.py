@@ -16,7 +16,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from gib_tuners.config.defaults import create_default_config
+from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand, WormZMode
 from gib_tuners.assembly.gang_assembly import (
     create_positioned_assembly,
@@ -66,6 +66,12 @@ Examples:
         action="store_true",
         help="Skip interference check",
     )
+    parser.add_argument(
+        "--gear",
+        type=str,
+        default=None,
+        help="Gear config name (e.g., 'balanced'). Looks in config/<name>/",
+    )
     worm_z_group = parser.add_mutually_exclusive_group()
     worm_z_group.add_argument(
         "--force-centered-worm",
@@ -91,9 +97,17 @@ def main() -> int:
         print("Then open VS Code with the OCP CAD Viewer extension.")
         return 1
 
+    # Resolve gear config paths
+    gear_paths = resolve_gear_config(args.gear)
+
     # Config
     hand = Hand.RIGHT if args.hand == "right" else Hand.LEFT
-    base_config = create_default_config(scale=args.scale, hand=hand)
+    base_config = create_default_config(
+        scale=args.scale,
+        hand=hand,
+        gear_json_path=gear_paths.json_path,
+        config_dir=gear_paths.config_dir,
+    )
 
     # Determine worm Z mode from CLI flags
     if args.force_centered_worm:
@@ -109,19 +123,21 @@ def main() -> int:
         gear=replace(base_config.gear, worm_z_mode=worm_z_mode),
     )
 
-    # Wheel STEP path
+    # Wheel STEP path (from gear config)
     wheel_step = None
+    worm_step = None
     if not args.no_step:
-        wheel_step = Path(__file__).parent.parent / "reference" / "wheel_m0.5_z13.step"
-        if not wheel_step.exists():
-            print(f"Warning: {wheel_step} not found, using placeholder")
-            wheel_step = None
+        wheel_step = gear_paths.wheel_step
+        worm_step = gear_paths.worm_step
+        if wheel_step is None:
+            print("Warning: wheel STEP not found, using placeholder")
 
-    print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x ===")
+    gear_label = args.gear or "default"
+    print(f"=== {args.num_housings}-Gang Assembly ({args.hand.upper()}) @ {args.scale}x [{gear_label}] ===")
     print(f"Frame length: {config.frame.total_length:.1f}mm")
 
     # Build assembly
-    assembly = create_positioned_assembly(config, wheel_step)
+    assembly = create_positioned_assembly(config, wheel_step, worm_step_path=worm_step)
 
     print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
 

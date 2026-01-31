@@ -7,17 +7,18 @@ The peg head is constructed by combining:
 4. M2 tap hole at shaft end
 
 Structure (from peg head toward bearing end):
-- Peg head (Z ≤ 0): ring, pip, join, cap, shoulder from STEP
-- Worm (Z = 0 to 7.8): butted against shoulder, 0.1mm clearance each side
-- Shaft gap (Z = 7.8 to 8.0): to frame cavity end
-- Bearing shaft (Z = 8.0 to 9.0): through bearing wall
-- Extension (Z = 9.0 to 9.1): beyond frame for washer clearance
-- M2 tap hole at Z = 9.1
+- Head: decorative ring with finger grip (from STEP)
+- Cap: sits outside frame, prevents push-in (from STEP)
+- Shoulder: fits inside worm entry hole (from STEP)
+- Worm: threaded section (from worm STEP, length from gear config)
+- Shaft: bearing end (generated, 3.5mm diameter)
+- M2 tap hole: 4mm deep from shaft end (extends into worm)
 
-Total shaft: 9.1mm from shoulder to end
+Shaft length = worm_length + shaft_gap + bearing_wall + washer_clearance
 """
 
 from pathlib import Path
+from typing import Optional
 
 from build123d import (
     Align,
@@ -33,14 +34,19 @@ from ..config.parameters import BuildConfig
 
 # Reference STEP file locations
 REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
-PEG_HEAD_STEP = REFERENCE_DIR / "peghead-and-shaft.step"
-WORM_STEP = REFERENCE_DIR / "worm_m0.5_z1.step"
+PEG_HEAD_STEP = REFERENCE_DIR / "peghead7mm.step"
 
-# Current worm STEP length (regenerated at target length)
-WORM_STEP_LENGTH = 7.8
+# Default worm STEP (used if not provided via config)
+DEFAULT_WORM_STEP = REFERENCE_DIR / "worm_m0.5_z1.step"
+DEFAULT_WORM_LENGTH = 7.8
 
 
-def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
+def create_peg_head(
+    config: BuildConfig,
+    include_worm: bool = True,
+    worm_step_path: Optional[Path] = None,
+    worm_length: Optional[float] = None,
+) -> Part:
     """Create the peg head assembly geometry.
 
     Combines peg head STEP, new shaft, and worm STEP.
@@ -54,6 +60,8 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     Args:
         config: Build configuration
         include_worm: If True, includes worm thread geometry
+        worm_step_path: Path to worm STEP file (uses default if None)
+        worm_length: Worm length in mm (uses config.peg_head.worm_length if None)
 
     Returns:
         Peg head Part
@@ -64,11 +72,15 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     if not PEG_HEAD_STEP.exists():
         raise FileNotFoundError(
             f"Peg head STEP not found: {PEG_HEAD_STEP}\n"
-            "Please ensure peghead-and-shaft.step is in the reference/ directory."
+            "Please ensure peghead7mm.step is in the reference/ directory."
         )
 
     params = config.peg_head
     scale = config.scale
+
+    # Use provided worm path/length or fall back to defaults
+    worm_step = worm_step_path if worm_step_path is not None else DEFAULT_WORM_STEP
+    worm_len = worm_length if worm_length is not None else params.worm_length
 
     # Import peg head and cut at Z=0 (keep Z ≤ 0)
     peg_head_imported = import_step(PEG_HEAD_STEP)
@@ -85,8 +97,9 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     peg_head = peg_head_full & keep_box
 
     # Get shaft dimensions from params
+    # Compute shaft length using provided worm_length
     shaft_dia = params.shaft_diameter
-    shaft_length = params.shaft_length  # Computed property: 9.1mm
+    shaft_length = worm_len + params.shaft_gap + params.bearing_wall + params.washer_clearance
 
     # Create new shaft
     new_shaft = Cylinder(
@@ -100,15 +113,15 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     result = peg_head + new_shaft
 
     # Add worm if requested and STEP exists
-    if include_worm and WORM_STEP.exists():
-        worm_imported = import_step(WORM_STEP)
+    if include_worm and worm_step.exists():
+        worm_imported = import_step(worm_step)
         # import_step returns ShapeList; get first shape
         if hasattr(worm_imported, '__iter__') and not isinstance(worm_imported, Part):
             worm = worm_imported[0]
         else:
             worm = worm_imported
         # Worm STEP is centered at origin, shift so bottom is at Z=0
-        worm_half = WORM_STEP_LENGTH / 2
+        worm_half = worm_len / 2
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
         result = result + worm_positioned
 
@@ -133,13 +146,24 @@ def create_peg_head(config: BuildConfig, include_worm: bool = True) -> Part:
     return result
 
 
-def create_peg_head_simplified(config: BuildConfig) -> Part:
+def create_peg_head_simplified(
+    config: BuildConfig,
+    worm_step_path: Optional[Path] = None,
+    worm_length: Optional[float] = None,
+) -> Part:
     """Create peg head without worm detail for quick visualization.
 
     Args:
         config: Build configuration
+        worm_step_path: Path to worm STEP file (uses default if None)
+        worm_length: Worm length in mm (uses config.peg_head.worm_length if None)
 
     Returns:
         Simplified peg head Part
     """
-    return create_peg_head(config, include_worm=False)
+    return create_peg_head(
+        config,
+        include_worm=False,
+        worm_step_path=worm_step_path,
+        worm_length=worm_length,
+    )
