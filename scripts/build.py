@@ -247,6 +247,19 @@ def export_stl_quality(shape, path: Path, linear_tol: float = 0.01, angular_tol:
             os.unlink(temp_path)
 
 
+def check_stl_quality(stl_path: Path) -> tuple[int, bool]:
+    """Check STL mesh quality, return (non_manifold_edges, is_watertight)."""
+    try:
+        import trimesh
+        from collections import Counter
+        mesh = trimesh.load(stl_path)
+        edge_counts = Counter(tuple(sorted(e)) for e in mesh.edges)
+        nme = sum(1 for c in edge_counts.values() if c > 2)
+        return nme, mesh.is_watertight
+    except Exception:
+        return -1, False
+
+
 def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[Path]:
     """Export a component in the specified format(s).
 
@@ -266,7 +279,16 @@ def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[P
         try:
             export_stl_quality(shape, stl_path)
             exported.append(stl_path)
-            print(f"  -> {stl_path}")
+            # Check mesh quality
+            nme, watertight = check_stl_quality(stl_path)
+            status = ""
+            if nme > 0:
+                status += f" [WARNING: {nme} non-manifold edges]"
+            if not watertight:
+                status += " [has holes]"
+            if not status:
+                status = " [OK]"
+            print(f"  -> {stl_path}{status}")
         except Exception as e:
             print(f"  STL export failed for {basename}: {e}")
 
