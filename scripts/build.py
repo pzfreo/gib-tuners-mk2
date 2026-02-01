@@ -384,7 +384,8 @@ def main() -> int:
             exported.extend(export_component(rh_frame, output_dir, basename, args.format))
 
         if build_lh:
-            lh_frame = mirror_for_left_hand(rh_frame)
+            lh_config = replace(config, hand=Hand.LEFT)
+            lh_frame = create_frame(lh_config)
             basename = f"frame_lh_{args.num_housings}gang"
             exported.extend(export_component(lh_frame, output_dir, basename, args.format))
 
