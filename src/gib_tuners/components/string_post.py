@@ -21,6 +21,7 @@ from build123d import (
 
 from ..config.parameters import BuildConfig
 from ..features.dd_cut import create_dd_cut_shaft
+from ..utils.validation import check_shape_quality
 
 
 def create_string_post(config: BuildConfig) -> Part:
@@ -120,5 +121,8 @@ def create_string_post(config: BuildConfig) -> Part:
     string_hole = string_hole.rotate(Axis.X, 90)
     string_hole = string_hole.locate(Location((0, 0, hole_z)))
     string_post = string_post - string_hole
+
+    # Check shape quality (warns if non-manifold edges detected)
+    check_shape_quality(string_post, "string_post")
 
     return string_post

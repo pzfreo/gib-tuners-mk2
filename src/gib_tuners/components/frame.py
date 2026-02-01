@@ -29,6 +29,7 @@ from build123d import (
 
 from ..config.parameters import BuildConfig, Hand
 from ..config.defaults import calculate_worm_z
+from ..utils.validation import check_shape_quality
 
 
 def create_frame(config: BuildConfig) -> Part:
@@ -226,5 +227,8 @@ def create_frame(config: BuildConfig) -> Part:
     # Move text so it cuts into inside surface of mounting plate (at Z=-wall)
     text_solid = text_solid.locate(Location((0, text_y, -wall)))
     frame = frame - text_solid
+
+    # Check shape quality (warns if non-manifold edges detected)
+    check_shape_quality(frame, "frame")
 
     return frame

@@ -1,11 +1,22 @@
 """Utility functions for mirroring and validation."""
 
 from .mirror import mirror_for_left_hand, create_left_hand_config
-from .validation import validate_geometry, ValidationResult
+from .validation import (
+    validate_geometry,
+    ValidationResult,
+    check_shape_quality,
+    ShapeQualityResult,
+    check_mesh_quality,
+    MeshQualityResult,
+)
 
 __all__ = [
     "mirror_for_left_hand",
     "create_left_hand_config",
     "validate_geometry",
     "ValidationResult",
+    "check_shape_quality",
+    "ShapeQualityResult",
+    "check_mesh_quality",
+    "MeshQualityResult",
 ]

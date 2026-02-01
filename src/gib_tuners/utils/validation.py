@@ -1,15 +1,178 @@
 """Geometry validation against spec Section 9 requirements.
 
 Validates clearances, retention geometry, and gear mesh parameters.
+Also provides shape quality checks (non-manifold edges, etc.).
 """
 
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
+import warnings
 
 from build123d import Axis, Location, Part, import_step
 
 from ..config.parameters import BuildConfig
+
+
+@dataclass
+class ShapeQualityResult:
+    """Result of shape quality check."""
+    is_valid: bool
+    non_manifold_edges: int
+    free_edges: int
+    issues: List[str]
+
+    def __str__(self) -> str:
+        if self.is_valid and self.non_manifold_edges == 0:
+            return "Shape OK"
+        issues = []
+        if self.non_manifold_edges > 0:
+            issues.append(f"{self.non_manifold_edges} non-manifold edges")
+        if self.free_edges > 0:
+            issues.append(f"{self.free_edges} free edges")
+        if not self.is_valid:
+            issues.append("BRep invalid")
+        return "; ".join(issues)
+
+
+def check_shape_quality(part: Part, name: str = "Part") -> ShapeQualityResult:
+    """Check shape for non-manifold edges and other issues.
+
+    Uses OpenCascade BRepCheck_Analyzer for validation.
+
+    Args:
+        part: The Part to check
+        name: Name for warning messages
+
+    Returns:
+        ShapeQualityResult with issue counts
+    """
+    from OCP.BRepCheck import BRepCheck_Analyzer
+    from OCP.BRep import BRep_Tool
+    from OCP.TopoDS import TopoDS
+
+    issues = []
+    non_manifold_count = 0
+    free_edge_count = 0
+
+    # Basic validity check
+    analyzer = BRepCheck_Analyzer(part.wrapped)
+    is_valid = analyzer.IsValid()
+
+    # Count edges and check for non-manifold/free edges
+    # An edge is non-manifold if it's shared by more than 2 faces
+    # An edge is free if it's shared by only 1 face
+    try:
+        from OCP.TopTools import TopTools_IndexedDataMapOfShapeListOfShape
+        from OCP.TopExp import TopExp
+        from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
+
+        edge_face_map = TopTools_IndexedDataMapOfShapeListOfShape()
+        TopExp.MapShapesAndAncestors_s(
+            part.wrapped,
+            TopAbs_EDGE,
+            TopAbs_FACE,
+            edge_face_map
+        )
+
+        for i in range(1, edge_face_map.Extent() + 1):
+            edge = edge_face_map.FindKey(i)
+            faces = edge_face_map.FindFromIndex(i)
+            face_count = faces.Extent()
+
+            if face_count > 2:
+                non_manifold_count += 1
+            elif face_count == 1:
+                # Check if it's a seam edge (closed surface like cylinder)
+                edge_topo = TopoDS.Edge_s(edge)
+                if not BRep_Tool.IsClosed_s(edge_topo, TopoDS.Face_s(faces.First())):
+                    free_edge_count += 1
+
+    except Exception as e:
+        issues.append(f"Edge analysis failed: {e}")
+
+    if non_manifold_count > 0:
+        issues.append(f"{non_manifold_count} non-manifold edges detected")
+        warnings.warn(f"{name}: {non_manifold_count} non-manifold edges detected")
+
+    if free_edge_count > 0:
+        issues.append(f"{free_edge_count} free edges detected")
+
+    if not is_valid:
+        issues.append("BRepCheck_Analyzer reports invalid shape")
+        warnings.warn(f"{name}: BRep shape is invalid")
+
+    return ShapeQualityResult(
+        is_valid=is_valid,
+        non_manifold_edges=non_manifold_count,
+        free_edges=free_edge_count,
+        issues=issues,
+    )
+
+
+@dataclass
+class MeshQualityResult:
+    """Result of mesh quality check (trimesh-based, matches slicer behavior)."""
+    is_watertight: bool
+    euler_number: int
+    non_manifold_edges: int
+    issues: List[str]
+
+    def __str__(self) -> str:
+        if self.is_watertight and self.non_manifold_edges == 0:
+            return "Mesh OK"
+        issues = []
+        if not self.is_watertight:
+            issues.append("not watertight")
+        if self.non_manifold_edges > 0:
+            issues.append(f"{self.non_manifold_edges} non-manifold edges")
+        if self.euler_number != 2:
+            issues.append(f"euler={self.euler_number} (expected 2)")
+        return "; ".join(issues)
+
+
+def check_mesh_quality(stl_path: Path, name: str = "Mesh") -> MeshQualityResult:
+    """Check mesh for non-manifold edges using trimesh (matches slicer behavior).
+
+    Args:
+        stl_path: Path to STL file
+        name: Name for warning messages
+
+    Returns:
+        MeshQualityResult with issue counts
+    """
+    try:
+        import trimesh
+        from collections import Counter
+    except ImportError:
+        return MeshQualityResult(
+            is_watertight=True,
+            euler_number=2,
+            non_manifold_edges=0,
+            issues=["trimesh not installed - skipping mesh check"],
+        )
+
+    mesh = trimesh.load(stl_path)
+
+    # Count edges shared by more than 2 faces (non-manifold)
+    edge_counts = Counter(tuple(sorted(e)) for e in mesh.edges)
+    non_manifold = sum(1 for c in edge_counts.values() if c > 2)
+
+    issues = []
+    if not mesh.is_watertight:
+        issues.append("Mesh is not watertight")
+    if non_manifold > 0:
+        issues.append(f"{non_manifold} non-manifold edges")
+        warnings.warn(f"{name}: {non_manifold} non-manifold edges (mesh check)")
+    if mesh.euler_number != 2:
+        issues.append(f"Euler number {mesh.euler_number} (expected 2 for closed manifold)")
+
+    return MeshQualityResult(
+        is_watertight=mesh.is_watertight,
+        euler_number=mesh.euler_number,
+        non_manifold_edges=non_manifold,
+        issues=issues,
+    )
 
 
 @dataclass

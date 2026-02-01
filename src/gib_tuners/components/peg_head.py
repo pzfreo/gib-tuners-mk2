@@ -2,8 +2,8 @@
 
 The peg head is constructed by combining:
 1. Reference peg head STEP (ring, pip, cap, shoulder) - cut at Z=0
-2. New shaft sized to fit inside worm root
-3. Reference worm STEP positioned at Z=0 (butted against shoulder)
+2. Reference worm STEP positioned at Z=0 (butted against shoulder)
+3. Bearing shaft beyond the worm
 4. M2 tap hole at shaft end
 
 Structure (from peg head toward bearing end):
@@ -11,12 +11,9 @@ Structure (from peg head toward bearing end):
 - Cap: sits outside frame, prevents push-in (from STEP)
 - Shoulder: fits inside worm entry hole (from STEP)
 - Worm: threaded section (from worm STEP, length from gear config)
-- Shaft: bearing end (generated, 3.5mm diameter)
+- Bearing shaft: generated beyond worm end (4.0mm diameter)
 - M2 tap hole: 4mm deep from shaft end (extends into worm)
 
-Shaft length = worm_length + bearing_wall
-(No shaft_gap needed - worm centering provides clearance.
-Protrusion beyond frame = peg_bearing_axial_play.)
 """
 
 from pathlib import Path
@@ -33,6 +30,16 @@ from build123d import (
 )
 
 from ..config.parameters import BuildConfig
+from ..utils.validation import check_shape_quality
+
+
+def _to_part(shape) -> Part:
+    """Ensure shape is a Part."""
+    if isinstance(shape, Part):
+        return shape
+    elif hasattr(shape, 'wrapped'):
+        return Part(shape.wrapped)
+    return shape
 
 # Reference STEP file locations
 REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
@@ -94,40 +101,50 @@ def create_peg_head(
     else:
         peg_head_full = peg_head_imported
 
+    # Cut peg head at Z=0 (keep Z ≤ 0)
     keep_box = Box(20, 20, 30, align=(Align.CENTER, Align.CENTER, Align.MAX))
     keep_box = keep_box.locate(Location((0, 0, 0)))
-    peg_head = peg_head_full & keep_box
+    peg_head = _to_part(peg_head_full & keep_box)
 
     # Get shaft dimensions from params
-    # Compute shaft length using provided worm_length and derived bearing_wall
     shaft_dia = params.shaft_diameter
     wall_thickness = config.frame.wall_thickness
     bearing_wall = params.get_bearing_wall(wall_thickness)
-    shaft_length = worm_len + bearing_wall
 
-    # Create new shaft
-    new_shaft = Cylinder(
-        radius=shaft_dia / 2,
-        height=shaft_length,
-        align=(Align.CENTER, Align.CENTER, Align.MIN),
-    )
-    new_shaft = new_shaft.locate(Location((0, 0, 0)))  # Bottom at Z=0
-
-    # Combine peg head and shaft
-    result = peg_head + new_shaft
+    # Total length from Z=0 to shaft end (for tap hole positioning)
+    total_shaft_length = worm_len + bearing_wall
 
     # Add worm if requested and STEP exists
     if include_worm and worm_step.exists():
+        # Import worm
         worm_imported = import_step(worm_step)
-        # import_step returns ShapeList; get first shape
         if hasattr(worm_imported, '__iter__') and not isinstance(worm_imported, Part):
-            worm = worm_imported[0]
+            worm = _to_part(worm_imported[0])
         else:
-            worm = worm_imported
+            worm = _to_part(worm_imported)
         # Worm STEP is centered at origin, shift so bottom is at Z=0
         worm_half = worm_len / 2
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
-        result = result + worm_positioned
+
+        # Create bearing shaft starting at worm end
+        bearing_shaft = Cylinder(
+            radius=shaft_dia / 2,
+            height=bearing_wall,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+        bearing_shaft = bearing_shaft.locate(Location((0, 0, worm_len)))
+
+        # Fuse all parts using regular union
+        result = peg_head + worm_positioned + bearing_shaft
+    else:
+        # No worm: create full shaft from Z=0 to end
+        full_shaft = Cylinder(
+            radius=shaft_dia / 2,
+            height=total_shaft_length,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+        full_shaft = full_shaft.locate(Location((0, 0, 0)))
+        result = peg_head + full_shaft
 
     # Add M2 tap hole at shaft end
     tap_hole = Cylinder(
@@ -135,7 +152,7 @@ def create_peg_head(
         height=params.tap_depth + 0.1,
         align=(Align.CENTER, Align.CENTER, Align.MAX),
     )
-    tap_hole = tap_hole.locate(Location((0, 0, shaft_length)))
+    tap_hole = tap_hole.locate(Location((0, 0, total_shaft_length)))
     result = result - tap_hole
 
     # Rotate for assembly orientation (pip at +X, shaft at -X)
@@ -146,6 +163,9 @@ def create_peg_head(
     # Apply scale if needed
     if scale != 1.0:
         result = result.scale(scale)
+
+    # Check shape quality (warns if non-manifold edges detected)
+    check_shape_quality(result, "peg_head")
 
     return result
 

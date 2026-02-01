@@ -97,8 +97,8 @@ Examples:
     parser.add_argument(
         "--format",
         choices=["stl", "step", "both"],
-        default="both",
-        help="Output format (default: both)",
+        default="stl",
+        help="Output format (default: stl - STEP may have non-manifold edges)",
     )
 
     parser.add_argument(
@@ -171,6 +171,81 @@ Examples:
     return parser.parse_args()
 
 
+def export_stl_quality(shape, path: Path, linear_tol: float = 0.001, angular_tol: float = 0.5):
+    """Export STL with explicit tessellation and mesh repair.
+
+    Uses BRepMesh_IncrementalMesh with tight tolerances, then repairs
+    any small holes caused by null triangulation faces.
+    """
+    import tempfile
+    from OCP.StlAPI import StlAPI_Writer
+    from OCP.BRepMesh import BRepMesh_IncrementalMesh
+
+    wrapped = shape.wrapped if hasattr(shape, 'wrapped') else shape
+    mesh_algo = BRepMesh_IncrementalMesh(wrapped, linear_tol, False, angular_tol, True)
+    mesh_algo.Perform()
+
+    # Export to temp file first
+    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as f:
+        temp_path = f.name
+
+    writer = StlAPI_Writer()
+    writer.Write(wrapped, temp_path)
+
+    # Repair small holes using trimesh
+    try:
+        import trimesh
+        import numpy as np
+        from collections import defaultdict
+
+        mesh = trimesh.load(temp_path)
+
+        # Find boundary edges (holes)
+        edge_to_faces = defaultdict(list)
+        for fi, face in enumerate(mesh.faces):
+            for i in range(3):
+                edge = tuple(sorted([face[i], face[(i + 1) % 3]]))
+                edge_to_faces[edge].append(fi)
+
+        boundary_edges = [e for e, faces in edge_to_faces.items() if len(faces) == 1]
+
+        if boundary_edges and len(boundary_edges) <= 10:
+            # Build ordered boundary loop and fan triangulate to close hole
+            edges_set = set(boundary_edges)
+            loop = list(boundary_edges[0])
+            edges_set.remove(boundary_edges[0])
+
+            while edges_set:
+                last = loop[-1]
+                found = False
+                for e in list(edges_set):
+                    if last in e:
+                        next_v = e[0] if e[1] == last else e[1]
+                        if next_v != loop[0]:
+                            loop.append(next_v)
+                        edges_set.remove(e)
+                        found = True
+                        break
+                if not found:
+                    break
+
+            if len(loop) >= 3:
+                new_faces = [[loop[0], loop[i], loop[i + 1]] for i in range(1, len(loop) - 1)]
+                all_faces = np.vstack([mesh.faces, np.array(new_faces)])
+                mesh = trimesh.Trimesh(vertices=mesh.vertices, faces=all_faces)
+                mesh.fix_normals()
+
+        mesh.export(str(path))
+    except ImportError:
+        # trimesh not available, use raw export
+        import shutil
+        shutil.move(temp_path, str(path))
+    finally:
+        import os
+        if os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
 def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[Path]:
     """Export a component in the specified format(s).
 
@@ -188,7 +263,7 @@ def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[P
     if fmt in ("stl", "both"):
         stl_path = output_dir / f"{basename}.stl"
         try:
-            export_stl(shape, stl_path)
+            export_stl_quality(shape, stl_path)
             exported.append(stl_path)
             print(f"  -> {stl_path}")
         except Exception as e:
