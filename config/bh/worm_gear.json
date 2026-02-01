@@ -27,7 +27,7 @@
     "profile_shift": 0
   },
   "assembly": {
-    "centre_distance_mm": 5.9,
+    "centre_distance_mm": 5.784,
     "pressure_angle_deg": 20,
     "backlash_mm": 0,
     "hand": "right",
@@ -46,9 +46,9 @@
   "manufacturing": {
     "profile": "ZI",
     "virtual_hobbing": true,
-    "hobbing_steps": 36,
-    "worm_length_mm": 7.7,
-    "wheel_width_mm": 7.7
+    "hobbing_steps": 72,
+    "worm_length_mm": 7.6,
+    "wheel_width_mm": 7.6
   },
   "measured_geometry": null,
   "schema_version": "2.1"
