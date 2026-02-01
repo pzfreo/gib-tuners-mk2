@@ -267,6 +267,50 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
         message=f"Wheel OD ({wheel_od}mm) must pass through bottom hole ({wheel_hole}mm)",
     ))
 
+    # 4b. Wheel fits inside housing cavity
+    box_inner = frame.box_inner
+    clearance = box_inner - wheel_od
+    checks.append(ValidationCheck(
+        name="Wheel fits inside housing",
+        passed=clearance > 0,
+        expected=f"housing cavity > wheel OD",
+        actual=f"{clearance:.2f}mm clearance ({wheel_od}mm in {box_inner}mm cavity)",
+        message=f"Wheel OD ({wheel_od}mm) must fit inside housing cavity ({box_inner}mm)",
+    ))
+
+    # 4c. Worm fits through entry hole (explicit check for oversized worm)
+    worm_tip = gear.worm.tip_diameter
+    if worm_tip > entry_hole:
+        checks.append(ValidationCheck(
+            name="Worm too large for entry hole",
+            passed=False,
+            expected=f"worm tip diameter < entry hole",
+            actual=f"worm {worm_tip}mm > entry hole {entry_hole}mm",
+            message=f"WARNING: Worm tip diameter ({worm_tip}mm) exceeds entry hole ({entry_hole}mm)!",
+        ))
+
+    # 4d. Worm length fits across housing cavity (worm axis is perpendicular to frame length)
+    worm_length = gear.worm.length
+    clearance = box_inner - worm_length
+    checks.append(ValidationCheck(
+        name="Worm length fits across housing",
+        passed=clearance >= 0,  # Zero clearance is OK - worm spans full cavity
+        expected=f"housing cavity >= worm length",
+        actual=f"{clearance:.2f}mm clearance ({worm_length}mm worm across {box_inner}mm cavity)",
+        message=f"Worm length ({worm_length}mm) must fit across housing cavity ({box_inner}mm)",
+    ))
+
+    # 4e. Wheel face width fits within housing cavity width
+    face_width = gear.wheel.face_width
+    clearance = box_inner - face_width
+    checks.append(ValidationCheck(
+        name="Wheel width fits in housing",
+        passed=clearance > 0,
+        expected=f"housing cavity > wheel face width",
+        actual=f"{clearance:.2f}mm clearance ({face_width}mm wheel in {box_inner}mm cavity)",
+        message=f"Wheel face width ({face_width}mm) must fit within housing cavity ({box_inner}mm)",
+    ))
+
     # 5. Post shaft fits in top bearing hole
     post_shaft = post.bearing_diameter
     post_hole = frame.post_bearing_hole
