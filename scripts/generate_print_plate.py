@@ -304,11 +304,9 @@ def main():
 
     packables = []
 
-    # Generate Frame
+    # Generate Frame (config already has correct hand, no mirroring needed)
     print("Generating Frame...")
     frame_shape = create_frame(config)
-    if args.hand == "left":
-        frame_shape = mirror_for_left_hand(frame_shape)
 
     frame_mesh = b3d_to_trimesh(frame_shape, "Frame")
     p_frame = Packable("Frame", frame_mesh, frame_shape)
