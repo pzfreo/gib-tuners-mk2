@@ -171,11 +171,12 @@ Examples:
     return parser.parse_args()
 
 
-def export_stl_quality(shape, path: Path, linear_tol: float = 0.001, angular_tol: float = 0.5):
+def export_stl_quality(shape, path: Path, linear_tol: float = 0.01, angular_tol: float = 0.5):
     """Export STL with explicit tessellation and mesh repair.
 
-    Uses BRepMesh_IncrementalMesh with tight tolerances, then repairs
-    any small holes caused by null triangulation faces.
+    Uses BRepMesh_IncrementalMesh with moderate tolerances (0.01mm linear)
+    to avoid non-manifold edges from null triangulation on thin faces.
+    Repairs small holes if any remain.
     """
     import tempfile
     from OCP.StlAPI import StlAPI_Writer
