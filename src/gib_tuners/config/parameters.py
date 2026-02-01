@@ -219,9 +219,13 @@ class PegHeadParams:
     # Shaft (new, added programmatically)
     shaft_diameter: float = 4.0  # Bearing section diameter
     worm_length: float = 7.8  # From gear config manufacturing.worm_length_mm
-    shaft_gap: float = 0.2  # Gap between worm end and frame cavity end
-    bearing_wall: float = 1.1  # Frame wall thickness (measured)
+    # Axial play for free rotation (gap between cap and frame)
+    peg_bearing_axial_play: float = 0.2
     washer_clearance: float = 0.1  # Extension beyond frame
+
+    def get_bearing_wall(self, wall_thickness: float) -> float:
+        """Bearing section length = wall + axial play."""
+        return wall_thickness + self.peg_bearing_axial_play
 
     # M2 tap hole
     tap_drill: float = 1.6  # M2 tap drill diameter
@@ -236,15 +240,28 @@ class PegHeadParams:
     washer_id: float = 2.7  # M2.5 washer ID (M2 screw head still captures it)
     washer_thickness: float = 0.5  # M2.5 washer thickness
 
-    @property
-    def shaft_length(self) -> float:
-        """Total shaft length from shoulder to end."""
-        return self.worm_length + self.shaft_gap + self.bearing_wall + self.washer_clearance
+    def get_shaft_length(self, wall_thickness: float) -> float:
+        """Total shaft length from shoulder to end.
+
+        Note: No explicit shaft_gap is needed because the worm is centered
+        in the cavity, which provides clearance on both sides.
+        Protrusion beyond frame = peg_bearing_axial_play.
+        """
+        return (
+            self.worm_length +
+            self.get_bearing_wall(wall_thickness)
+        )
 
 
 @dataclass(frozen=True)
 class StringPostParams:
-    """Parameters for the string post (Swiss screw machined)."""
+    """Parameters for the string post (Swiss screw machined).
+
+    Note: bearing_length and dd_cut_length are DERIVED values:
+    - bearing_length = wall_thickness + post_bearing_axial_play
+    - dd_cut_length = wheel.face_width - dd_cut_clearance
+    Use get_bearing_length() and get_dd_cut_length() methods.
+    """
     # Cap (decorative top)
     cap_diameter: float = 7.5
     cap_height: float = 1.0
@@ -256,11 +273,14 @@ class StringPostParams:
 
     # Frame bearing section
     bearing_diameter: float = 4.0
-    bearing_length: float = 1.1  # Through frame wall (matches wall_thickness)
+    # Axial play for free rotation (see spec.md Section 5a)
+    # This gap allows the post+wheel assembly to rotate freely in the frame
+    post_bearing_axial_play: float = 0.2
 
     # Wheel interface (matches balanced wheel bore)
     dd_cut: DDCutParams = DDCutParams(diameter=3.25, flat_depth=0.45, across_flats=2.35)
-    dd_cut_length: float = 7.6  # Matches wheel face width
+    # Clearance ensures screw clamps wheel to shoulder (DD doesn't bottom out in wheel bore)
+    dd_cut_clearance: float = 0.1
 
     # M2 tap bore (drilled into bottom of DD section for screw retention)
     thread_size: str = "M2"
@@ -271,14 +291,26 @@ class StringPostParams:
     string_hole_diameter: float = 1.5
     string_hole_position: float = 2.75  # Centered in visible post (post_height / 2)
 
-    @property
-    def total_length(self) -> float:
+    def get_bearing_length(self, wall_thickness: float) -> float:
+        """Bearing length = wall + axial play.
+
+        The bearing section passes through the frame wall and protrudes
+        into the cavity by axial_play amount. This creates the gap that
+        allows free rotation.
+        """
+        return wall_thickness + self.post_bearing_axial_play
+
+    def get_dd_cut_length(self, wheel_face_width: float) -> float:
+        """DD cut is slightly shorter than wheel to ensure screw clamps wheel to shoulder."""
+        return wheel_face_width - self.dd_cut_clearance
+
+    def get_total_length(self, wall_thickness: float, wheel_face_width: float) -> float:
         """Total length from DD bottom to cap top."""
         return (
             self.cap_height +
             self.post_height +
-            self.bearing_length +
-            self.dd_cut_length
+            self.get_bearing_length(wall_thickness) +
+            self.get_dd_cut_length(wheel_face_width)
         )
 
 

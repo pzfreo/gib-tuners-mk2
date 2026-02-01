@@ -61,10 +61,18 @@ def create_tuner_unit(
     box_outer = frame.box_outer * scale
     wall = frame.wall_thickness * scale
 
-    # String post dimensions
+    # String post dimensions (derived from frame and wheel)
     post_params = config.string_post
-    dd_h = post_params.dd_cut_length * scale
-    bearing_h = post_params.bearing_length * scale
+    wheel_face_width = config.gear.wheel.face_width
+    dd_h = post_params.get_dd_cut_length(wheel_face_width) * scale
+    bearing_h = post_params.get_bearing_length(frame.wall_thickness) * scale
+
+    # Apply mesh rotation from config (pre-calculated for optimal tooth alignment)
+    # For LH, negate rotation because mirroring changes tooth angular positions:
+    # tooth at θ → tooth at (180° - θ), so optimal rotation becomes -mesh_rotation
+    mesh_rotation = config.gear.mesh_rotation_deg
+    if config.hand == Hand.LEFT:
+        mesh_rotation = -mesh_rotation
 
     # String post - positioned so bearing section fills the mounting plate hole
     # Post coordinate system: Z=0 at bottom of DD section, builds upward
@@ -76,6 +84,9 @@ def create_tuner_unit(
     # Therefore: post_z_offset = -wall - dd_h
     # Which means: post Z=dd_h+bearing_h aligns with frame Z=0 (top surface)
     post = create_string_post(config)
+    # Rotate post DD section to match wheel bore orientation
+    if mesh_rotation != 0.0:
+        post = post.rotate(Axis.Z, mesh_rotation)
     post_z_offset = -(dd_h + bearing_h)
     post = post.locate(Location((0, 0, post_z_offset)))
 
@@ -97,12 +108,7 @@ def create_tuner_unit(
     wheel_params = config.gear.wheel
     face_width = wheel_params.face_width * scale
 
-    # Apply mesh rotation from config (pre-calculated for optimal tooth alignment)
-    # For LH, negate rotation because mirroring changes tooth angular positions:
-    # tooth at θ → tooth at (180° - θ), so optimal rotation becomes -mesh_rotation
-    mesh_rotation = config.gear.mesh_rotation_deg
-    if config.hand == Hand.LEFT:
-        mesh_rotation = -mesh_rotation
+    # Apply same mesh rotation to wheel (already calculated above)
     if mesh_rotation != 0.0:
         wheel = wheel.rotate(Axis.Z, mesh_rotation)
 
@@ -163,7 +169,7 @@ def create_tuner_unit(
         # Peg retention washer - sits on bearing shaft end
         peg_washer = create_peg_retention_washer(config)
         peg_params = config.peg_head
-        shaft_length = peg_params.shaft_length * scale
+        shaft_length = peg_params.get_shaft_length(frame.wall_thickness) * scale
         washer_thickness = peg_params.washer_thickness * scale
 
         # Shaft end position:

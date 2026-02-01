@@ -163,7 +163,7 @@ The `reference/` directory contains:
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | Frame outer | 10.0mm | Square tube dimension |
-| Wall thickness | 1.0mm | Tube wall |
+| Wall thickness | 1.1mm | Tube wall (**FIXED** - manufacturing constraint) |
 | Housing length | 16.2mm | Each rigid box section |
 | End length | 10.0mm | Frame end to housing edge |
 | Num housings | 5 (default) | Tuning stations (1 to N) |
@@ -171,3 +171,13 @@ The `reference/` directory contains:
 | Total length | *computed* | 145.0mm for 5 housings |
 | Center distance | 5.75mm | Worm-to-wheel axis distance |
 | Gear module | 0.5 | M0.5 worm drive (cylindrical or globoid) |
+
+## Manufacturing Constraints
+
+**Wall thickness is fixed at 1.1mm** - this is determined by the brass box section stock used in manufacturing. Never change this value.
+
+To create axial play for rotating assemblies, we extend the shafts:
+- String post bearing section = `wall_thickness + post_bearing_axial_play` (1.3mm)
+- Peg head bearing section = `wall_thickness + peg_bearing_axial_play` (1.3mm)
+
+This allows the frame to "float" between the clamping surfaces, enabling free rotation.

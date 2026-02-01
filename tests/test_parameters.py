@@ -162,13 +162,17 @@ class TestLoadGearParams:
 class TestDerivedParameters:
     """Tests for parameters derived from gear config."""
 
-    def test_dd_cut_length_equals_wheel_face_width(self, gear_json_path):
-        """Test that dd_cut_length is derived from wheel face width."""
+    def test_dd_cut_length_shorter_than_wheel(self, gear_json_path):
+        """Test that dd_cut_length is wheel.face_width minus clearance."""
         if not gear_json_path.exists():
             pytest.skip("Gear JSON file not found")
 
         config = create_default_config(gear_json_path=gear_json_path)
-        assert config.string_post.dd_cut_length == config.gear.wheel.face_width
+        wheel_face_width = config.gear.wheel.face_width
+        dd_cut_length = config.string_post.get_dd_cut_length(wheel_face_width)
+        clearance = config.string_post.dd_cut_clearance
+        assert dd_cut_length == wheel_face_width - clearance
+        assert clearance == 0.1  # Ensures screw clamps wheel to shoulder
 
     def test_worm_entry_hole_derived_from_shoulder_diameter(self, gear_json_path):
         """Test that worm_entry_hole is derived from peg shoulder diameter."""

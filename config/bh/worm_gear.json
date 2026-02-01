@@ -28,7 +28,7 @@
   },
   "assembly": {
     "centre_distance_mm": 5.9,
-    "pressure_angle_deg": 25,
+    "pressure_angle_deg": 20,
     "backlash_mm": 0,
     "hand": "right",
     "ratio": 10

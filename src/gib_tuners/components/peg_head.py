@@ -14,7 +14,9 @@ Structure (from peg head toward bearing end):
 - Shaft: bearing end (generated, 3.5mm diameter)
 - M2 tap hole: 4mm deep from shaft end (extends into worm)
 
-Shaft length = worm_length + shaft_gap + bearing_wall + washer_clearance
+Shaft length = worm_length + bearing_wall
+(No shaft_gap needed - worm centering provides clearance.
+Protrusion beyond frame = peg_bearing_axial_play.)
 """
 
 from pathlib import Path
@@ -97,9 +99,11 @@ def create_peg_head(
     peg_head = peg_head_full & keep_box
 
     # Get shaft dimensions from params
-    # Compute shaft length using provided worm_length
+    # Compute shaft length using provided worm_length and derived bearing_wall
     shaft_dia = params.shaft_diameter
-    shaft_length = worm_len + params.shaft_gap + params.bearing_wall + params.washer_clearance
+    wall_thickness = config.frame.wall_thickness
+    bearing_wall = params.get_bearing_wall(wall_thickness)
+    shaft_length = worm_len + bearing_wall
 
     # Create new shaft
     new_shaft = Cylinder(

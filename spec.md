@@ -314,23 +314,27 @@ The worm thread is imported from `reference/worm_m0.5_z1.step` (regenerate at 7.
 
 | Section | Diameter | Length | Description |
 |---------|----------|--------|-------------|
-| Wheel interface | 3.5mm DD cut | 7.5mm | Mates with wheel DD bore (matches wheel width) |
+| DD cut (wheel interface) | 3.25mm DD | *derived* | = `wheel.face_width` (7.6-7.7mm) |
 | M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
-| Frame bearing | 4.0mm | 1.0mm | Runs in ø4.05mm top frame hole (reamed) |
+| Frame bearing | 4.0mm | *derived* | = `wall_thickness + axial_play` (1.3mm) |
 | Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
 | String hole | ø1.5mm | through | Cross-drilled, centered in post (2.75mm from frame) |
 | Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
 
-**Total length:** ~15.0mm (DD bottom to cap top)
+**Derived lengths:**
+- `bearing_length` = `wall_thickness` (1.1mm) + `post_bearing_axial_play` (0.2mm) = **1.3mm**
+- `dd_cut_length` = `wheel.face_width` - `dd_cut_clearance` = **7.5mm** (balanced) or **7.6mm** (bh)
+
+**Total length:** cap + post + bearing + DD = 1.0 + 5.5 + 1.3 + 7.5 = **15.3mm** (balanced)
 
 ### **DD Cut Shaft Interface**
 
-The string post has a 3.5mm DD cut section to mate with the wheel's DD bore:
+The string post has a 3.25mm DD cut section to mate with the wheel's DD bore:
 
-* **Shaft diameter:** 3.5mm
-* **Flat depth:** ~0.5mm (each side, 14% of diameter)
-* **Across flats:** ~2.5mm
-* **Length:** 7.5mm (matches wheel width)
+* **Shaft diameter:** 3.25mm
+* **Flat depth:** 0.45mm (each side, 14% of diameter)
+* **Across flats:** 2.35mm
+* **Length:** = `wheel.face_width` (7.6-7.7mm, derived from gear config)
 
 ### **M2 Tap Bore Retention**
 
@@ -356,6 +360,67 @@ An M2 screw threads into the tap bore from below, with a washer to retain the wh
 2. Slide wheel up from below through inlet (8mm) onto DD section
 3. Place M2 washer on bottom of DD
 4. Thread M2 screw into tap bore to retain wheel
+
+## **5a. Post/Wheel/Frame Sandwich Mechanism**
+
+The string post and wheel rotate as a unit. The frame is NOT clamped between them—instead, the frame floats with axial clearance.
+
+### Clamping Mechanism
+
+When the M2 retention screw is tightened:
+1. Screw pulls wheel upward toward post
+2. Wheel rises until it contacts the **4mm→3.25mm shoulder** on the post
+3. Post shoulder (6mm→4mm) rests on frame top surface
+4. Frame floats between these two reference points with axial play
+
+### Cross-Section (Y-Z plane through post axis)
+
+```
+                    ┌─────────────────┐
+                    │   POST (6mm)    │
+POST SHOULDER ══════╧═════════════════╧══════  ← rests on frame top (Z=0)
+─────────────────────────────────────────────  FRAME TOP SURFACE
+░░░░░░░░░░░░░░░░░░░░│░░░░░░░░░░░░░░░░░░░░░░░  wall (1.1mm)
+─────────────────────│───────────────────────  CAVITY CEILING (Z=-1.1)
+                     │ bearing (4mm Ø)
+                     │    ↕ axial_play        ← FREE GAP (frame floats here)
+    ─────────────────┼───────────────────────  CLAMP SHOULDER (Z=-1.3)
+                     │ DD section (3.25mm)    ↑
+                ┌────┴────┐                   │ wheel pulled up by screw
+                │  WHEEL  │                   │
+                │         │                   │
+        ────────┘         └────────           ← CAVITY FLOOR (8mm inlet hole)
+                │         │
+                └────┬────┘                   wheel extends through hole
+                     │
+                   [M2 screw from below]
+```
+
+**Note:** The wheel inlet hole (8mm) is larger than the wheel OD, allowing the wheel to extend below the frame. The wheel is NOT constrained by cavity floor—only by the clamp shoulder above and the M2 screw below.
+
+### Parametric Constraints
+
+| Parameter | Formula | Value |
+|-----------|---------|-------|
+| `wall_thickness` | design choice | 1.1mm |
+| `post_bearing_axial_play` | design choice | 0.2mm |
+| `wheel.face_width` | from gear config | 7.6-7.7mm |
+| `dd_cut_clearance` | design choice | 0.1mm |
+| `bearing_length` | `wall_thickness + axial_play` | 1.3mm |
+| `dd_cut_length` | `wheel.face_width - dd_cut_clearance` | 7.5-7.6mm |
+
+**Key points:**
+- `axial_play` is a design choice (0.2mm provides free rotation)
+- Wheel extends through 8mm inlet hole—no cavity floor constraint
+- DD cut is 0.1mm shorter than wheel to ensure screw clamps wheel to shoulder
+- Bearing length > wall thickness ensures axial play exists
+
+### Why This Works
+
+- **Axial play** allows free rotation without binding
+- **Bearing section > wall** positions the clamp shoulder inside cavity
+- **DD cut = wheel width** ensures full anti-rotation engagement
+- **Frame floats** on the bearing with clearance, never clamped
 
 ## **6\. Manufacturing Process (Step-by-Step)**
 
