@@ -6,10 +6,10 @@
     "worm_starts": 1,
     "wheel_teeth": 10
   },
-  "analysis_timestamp": "2026-02-01T00:13:48.220338",
+  "analysis_timestamp": "2026-02-01T11:11:38.329546",
   "mesh_alignment": {
-    "optimal_rotation_deg": 23.8,
-    "interference_volume_mm3": 0.006619144918652668,
+    "optimal_rotation_deg": 23.850930239273193,
+    "interference_volume_mm3": 0.0070908829419437346,
     "within_tolerance": true,
     "tooth_pitch_deg": 36.0,
     "worm_position": {
@@ -17,24 +17,24 @@
       "y_mm": 5.9,
       "z_mm": 0.0
     },
-    "message": "Good mesh - interference 0.0066mm\u00b3 within tolerance (reduced by 3.7614mm\u00b3 from unrotated position)"
+    "message": "Good mesh - interference 0.0071mm\u00b3 within tolerance (reduced by 4.2380mm\u00b3 from unrotated position)"
   },
   "rim_thickness": {
     "wheel": {
-      "minimum_thickness_mm": 0.8544,
-      "bore_diameter_mm": 3.25,
+      "minimum_thickness_mm": 0.6105,
+      "bore_diameter_mm": 3.5,
       "is_valid": true,
-      "has_warning": false,
+      "has_warning": true,
       "warning_threshold_mm": 0.75,
-      "message": "Wheel rim thickness: 0.85mm",
+      "message": "Warning: wheel rim thickness (0.61mm) is below recommended minimum (0.75mm)",
       "measurement_point_bore": {
-        "x_mm": 0.9321,
-        "y_mm": 1.3311,
+        "x_mm": -1.6904,
+        "y_mm": 0.4529,
         "z_mm": 0.0
       },
       "measurement_point_outer": {
-        "x_mm": 1.4221,
-        "y_mm": 2.031,
+        "x_mm": -2.2801,
+        "y_mm": 0.6109,
         "z_mm": 0.0
       }
     }

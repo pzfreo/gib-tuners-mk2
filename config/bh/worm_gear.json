@@ -39,14 +39,14 @@
     },
     "wheel": {
       "bore_type": "custom",
-      "bore_diameter_mm": 3.25,
+      "bore_diameter_mm": 3.5,
       "anti_rotation": "ddcut"
     }
   },
   "manufacturing": {
     "profile": "ZI",
     "virtual_hobbing": true,
-    "hobbing_steps": 72,
+    "hobbing_steps": 36,
     "worm_length_mm": 7.7,
     "wheel_width_mm": 7.7
   },
