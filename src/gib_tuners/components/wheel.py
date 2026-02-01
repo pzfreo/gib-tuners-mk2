@@ -22,6 +22,7 @@ from build123d import (
 
 from ..config.parameters import BuildConfig
 from ..features.dd_cut import create_dd_cut_bore
+from ..utils.validation import check_shape_quality
 
 
 def load_wheel(step_path: Path) -> Part:
@@ -43,14 +44,19 @@ def load_wheel(step_path: Path) -> Part:
 
     # import_step can return various types depending on STEP content
     if isinstance(shapes, Part):
-        return shapes
+        wheel = shapes
     elif hasattr(shapes, "wrapped"):
         # Solid, Compound, or other Shape subclass
-        return Part(shapes.wrapped)
+        wheel = Part(shapes.wrapped)
     elif isinstance(shapes, list) and len(shapes) > 0:
-        return Part(shapes[0].wrapped)
+        wheel = Part(shapes[0].wrapped)
     else:
         raise ValueError(f"No valid geometry found in {step_path}")
+
+    # Check shape quality (warns if non-manifold edges detected)
+    check_shape_quality(wheel, f"wheel ({step_path.name})")
+
+    return wheel
 
 
 def modify_wheel_bore(
@@ -231,5 +237,8 @@ def create_wheel_placeholder(config: BuildConfig) -> Part:
     # Add DD bore (centered)
     dd_bore = create_dd_cut_bore(wheel_params.bore, face_width + 0.2, scale)
     wheel = wheel - dd_bore
+
+    # Check shape quality (warns if non-manifold edges detected)
+    check_shape_quality(wheel, "wheel_placeholder")
 
     return wheel
