@@ -275,7 +275,7 @@ class StringPostParams:
     bearing_diameter: float = 4.0
     # Axial play for free rotation (see spec.md Section 5a)
     # This gap allows the post+wheel assembly to rotate freely in the frame
-    post_bearing_axial_play: float = 0.2
+    post_bearing_axial_play: float = 0.1
 
     # Wheel interface (matches balanced wheel bore)
     dd_cut: DDCutParams = DDCutParams(diameter=3.25, flat_depth=0.45, across_flats=2.35)
