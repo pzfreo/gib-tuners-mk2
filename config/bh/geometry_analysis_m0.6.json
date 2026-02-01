@@ -1,0 +1,42 @@
+{
+  "design_info": {
+    "module_mm": 0.6,
+    "ratio": 10,
+    "centre_distance_mm": 5.9,
+    "worm_starts": 1,
+    "wheel_teeth": 10
+  },
+  "analysis_timestamp": "2026-02-01T00:13:48.220338",
+  "mesh_alignment": {
+    "optimal_rotation_deg": 23.8,
+    "interference_volume_mm3": 0.006619144918652668,
+    "within_tolerance": true,
+    "tooth_pitch_deg": 36.0,
+    "worm_position": {
+      "x_mm": 0.0,
+      "y_mm": 5.9,
+      "z_mm": 0.0
+    },
+    "message": "Good mesh - interference 0.0066mm\u00b3 within tolerance (reduced by 3.7614mm\u00b3 from unrotated position)"
+  },
+  "rim_thickness": {
+    "wheel": {
+      "minimum_thickness_mm": 0.8544,
+      "bore_diameter_mm": 3.25,
+      "is_valid": true,
+      "has_warning": false,
+      "warning_threshold_mm": 0.75,
+      "message": "Wheel rim thickness: 0.85mm",
+      "measurement_point_bore": {
+        "x_mm": 0.9321,
+        "y_mm": 1.3311,
+        "z_mm": 0.0
+      },
+      "measurement_point_outer": {
+        "x_mm": 1.4221,
+        "y_mm": 2.031,
+        "z_mm": 0.0
+      }
+    }
+  }
+}

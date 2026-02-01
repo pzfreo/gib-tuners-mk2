@@ -4,18 +4,23 @@
 Exports individual components (frame, string_post, peg_head, wheel) with
 left-hand variants created by mirroring the right-hand geometry.
 
+Runs interference check before exporting (use --no-interference to skip).
+
 Usage:
     # Build all at 2x scale (both hands, both formats)
-    python scripts/build.py --scale 2.0
+    python scripts/build.py --gear balanced --scale 2.0
 
     # Build RH only, 3-gang frame
-    python scripts/build.py --hand right --num-housings 3
+    python scripts/build.py --gear balanced --hand right --num-housings 3
 
     # STL only
-    python scripts/build.py --format stl
+    python scripts/build.py --gear balanced --format stl
 
     # STEP only for CAD work
-    python scripts/build.py --format step
+    python scripts/build.py --gear balanced --format step
+
+    # Skip interference check
+    python scripts/build.py --gear balanced --no-interference
 """
 
 import argparse
@@ -33,6 +38,7 @@ from gib_tuners.components.frame import create_frame
 from gib_tuners.components.peg_head import create_peg_head
 from gib_tuners.components.string_post import create_string_post
 from gib_tuners.components.wheel import load_wheel, create_wheel_placeholder
+from gib_tuners.assembly.gang_assembly import create_positioned_assembly, run_interference_report
 from gib_tuners.export.stl_export import export_stl
 from gib_tuners.export.step_export import export_step
 from gib_tuners.utils.mirror import mirror_for_left_hand
@@ -129,6 +135,12 @@ Examples:
         "-v", "--verbose",
         action="store_true",
         help="Verbose output",
+    )
+
+    parser.add_argument(
+        "--no-interference",
+        action="store_true",
+        help="Skip interference check",
     )
 
     parser.add_argument(
@@ -252,6 +264,38 @@ def main() -> int:
     print(f"Hands: {args.hand}, Format: {args.format}")
     print(f"Output directory: {output_dir}")
     print()
+
+    # Run interference check before exporting
+    if not args.no_interference:
+        print("Checking for interference...")
+        interference_failed = False
+
+        if build_rh:
+            rh_assembly = create_positioned_assembly(
+                config,
+                wheel_step_path=gear_paths.wheel_step,
+                worm_step_path=gear_paths.worm_step,
+            )
+            print("RH Interference:")
+            if not run_interference_report(rh_assembly):
+                interference_failed = True
+
+        if build_lh:
+            lh_config = replace(config, hand=Hand.LEFT)
+            lh_assembly = create_positioned_assembly(
+                lh_config,
+                wheel_step_path=gear_paths.wheel_step,
+                worm_step_path=gear_paths.worm_step,
+            )
+            print("LH Interference:")
+            if not run_interference_report(lh_assembly):
+                interference_failed = True
+
+        if interference_failed:
+            print("\nWARNING: Interference detected! Components may not fit correctly.")
+            print("Continuing with export anyway...\n")
+        else:
+            print()
 
     exported = []
 

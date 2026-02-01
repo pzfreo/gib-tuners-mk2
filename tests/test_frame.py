@@ -114,13 +114,16 @@ class TestStringPostGeometry:
     def test_string_post_total_length(self, production_config):
         """Test string post total length calculation."""
         params = production_config.string_post
+        wall_thickness = production_config.frame.wall_thickness
+        wheel_face_width = production_config.gear.wheel.face_width
         expected = (
             params.cap_height +
             params.post_height +
-            params.bearing_length +
-            params.dd_cut_length
+            params.get_bearing_length(wall_thickness) +
+            params.get_dd_cut_length(wheel_face_width)
         )
-        assert abs(params.total_length - expected) < 0.01
+        actual = params.get_total_length(wall_thickness, wheel_face_width)
+        assert abs(actual - expected) < 0.01
 
 
 class TestPegHeadGeometry:

@@ -171,22 +171,24 @@ def calculate_worm_z(config: "BuildConfig") -> float:
         # Calculate wheel_z
         post_params = config.string_post
         gear_params = config.gear
-        dd_h = post_params.dd_cut_length * scale
-        bearing_h = post_params.bearing_length * scale
+        frame_params = config.frame
+        face_width = gear_params.wheel.face_width
+        dd_h = post_params.get_dd_cut_length(face_width) * scale
+        bearing_h = post_params.get_bearing_length(frame_params.wall_thickness) * scale
         post_z_offset = -(dd_h + bearing_h)
-        face_width = gear_params.wheel.face_width * scale
-        return post_z_offset + face_width / 2
+        return post_z_offset + (face_width * scale) / 2
 
     # AUTO mode: detect based on worm type and virtual_hobbing
     if requires_worm_alignment(config):
         # Aligned: calculate wheel_z
         post_params = config.string_post
         gear_params = config.gear
-        dd_h = post_params.dd_cut_length * scale
-        bearing_h = post_params.bearing_length * scale
+        frame_params = config.frame
+        face_width = gear_params.wheel.face_width
+        dd_h = post_params.get_dd_cut_length(face_width) * scale
+        bearing_h = post_params.get_bearing_length(frame_params.wall_thickness) * scale
         post_z_offset = -(dd_h + bearing_h)
-        face_width = gear_params.wheel.face_width * scale
-        return post_z_offset + face_width / 2
+        return post_z_offset + (face_width * scale) / 2
 
     # Default: centered in frame
     return -box_outer / 2
@@ -376,21 +378,22 @@ def create_default_config(
     # Use default wall_thickness from FrameParams for bearing dimensions
     default_wall = frame_overrides.get("wall_thickness", FrameParams().wall_thickness)
 
-    # Derive StringPostParams - bearing_length must match frame wall_thickness
-    # Apply any overrides from tuner_config.json
+    # Create StringPostParams
+    # Note: bearing_length and dd_cut_length are now DERIVED via methods:
+    #   - get_bearing_length(wall_thickness) = wall + axial_play
+    #   - get_dd_cut_length(wheel_face_width) = wheel.face_width
+    # The dd_cut shape params come from the wheel bore (DD cut interface)
     string_post_kwargs = {
         "dd_cut": gear.wheel.bore,
-        "dd_cut_length": gear.wheel.face_width,
-        "bearing_length": default_wall,
     }
     string_post_kwargs.update(string_post_overrides)
     string_post = StringPostParams(**string_post_kwargs)
 
-    # Derive PegHeadParams - bearing_wall must match frame wall_thickness
-    # Apply any overrides from tuner_config.json
+    # Create PegHeadParams
+    # Note: bearing section length is DERIVED via get_bearing_wall(wall_thickness)
+    # = wall_thickness + peg_bearing_axial_play
     peg_head_kwargs = {
         "worm_length": gear.worm.length,
-        "bearing_wall": default_wall,
     }
     peg_head_kwargs.update(peg_head_overrides)
     peg_head = PegHeadParams(**peg_head_kwargs)
@@ -425,9 +428,9 @@ def create_default_config(
     #
     # When worm is centered in frame (cylindrical, no hobbing),
     # we calculate the Z offset and apply helix geometry correction.
-    dd_h = string_post.dd_cut_length
-    bearing_h = string_post.bearing_length
     face_width = gear.wheel.face_width
+    dd_h = string_post.get_dd_cut_length(face_width)
+    bearing_h = string_post.get_bearing_length(frame.wall_thickness)
     box_outer = frame.box_outer
     lead = gear.worm.lead
     ratio = gear.ratio

@@ -47,9 +47,11 @@ def create_string_post(config: BuildConfig) -> Part:
     post_h = params.post_height * scale
 
     bearing_d = params.bearing_diameter * scale
-    bearing_h = params.bearing_length * scale
-
-    dd_length = params.dd_cut_length * scale
+    # bearing_length and dd_cut_length are derived from frame and wheel params
+    wall_thickness = config.frame.wall_thickness
+    wheel_face_width = config.gear.wheel.face_width
+    bearing_h = params.get_bearing_length(wall_thickness) * scale
+    dd_length = params.get_dd_cut_length(wheel_face_width) * scale
 
     # M2 tap bore: 1.6mm pilot hole diameter, thread_length deep
     tap_bore_d = 1.6 * scale  # M2 tap drill size
