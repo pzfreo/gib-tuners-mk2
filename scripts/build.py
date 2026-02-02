@@ -171,14 +171,12 @@ Examples:
     return parser.parse_args()
 
 
-def export_stl_quality(shape, path: Path, linear_tol: float = 0.01, angular_tol: float = 0.5):
-    """Export STL with explicit tessellation and mesh repair.
+def export_stl_raw(shape, path: Path, linear_tol: float = 0.01, angular_tol: float = 0.5):
+    """Export STL with explicit tessellation (no repair).
 
     Uses BRepMesh_IncrementalMesh with moderate tolerances (0.01mm linear)
     to avoid non-manifold edges from null triangulation on thin faces.
-    Repairs small holes if any remain.
     """
-    import tempfile
     from OCP.StlAPI import StlAPI_Writer
     from OCP.BRepMesh import BRepMesh_IncrementalMesh
 
@@ -186,65 +184,93 @@ def export_stl_quality(shape, path: Path, linear_tol: float = 0.01, angular_tol:
     mesh_algo = BRepMesh_IncrementalMesh(wrapped, linear_tol, False, angular_tol, True)
     mesh_algo.Perform()
 
-    # Export to temp file first
-    with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as f:
-        temp_path = f.name
-
     writer = StlAPI_Writer()
-    writer.Write(wrapped, temp_path)
+    writer.Write(wrapped, str(path))
 
-    # Repair small holes using trimesh
+
+def repair_stl(stl_path: Path) -> str:
+    """Attempt to repair holes in STL mesh.
+
+    Uses PyMeshFix for robust multi-hole repair if available,
+    falls back to simple fan-triangulation for single holes.
+
+    Returns:
+        "repaired:pymeshfix" or "repaired:fan" if repair succeeded
+        "skipped:<reason>" if repair was skipped
+        "" if nothing to repair
+    """
     try:
         import trimesh
-        import numpy as np
-        from collections import defaultdict
-
-        mesh = trimesh.load(temp_path)
-
-        # Find boundary edges (holes)
-        edge_to_faces = defaultdict(list)
-        for fi, face in enumerate(mesh.faces):
-            for i in range(3):
-                edge = tuple(sorted([face[i], face[(i + 1) % 3]]))
-                edge_to_faces[edge].append(fi)
-
-        boundary_edges = [e for e, faces in edge_to_faces.items() if len(faces) == 1]
-
-        if boundary_edges and len(boundary_edges) <= 10:
-            # Build ordered boundary loop and fan triangulate to close hole
-            edges_set = set(boundary_edges)
-            loop = list(boundary_edges[0])
-            edges_set.remove(boundary_edges[0])
-
-            while edges_set:
-                last = loop[-1]
-                found = False
-                for e in list(edges_set):
-                    if last in e:
-                        next_v = e[0] if e[1] == last else e[1]
-                        if next_v != loop[0]:
-                            loop.append(next_v)
-                        edges_set.remove(e)
-                        found = True
-                        break
-                if not found:
-                    break
-
-            if len(loop) >= 3:
-                new_faces = [[loop[0], loop[i], loop[i + 1]] for i in range(1, len(loop) - 1)]
-                all_faces = np.vstack([mesh.faces, np.array(new_faces)])
-                mesh = trimesh.Trimesh(vertices=mesh.vertices, faces=all_faces)
-                mesh.fix_normals()
-
-        mesh.export(str(path))
+        mesh = trimesh.load(stl_path)
     except ImportError:
-        # trimesh not available, use raw export
-        import shutil
-        shutil.move(temp_path, str(path))
-    finally:
-        import os
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
+        return "skipped:trimesh unavailable"
+
+    # Check if repair is needed
+    from collections import Counter
+    edge_counts = Counter(tuple(sorted(e)) for e in mesh.edges)
+    boundary_edges = [e for e, c in edge_counts.items() if c == 1]
+
+    if not boundary_edges:
+        return ""  # Nothing to repair
+
+    # Try PyMeshFix first (handles complex multi-hole cases)
+    try:
+        import pymeshfix
+        mf = pymeshfix.MeshFix(mesh.vertices, mesh.faces)
+        mf.repair()
+        repaired = trimesh.Trimesh(mf.points, mf.faces)
+        repaired.export(str(stl_path))
+        return "repaired:pymeshfix"
+    except ImportError:
+        pass  # Fall through to simple repair
+    except Exception:
+        # PyMeshFix failed, try simple repair
+        pass
+
+    # Fallback: simple fan-triangulation for single holes
+    import numpy as np
+    from collections import defaultdict
+
+    edge_to_faces = defaultdict(list)
+    for fi, face in enumerate(mesh.faces):
+        for i in range(3):
+            edge = tuple(sorted([face[i], face[(i + 1) % 3]]))
+            edge_to_faces[edge].append(fi)
+
+    boundary_edges = [e for e, faces in edge_to_faces.items() if len(faces) == 1]
+
+    # Build ordered boundary loop
+    edges_set = set(boundary_edges)
+    loop = list(boundary_edges[0])
+    edges_set.remove(boundary_edges[0])
+
+    while edges_set:
+        last = loop[-1]
+        found = False
+        for e in list(edges_set):
+            if last in e:
+                next_v = e[0] if e[1] == last else e[1]
+                if next_v != loop[0]:
+                    loop.append(next_v)
+                edges_set.remove(e)
+                found = True
+                break
+        if not found:
+            break
+
+    # Check if we formed a complete loop
+    if edges_set:
+        return "skipped:multiple holes (install pymeshfix)"
+
+    if len(loop) >= 3:
+        new_faces = [[loop[0], loop[i], loop[i + 1]] for i in range(1, len(loop) - 1)]
+        all_faces = np.vstack([mesh.faces, np.array(new_faces)])
+        mesh = trimesh.Trimesh(vertices=mesh.vertices, faces=all_faces)
+        mesh.fix_normals()
+        mesh.export(str(stl_path))
+        return "repaired:fan"
+
+    return "skipped:loop too small"
 
 
 def check_stl_quality(stl_path: Path) -> tuple[int, bool]:
@@ -254,7 +280,8 @@ def check_stl_quality(stl_path: Path) -> tuple[int, bool]:
         from collections import Counter
         mesh = trimesh.load(stl_path)
         edge_counts = Counter(tuple(sorted(e)) for e in mesh.edges)
-        nme = sum(1 for c in edge_counts.values() if c > 2)
+        # Non-manifold = any edge not shared by exactly 2 faces (includes holes and T-junctions)
+        nme = sum(1 for c in edge_counts.values() if c != 2)
         return nme, mesh.is_watertight
     except Exception:
         return -1, False
@@ -277,18 +304,40 @@ def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[P
     if fmt in ("stl", "both"):
         stl_path = output_dir / f"{basename}.stl"
         try:
-            export_stl_quality(shape, stl_path)
+            # 1. Export raw STL
+            export_stl_raw(shape, stl_path)
             exported.append(stl_path)
-            # Check mesh quality
+
+            # 2. Check and report initial quality
             nme, watertight = check_stl_quality(stl_path)
             status = ""
             if nme > 0:
-                status += f" [WARNING: {nme} non-manifold edges]"
+                status += f" {nme} NME"
             if not watertight:
-                status += " [has holes]"
-            if not status:
-                status = " [OK]"
-            print(f"  -> {stl_path}{status}")
+                status += " holes"
+            if status:
+                print(f"  -> {stl_path} [{status.strip()}]")
+
+                # 3. Try to repair if there are issues
+                repair_result = repair_stl(stl_path)
+                if repair_result.startswith("repaired:"):
+                    method = repair_result.split(":", 1)[1]
+                    # 4. Report updated quality
+                    nme2, watertight2 = check_stl_quality(stl_path)
+                    status2 = ""
+                    if nme2 > 0:
+                        status2 += f" {nme2} NME"
+                    if not watertight2:
+                        status2 += " holes"
+                    if status2:
+                        print(f"     after {method}: [{status2.strip()}]")
+                    else:
+                        print(f"     after {method}: [OK]")
+                elif repair_result.startswith("skipped:"):
+                    reason = repair_result.split(":", 1)[1]
+                    print(f"     repair skipped: {reason}")
+            else:
+                print(f"  -> {stl_path} [OK]")
         except Exception as e:
             print(f"  STL export failed for {basename}: {e}")
 

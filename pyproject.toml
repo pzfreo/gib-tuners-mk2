@@ -18,6 +18,10 @@ dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
 ]
+mesh-repair = [
+    "pymeshfix>=0.17.0",
+    "pyvista>=0.40.0",
+]
 
 [project.scripts]
 gib-build = "scripts.build_all:main"
