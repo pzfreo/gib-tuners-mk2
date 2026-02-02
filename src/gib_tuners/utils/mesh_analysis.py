@@ -409,7 +409,7 @@ if __name__ == "__main__":
 
     theoretical = calculate_theoretical_wall(
         tap_drill_radius=0.8,
-        tap_depth=4.0,
+        tap_depth=3.0,  # M2x3 screw
         shaft_radius=2.0,
         bearing_shaft_length=1.3,
         worm_length=7.6,

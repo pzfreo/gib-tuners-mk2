@@ -229,11 +229,12 @@ class PegHeadParams:
 
     # M2 tap hole
     tap_drill: float = 1.6  # M2 tap drill diameter
-    tap_depth: float = 4.0  # Depth of tapped hole
+    tap_depth: float = 3.0  # Depth of tapped hole (M2x3 screw)
 
     # Retention hardware (M2 screw with M2.5 washer for better retention)
+    # String tension pulls worm into frame, so screw just holds in place
     screw_thread: str = "M2"
-    screw_length: float = 4.0  # M2 screw length (threads into tap bore)
+    screw_length: float = 3.0  # M2x3 screw length
     screw_head_diameter: float = 3.75  # M2 pan head OD (measured)
     screw_head_depth: float = 1.0  # M2 pan head height (measured)
     washer_od: float = 5.5  # M2.5 washer OD (larger for better frame overlap)
