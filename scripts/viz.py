@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Visualize tuner assembly in OCP viewer.
+"""Visualize tuner assembly in OCP viewer or export as 3MF/GLB.
 
 Usage:
     python scripts/viz.py                      # 5-gang RH at 1x
@@ -7,16 +7,19 @@ Usage:
     python scripts/viz.py -n 3 --hand left     # 3-gang LH
     python scripts/viz.py --scale 2.0          # 2x scale for prototyping
     python scripts/viz.py --no-interference    # Skip interference check
+    python scripts/viz.py --export out.3mf     # Export assembly as 3MF
+    python scripts/viz.py --export out.glb     # Export assembly as GLB
 """
 
 import argparse
 import sys
+import tempfile
 from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from build123d import Location
+from build123d import Location, export_stl
 
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.config.parameters import Hand, WormZMode
@@ -69,6 +72,12 @@ Examples:
         help="Skip interference check",
     )
     parser.add_argument(
+        "--export",
+        type=str,
+        metavar="PATH",
+        help="Export assembly as 3MF or GLB file (format from extension, skips OCP viewer)",
+    )
+    parser.add_argument(
         "--gear",
         type=str,
         required=True,
@@ -94,6 +103,65 @@ Examples:
     return parser.parse_args()
 
 
+def export_assembly(
+    assemblies: list,
+    output_path: str,
+    spacing: float = 0,
+) -> None:
+    """Export assembly parts as a colored 3MF or GLB file.
+
+    Args:
+        assemblies: List of (hand, config, assembly) tuples
+        output_path: Path to output file (.3mf or .glb)
+        spacing: X offset between assemblies when showing both hands
+    """
+    import trimesh
+    import os
+
+    scene = trimesh.Scene()
+
+    for i, (hand, config, assembly) in enumerate(assemblies):
+        hand_label = "RH" if hand == Hand.RIGHT else "LH"
+        if len(assemblies) > 1:
+            x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
+        else:
+            x_offset = 0
+
+        for name, part in assembly["all_parts"].items():
+            # Offset part if showing both hands
+            if x_offset != 0:
+                part = part.move(Location((x_offset, 0, 0)))
+
+            # Get color from COLOR_MAP
+            base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
+            color_tuple, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
+
+            # Convert build123d part to trimesh via temp STL
+            with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as f:
+                temp_path = f.name
+            try:
+                export_stl(part, temp_path)
+                mesh = trimesh.load(temp_path)
+                if isinstance(mesh, trimesh.Scene):
+                    mesh = mesh.to_geometry()
+            finally:
+                os.unlink(temp_path)
+
+            # Apply color (RGB 0-255)
+            r, g, b = [int(c * 255) for c in color_tuple]
+            a = int((alpha if alpha is not None else 1.0) * 255)
+            mesh.visual.face_colors = [r, g, b, a]
+
+            # Add to scene with unique name
+            display_name = f"{hand_label}_{name}" if len(assemblies) > 1 else name
+            scene.add_geometry(mesh, node_name=display_name, geom_name=display_name)
+
+    # Export scene (format determined by extension)
+    scene.export(output_path)
+    ext = Path(output_path).suffix.upper()
+    print(f"Exported {len(scene.geometry)} parts to {output_path} ({ext})")
+
+
 def main() -> int:
     # Handle --list-gears before argparse requires --gear
     if "--list-gears" in sys.argv:
@@ -104,13 +172,17 @@ def main() -> int:
 
     args = parse_args()
 
-    try:
-        from ocp_vscode import show_object
-    except ImportError:
-        print("Error: ocp-vscode not installed")
-        print("Install with: pip install ocp-vscode")
-        print("Then open VS Code with the OCP CAD Viewer extension.")
-        return 1
+    # Only require ocp_vscode if not exporting to 3MF
+    show_object = None
+    if not args.export:
+        try:
+            from ocp_vscode import show_object
+        except ImportError:
+            print("Error: ocp-vscode not installed")
+            print("Install with: pip install ocp-vscode")
+            print("Then open VS Code with the OCP CAD Viewer extension.")
+            print("Or use --export-3mf to export without visualization.")
+            return 1
 
     # Resolve gear config paths
     gear_paths = resolve_gear_config(args.gear)
@@ -174,37 +246,44 @@ def main() -> int:
     frame_width = assemblies[0][1].frame.box_outer * args.scale
     spacing = frame_width * 4  # Double spacing to avoid clashing
 
-    # Display all parts with colors
-    for i, (hand, config, assembly) in enumerate(assemblies):
-        hand_label = "RH" if hand == Hand.RIGHT else "LH"
-        if len(assemblies) > 1:
-            x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
-        else:
-            x_offset = 0
+    # Print housing centers
+    print(f"Housing centers: {[f'{y:.1f}' for y in assemblies[0][2]['housing_centers']]}")
 
-        if i == 0:
-            print(f"Housing centers: {[f'{y:.1f}' for y in assembly['housing_centers']]}")
+    # Export to 3MF or display in OCP viewer
+    if args.export:
+        export_assembly(assemblies, args.export, spacing)
+    else:
+        # Display all parts with colors in OCP viewer
+        for i, (hand, config, assembly) in enumerate(assemblies):
+            hand_label = "RH" if hand == Hand.RIGHT else "LH"
+            if len(assemblies) > 1:
+                x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
+            else:
+                x_offset = 0
 
-        for name, part in assembly["all_parts"].items():
-            # Offset part if showing both hands
-            if x_offset != 0:
-                part = part.move(Location((x_offset, 0, 0)))
+            for name, part in assembly["all_parts"].items():
+                # Offset part if showing both hands
+                if x_offset != 0:
+                    part = part.move(Location((x_offset, 0, 0)))
 
-            base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
-            color, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
-            opts = {"color": color}
-            if alpha is not None:
-                opts["alpha"] = alpha
+                base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
+                color, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
+                opts = {"color": color}
+                if alpha is not None:
+                    opts["alpha"] = alpha
 
-            display_name = f"{hand_label}_{name}" if len(assemblies) > 1 else name
-            show_object(part, name=display_name, options=opts)
+                display_name = f"{hand_label}_{name}" if len(assemblies) > 1 else name
+                show_object(part, name=display_name, options=opts)
 
-        # Interference report
-        if not args.no_interference:
+        print("\nVisualization sent to OCP viewer")
+
+    # Interference report
+    if not args.no_interference:
+        for hand, config, assembly in assemblies:
+            hand_label = "RH" if hand == Hand.RIGHT else "LH"
             print(f"\n{hand_label} Interference:")
             run_interference_report(assembly)
 
-    print("\nVisualization sent to OCP viewer")
     return 0
 
 
