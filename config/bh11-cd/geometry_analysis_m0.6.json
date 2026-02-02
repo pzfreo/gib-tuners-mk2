@@ -1,0 +1,42 @@
+{
+  "design_info": {
+    "module_mm": 0.6,
+    "ratio": 11,
+    "centre_distance_mm": 5.6,
+    "worm_starts": 1,
+    "wheel_teeth": 11
+  },
+  "analysis_timestamp": "2026-02-02T08:01:51.236247",
+  "mesh_alignment": {
+    "optimal_rotation_deg": 0.0,
+    "interference_volume_mm3": 0,
+    "within_tolerance": true,
+    "tooth_pitch_deg": 32.72727272727273,
+    "worm_position": {
+      "x_mm": 5.6,
+      "y_mm": 0.0,
+      "z_mm": 0.0
+    },
+    "message": "Pre-aligned during virtual hobbing (hobbing uses +X approach)"
+  },
+  "rim_thickness": {
+    "wheel": {
+      "minimum_thickness_mm": 0.9138,
+      "bore_diameter_mm": 3.5,
+      "is_valid": true,
+      "has_warning": false,
+      "warning_threshold_mm": 0.75,
+      "message": "Wheel rim thickness: 0.91mm",
+      "measurement_point_bore": {
+        "x_mm": -0.7396,
+        "y_mm": -1.586,
+        "z_mm": 0.0
+      },
+      "measurement_point_outer": {
+        "x_mm": -1.1258,
+        "y_mm": -2.4142,
+        "z_mm": 0.0
+      }
+    }
+  }
+}
