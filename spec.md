@@ -42,7 +42,7 @@ The build123d script shall support the following parameters:
 | `prototype_resin` | +0.10mm | +0.20mm | 1:1 resin print validation |
 | `prototype_fdm` | +0.20mm | +0.30mm | 2:1 FDM functional test |
 
-*Bearing holes: post bearing (4.05mm), peg bearing (4.05mm). Clearance holes: worm entry (7.05mm), wheel inlet (8.0mm).*
+*Bearing holes: post bearing (4.05mm), peg bearing (4.05mm). Clearance holes: worm entry (7.05mm), wheel inlet (5.1mm).*
 
 ### **Scale Parameter**
 | Parameter | Default | Description |
@@ -129,8 +129,8 @@ Housing positions are calculated to ensure symmetric 10mm ends:
 
 To enable assembly without soldering:
 
-1. **Bottom Face (Wheel Inlet):** ø8.0mm through-hole.
-   * *Function:* Allows the Worm Wheel (7.05mm OD) to be inserted from underneath.
+1. **Bottom Face (Wheel Inlet):** ø5.1mm through-hole.
+   * *Function:* Allows M2 washer/screw access for post retention. Wheel slides in sideways from open frame end.
 2. **Top Face (Post Bearing):** ø4.05mm through-hole (reamed).
    * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft, +0.05mm clearance).
 3. **Side Faces (Worm Axle):** Asymmetric through-holes.
@@ -141,7 +141,7 @@ To enable assembly without soldering:
 
 ## **3\. Component B: The Gear Set**
 
-* **Constraint:** The Worm Wheel must fit through the ø8.0mm hole in the bottom of the frame.
+* **Constraint:** Wheel slides in sideways from open frame end (worm must be installed first for globoid meshing).
 * **Module:** **0.6** (M0.6)
 * **Gear Ratio:** **10:1** (single-start worm, 10-tooth wheel)
 * **Pressure Angle:** **20°**
@@ -356,10 +356,16 @@ An M2 screw threads into the tap bore from below, with a washer to retain the wh
 
 ### **String Post Assembly Sequence**
 
-1. Insert string post from above through frame (4mm bearing through ø4.2mm hole)
-2. Slide wheel up from below through inlet (8mm) onto DD section
-3. Place M2 washer on bottom of DD
-4. Thread M2 screw into tap bore to retain wheel
+**Assembly Constraints:**
+- Worm MUST be installed first (required for globoid meshing, recommended for cylindrical)
+- Wheel (7.05mm OD) cannot fit through post bearing hole (4.05mm) - insert separately
+
+1. Install peg head (worm) first - secure with M2 screw + washer
+2. Slide wheel sideways into cavity from open frame end (meshes with worm)
+3. Insert string post from above through bearing hole (ø4.05mm)
+4. DD section engages wheel bore, creating the sandwich
+5. Tap M2 thread into post (stronger with wheel supporting the DD section)
+6. Thread M2 screw + washer through bottom hole (ø5.1mm) into tap bore
 
 ## **5a. Post/Wheel/Frame Sandwich Mechanism**
 
@@ -389,14 +395,12 @@ POST SHOULDER ══════╧═══════════════
                 ┌────┴────┐                   │ wheel pulled up by screw
                 │  WHEEL  │                   │
                 │         │                   │
-        ────────┘         └────────           ← CAVITY FLOOR (8mm inlet hole)
-                │         │
-                └────┬────┘                   wheel extends through hole
+        ────────┴─────────┴────────           ← CAVITY FLOOR (5.1mm inlet hole)
                      │
-                   [M2 screw from below]
+                   [M2 screw + washer from below]
 ```
 
-**Note:** The wheel inlet hole (8mm) is larger than the wheel OD, allowing the wheel to extend below the frame. The wheel is NOT constrained by cavity floor—only by the clamp shoulder above and the M2 screw below.
+**Note:** Wheel sits in cavity (7.05mm OD > 5.1mm hole). The 5.1mm inlet hole provides access for M2 screw + washer to retain the post. Wheel is constrained by clamp shoulder above and cavity floor below.
 
 ### Parametric Constraints
 
@@ -411,7 +415,7 @@ POST SHOULDER ══════╧═══════════════
 
 **Key points:**
 - `axial_play` is a design choice (0.1mm provides free rotation)
-- Wheel extends through 8mm inlet hole—no cavity floor constraint
+- Wheel sits in cavity (7.05mm OD > 5.1mm hole); enters sideways from open frame end
 - DD cut is 0.1mm shorter than wheel to ensure screw clamps wheel to shoulder
 - Bearing length > wall thickness ensures axial play exists
 
@@ -430,7 +434,7 @@ POST SHOULDER ══════╧═══════════════
 2. **Mill Profile:** Clamp stock. Mill away the Top and Side walls in the "Gap" sections to create the 5 isolated boxes.
 3. **Drill Vertical:**
    * Drill & ream **ø4.05mm** post bearing holes on Top Face (post shaft 4.0mm + 0.05mm clearance).
-   * Drill **ø8.0mm** wheel inlet holes on Bottom Face.
+   * Drill **ø5.1mm** wheel inlet holes on Bottom Face (M2 washer access).
    * Drill **ø3.0mm** mounting holes on Bottom Plate at specified Y positions.
 4. **Drill Horizontal (Asymmetric):**
    * Drill **ø7.05mm** worm entry holes on one side (worm OD 7.0mm + 0.2mm clearance).
@@ -472,13 +476,15 @@ Investment cast peg head with integral shaft and worm thread:
 
 ### **Phase 5: Assembly (The "Sandwich" Logic)**
 
-1. **Insert Peg Head Assembly:** Slide **Peg Head + Worm** through **Entry Hole** (ø7.05mm). The ø4.0mm shaft passes through opposite **Bearing Hole** (ø4.05mm).
-2. **Secure Peg Head:** Place **5.5mm washer** on shaft end, thread **M2 × 4mm pan head screw** to retain.
-3. **Insert Post:** Slide **String Post** from above through **Top Hole** (ø4.05mm).
-4. **Insert Wheel:** Slide **Worm Wheel** up through **Bottom Hole** (ø8mm) onto post's 3.25mm DD section.
-5. **Place Post Washer:** Add **M2 washer** (~5mm OD) on bottom of DD section.
-6. **Secure Wheel:** Thread **M2 × 4mm screw** into post tap bore to retain wheel.
-7. **Complete:** Peg head secured with M2 screw + washer, wheel secured with M2 screw + washer.
+**Assembly order: Worm → Wheel → Post** (worm must be in place first for globoid meshing).
+
+1. **Install Peg Head (Worm):** Slide **Peg Head + Worm** through **Entry Hole** (ø7.05mm). The ø4.0mm shaft passes through opposite **Bearing Hole** (ø4.05mm).
+2. **Secure Peg Head:** Place **5.5mm washer** on shaft end, thread **M2 × 3mm pan head screw** to retain.
+3. **Insert Wheel:** Slide **Worm Wheel** sideways into cavity from open frame end. Wheel (7.05mm OD) cannot fit through post bearing hole (4.05mm) - must insert separately.
+4. **Insert Post:** Slide **String Post** from above through **Top Hole** (ø4.05mm). DD section engages wheel bore.
+5. **Tap Post:** Drill and tap M2 hole in post (stronger with wheel supporting DD section).
+6. **Secure Post:** Thread **M2 × 3mm screw + washer** through **Bottom Hole** (ø5.1mm) into post tap bore.
+7. **Complete:** Peg head secured with M2 screw + washer, post secured with M2 screw + washer.
 
 ## **7\. The Left Hand (LH) Variant**
 
@@ -547,7 +553,7 @@ Before manufacturing, verify:
 - [x] Worm OD (7.0mm) fits within internal cavity height (7.8mm) ✓ 0.8mm clearance
 - [x] Worm OD (7.0mm) passes through entry hole (7.05mm) ✓ 0.2mm clearance
 - [x] Peg head shaft (4.0mm) fits in bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
-- [x] Wheel OD (7.05mm) passes through bottom hole (8.0mm) ✓ 0.8mm clearance
+- [x] Wheel (7.05mm OD) enters sideways from open frame end (worm first for globoid) ✓
 - [x] Post shaft (4.0mm) fits in top bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
 - [x] Post cap (7.5mm) stops pull-through top hole (4.05mm) ✓
 - [x] Peg head cap (8.5mm) stops pull-in through entry hole (7.05mm) ✓

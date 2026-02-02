@@ -60,7 +60,9 @@ class FrameParams:
     # Hole diameters (nominal, before tolerance adjustment)
     # Bearing holes use 0.05mm clearance (can be reamed at assembly if needed)
     post_bearing_hole: float = 4.05  # Top face, for string post shaft (4.0mm)
-    wheel_inlet_hole: float = 8.0  # Bottom face, for wheel insertion
+    # Wheel inlet: wheel slides in sideways, hole only needs to clear M2 washer
+    washer_od_for_inlet: float = 4.9  # M2 washer OD
+    wheel_inlet_tolerance: float = 0.2  # Clearance for washer fit
     worm_entry_hole: float = 7.2  # Side face, for worm insertion (> 7mm worm tip)
     peg_bearing_hole: float = 4.05  # Side face, for peg shaft bearing (4.0mm)
     mounting_hole: float = 3.0  # Bottom plate, for headstock bolts
@@ -69,6 +71,15 @@ class FrameParams:
     def box_inner(self) -> float:
         """Internal cavity dimension."""
         return self.box_outer - 2 * self.wall_thickness
+
+    @property
+    def wheel_inlet_hole(self) -> float:
+        """Wheel inlet hole sized for M2 washer + clearance.
+
+        Wheel slides in sideways from open frame end, not through this hole.
+        Hole only needs to clear washer for post retention screw.
+        """
+        return self.washer_od_for_inlet + self.wheel_inlet_tolerance
 
     @property
     def total_length(self) -> float:
