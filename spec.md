@@ -143,63 +143,62 @@ To enable assembly without soldering:
 
 * **Constraint:** Wheel slides in sideways from open frame end (worm must be installed first for globoid meshing).
 * **Module:** **0.6** (M0.6)
-* **Gear Ratio:** **10:1** (single-start worm, 10-tooth wheel)
 * **Pressure Angle:** **20°**
-* **Worm Type:** **Cylindrical** (default) or **Globoid** (for improved contact)
 
-*Note: Actual gear parameters are loaded from `config/<profile>/worm_gear.json`. Values below are defaults from the "balanced" profile.*
+**IMPORTANT:** All gear parameters (ratio, center distance, diameters, tooth counts) are defined in `config/<profile>/worm_gear.json`. The JSON file is the **source of truth** for gear geometry. Do not hardcode gear values in code or tests—always load from the JSON.
 
 ### **1\. Worm (Driver) - Integral to Peg Head**
 
 The worm thread is cast/machined as part of the peg head assembly (not a separate gear).
 
-* **Reference geometry:** `worm_m0.6_z1.step` (for tooth profile)
-* **Type:** Cylindrical (default) or Globoid
-* **Outer Diameter (tip):** **7.0mm**
-* **Pitch Diameter:** 5.8mm
-* **Root Diameter:** 4.3mm
-* **Length:** **7.8mm** (centered in 7.8mm cavity)
-* **Lead:** 1.885mm (π × module)
-* **Lead Angle:** 5.9°
+* **Reference geometry:** `config/<profile>/worm_m0.6_z1.step` (for tooth profile)
+* **Parameters:** Loaded from `config/<profile>/worm_gear.json` → `worm` section
 * **Hand:** Right (LH variant uses left-hand worm)
 * **Material:** Brass (cast with peg head)
+
+Key parameters from JSON:
+- `tip_diameter_mm` - Outer diameter
+- `pitch_diameter_mm` - For center distance calculation
+- `type` - Cylindrical or globoid
 
 *Note: Worm STEP file provides reference geometry for machining the thread on the cast peg head shaft.*
 
 ### **2\. Worm Wheel (Driven) - Separate Part**
 
-* **Source:** `wheel_m0.6_z10.step`
-* **Teeth:** 10
-* **Outer Diameter (tip):** **7.05mm**
-* **Pitch Diameter:** 6.0mm
-* **Root Diameter:** 4.5mm
-* **Bore:** **ø3.25mm DD cut** (double-D for anti-rotation)
-* **Face Width:** **7.6mm**
+* **Source:** `config/<profile>/wheel_m0.6_z<N>.step` (N = tooth count from JSON)
+* **Parameters:** Loaded from `config/<profile>/worm_gear.json` → `wheel` section
+* **Bore:** DD cut (from `features.wheel` in JSON)
 * **Material:** Brass
+
+Key parameters from JSON:
+- `num_teeth` - Tooth count (determines ratio)
+- `tip_diameter_mm` - Outer diameter
+- `pitch_diameter_mm` - For center distance calculation
+- `features.wheel.bore_diameter_mm` - DD cut bore diameter
 
 The wheel is a separate component that slides onto the string post and enables sandwich assembly.
 
 ### **DD Cut Bore Interface (Wheel Only)**
 
-* **Wheel bore:** ø3.25mm DD cut → mates with 3.25mm DD cut on string post
-* **Flat depth:** ~0.45mm (each side, 14% of diameter)
-* **Across flats:** ~2.35mm
+DD cut parameters are defined in `config/<profile>/worm_gear.json` → `features.wheel`:
+- `bore_diameter_mm` - Bore diameter (mates with string post DD section)
+- `anti_rotation` - Type of anti-rotation feature (ddcut)
 
 The DD cut is created by milling two parallel flats on the string post shaft.
 
 ### **Center Distance Calculation**
 
-* CD = (Worm PD + Wheel PD) / 2
-* CD = (5.8mm + 6.0mm) / 2 = **5.9mm**
+Center distance is defined in `config/<profile>/worm_gear.json` → `assembly.centre_distance_mm`.
+
+Formula: CD = (Worm PD + Wheel PD) / 2 (may vary with profile shift)
 
 ### **Assembly Parameters**
 
-| Parameter | Value |
-|-----------|-------|
-| Centre Distance | 5.9mm |
-| Pressure Angle | 20° |
-| Backlash | 0.0mm (configurable) |
-| Ratio | 10:1 |
+All assembly parameters are loaded from `config/<profile>/worm_gear.json` → `assembly` section:
+- `centre_distance_mm` - Worm-to-wheel axis distance
+- `pressure_angle_deg` - Standard 20°
+- `backlash_mm` - Configurable backlash
+- `ratio` - Gear ratio (equals wheel tooth count for single-start worm)
 
 ## **4\. Component C: The Peg Head Assembly**
 
@@ -497,8 +496,8 @@ Investment cast peg head with integral shaft and worm thread:
 ## **8\. Derived Dimensions for Manufacture**
 
 * **Center Distance (CD):** Distance from Worm Axis to Post Axis.
-  * CD = (Pitch Dia Worm + Pitch Dia Wheel) / 2
-  * CD = (5.8mm + 6.0mm) / 2 = **5.9mm**.
+  * Loaded from `config/<profile>/worm_gear.json` → `assembly.centre_distance_mm`
+  * Formula: CD = (Pitch Dia Worm + Pitch Dia Wheel) / 2 (may vary with profile shift)
 * **Vertical Alignment:** (using Section 2 coordinate system: Z=0 at mounting plate)
   * Internal Cavity: Z = -1.1mm (ceiling) to Z = -8.9mm (floor), height = 7.8mm.
   * Worm Axis Height: **Z = -5.0mm** (Centered in cavity).
@@ -521,10 +520,10 @@ The worm and wheel axes are offset from the housing center along Y to achieve pr
      String pulls this way ←
        |                                           |
        |    POST        WORM                       |
-       |      │   5.9mm    │                       |
+       |      │    CD      │                       |
        |      │<---------->│                       |
        |      ●            ●                       |
-       |   -2.95mm     +2.95mm                     |
+       |   -CD/2       +CD/2                       |
        |      from housing center                  |
        |                                           |
 
@@ -535,9 +534,9 @@ The worm and wheel axes are offset from the housing center along Y to achieve pr
 | Item | Y Position | Notes |
 |------|------------|-------|
 | Housing center | housing_y | Computed from frame parameters |
-| Post axis | housing_y - CD/2 | Offset toward -Y (nut end) by 2.95mm |
-| Worm axis | housing_y + CD/2 | Offset toward +Y (bridge end) by 2.95mm |
-| Center distance | 5.9mm | Between worm and wheel axes |
+| Post axis | housing_y - CD/2 | Offset toward -Y (nut end) |
+| Worm axis | housing_y + CD/2 | Offset toward +Y (bridge end) |
+| Center distance (CD) | from JSON | `assembly.centre_distance_mm` in worm_gear.json |
 | Extra backlash | configurable | Parameter for additional play beyond gear design |
 
 **Preload mechanism:** String tension pulls the string post toward -Y (toward the nut/bridge). The post pivots at its top bearing, causing the wheel (at the bottom of the post) to swing toward +Y, pushing into the worm and taking up backlash.
@@ -548,40 +547,42 @@ The worm and wheel axes are offset from the housing center along Y to achieve pr
 
 ## **9\. Geometry Validation Checklist**
 
-Before manufacturing, verify:
+Before manufacturing, verify (values loaded from `worm_gear.json`):
 
-- [x] Worm OD (7.0mm) fits within internal cavity height (7.8mm) ✓ 0.8mm clearance
-- [x] Worm OD (7.0mm) passes through entry hole (7.05mm) ✓ 0.2mm clearance
+- [x] Worm OD fits within internal cavity height (7.8mm) with clearance
+- [x] Worm OD passes through entry hole with clearance
 - [x] Peg head shaft (4.0mm) fits in bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
-- [x] Wheel (7.05mm OD) enters sideways from open frame end (worm first for globoid) ✓
+- [x] Wheel OD enters sideways from open frame end (worm first for globoid) ✓
 - [x] Post shaft (4.0mm) fits in top bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
 - [x] Post cap (7.5mm) stops pull-through top hole (4.05mm) ✓
-- [x] Peg head cap (8.5mm) stops pull-in through entry hole (7.05mm) ✓
+- [x] Peg head cap (8.5mm) stops pull-in through entry hole ✓
 - [x] M2 screw + washer (5.5mm OD) stops peg pull-out through bearing hole (4.05mm) ✓
-- [x] Center distance (5.9mm) fits within frame geometry ✓
+- [x] Center distance (from JSON) fits within frame geometry ✓
 - [x] Sandwich assembly sequence verified ✓
 - [x] Worm integral to peg head casting ✓
-- [x] 3.25mm DD cut bore in wheel (for string post) ✓
-- [x] M2 thread (2mm) passes through wheel DD across-flats (2.35mm) ✓
-- [x] M2 washer (5mm OD) retains wheel (larger than 3.25mm DD bore) ✓
+- [x] DD cut bore in wheel (from JSON) for string post ✓
+- [x] M2 thread passes through wheel DD across-flats ✓
+- [x] M2 washer retains wheel (larger than DD bore) ✓
 - [x] Custom wheel STEP file generated ✓
 
 ### **Gear Mesh Validation**
 
-| Parameter | Worm | Wheel | Check |
-|-----------|------|-------|-------|
-| Module | 0.6 | 0.6 | ✓ Match |
-| Pitch Diameter | 5.8mm | 6.0mm | — |
-| Center Distance | — | — | 5.9mm ✓ |
-| Pressure Angle | 20° | 20° | ✓ Match |
-| Worm Type | Cylindrical or Globoid | — | Configurable |
+All gear parameters are validated from `config/<profile>/worm_gear.json`:
+
+| Parameter | Check |
+|-----------|-------|
+| Module | Worm and wheel must match (0.6) |
+| Center Distance | Loaded from `assembly.centre_distance_mm` |
+| Pressure Angle | Standard 20° |
+| Ratio | Equals `wheel.num_teeth` for single-start worm |
+| Worm Type | From `worm.type` (cylindrical or globoid) |
 
 ### **Hardware List (per tuner)**
 
 | Item | Specification | Qty |
 |------|---------------|-----|
-| Peg head + worm | Cast brass, integral worm (cylindrical or globoid), 4.0mm shaft | 1 |
-| Worm wheel | Custom STEP, M0.6, 10T, 7.05mm OD, 3.25mm DD bore | 1 |
+| Peg head + worm | Cast brass, integral worm (type from JSON), 4.0mm shaft | 1 |
+| Worm wheel | Custom STEP from `config/<profile>/`, M0.6, params from JSON | 1 |
 | Peg retention screw | M2 × 4mm pan head | 1 |
 | Peg retention washer | 5.5mm OD, 2.7mm ID, 0.5mm thick | 1 |
 | Post retention screw | M2 × 4mm pan head | 1 |
@@ -593,5 +594,5 @@ Before manufacturing, verify:
 |------|-------------|
 | `reference/peghead-and-shaft.step` | Complete peg head + shaft reference geometry (from Onshape) |
 | `config/<profile>/worm_m0.6_z1.step` | Worm reference geometry (for machining cast shaft) |
-| `config/<profile>/wheel_m0.6_z10.step` | 10-tooth worm wheel (separate part) |
-| `config/<profile>/worm_gear.json` | Gear calculator parameters |
+| `config/<profile>/wheel_m0.6_z<N>.step` | Worm wheel (N = tooth count from JSON) |
+| `config/<profile>/worm_gear.json` | **Source of truth** for all gear parameters |

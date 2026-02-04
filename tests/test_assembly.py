@@ -14,12 +14,10 @@ from gib_tuners.assembly import (
 
 
 class TestAssemblyInterference:
-    """Tests for assembly interference checking."""
+    """Tests for assembly interference checking.
 
-    @pytest.fixture
-    def gear_paths(self):
-        """Return gear config paths (uses balanced config)."""
-        return resolve_gear_config("balanced")
+    Uses gear_paths fixture from conftest.py (parameterized via --gear option).
+    """
 
     def test_single_housing_no_interference(self, gear_paths):
         """Test that a single-housing assembly has no interference."""
@@ -39,7 +37,7 @@ class TestAssemblyInterference:
 
         # Verify interference results are included
         assert "interference" in assembly
-        # Balanced config has ~0.02mm³ expected gear mesh interference (zero backlash)
+        # Small interference expected from gear mesh (zero backlash)
         assert assembly["interference"]["total"] < 0.1
 
     def test_five_housing_no_interference(self, gear_paths):
@@ -57,7 +55,7 @@ class TestAssemblyInterference:
             check_interference=True,
         )
 
-        # Balanced config: 5 housings × ~0.02mm³ = ~0.1mm³ expected
+        # 5 housings with small gear mesh interference each
         assert assembly["interference"]["total"] < 0.5
 
     def test_interference_report_keys(self, gear_paths):
