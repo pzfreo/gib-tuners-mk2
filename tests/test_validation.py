@@ -88,8 +88,9 @@ class TestSpecValidation:
         # The center distance is intentionally larger than half frame width
         # because the worm passes through holes in the walls. The spec validates
         # this geometry explicitly in Section 9.
+        # Center distance is loaded from worm_gear.json - verify it's reasonable
         cd = config.gear.center_distance
-        assert cd == 5.9  # Balanced config (M0.6, 10:1)
+        assert 4.0 <= cd <= 8.0, f"Center distance {cd}mm outside reasonable range"
 
     def test_center_distance_calculation(self, config):
         """Spec check: CD = (worm PD + wheel PD) / 2."""

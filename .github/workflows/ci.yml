@@ -27,7 +27,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short
+        run: pytest tests/ -v --tb=short --gear bh11-cd
 
   build:
     runs-on: ubuntu-latest

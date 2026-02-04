@@ -1,6 +1,6 @@
 """Pytest configuration and fixtures."""
 
-import json
+import os
 from pathlib import Path
 
 import pytest
@@ -13,6 +13,22 @@ from gib_tuners.config.defaults import create_default_config, load_gear_params, 
 from gib_tuners.config.parameters import BuildConfig, Hand
 
 
+def pytest_addoption(parser):
+    """Add --gear command line option to pytest."""
+    parser.addoption(
+        "--gear",
+        action="store",
+        default=os.environ.get("GEAR_CONFIG", "balanced"),
+        help="Gear configuration profile to use (default: balanced, or GEAR_CONFIG env var)",
+    )
+
+
+@pytest.fixture
+def gear_profile(request) -> str:
+    """Return the gear profile name from command line or environment."""
+    return request.config.getoption("--gear")
+
+
 @pytest.fixture
 def project_root() -> Path:
     """Return the project root directory."""
@@ -20,9 +36,9 @@ def project_root() -> Path:
 
 
 @pytest.fixture
-def gear_paths():
-    """Return gear config paths (uses balanced config)."""
-    return resolve_gear_config("balanced")
+def gear_paths(gear_profile):
+    """Return gear config paths for the selected profile."""
+    return resolve_gear_config(gear_profile)
 
 
 @pytest.fixture
@@ -45,7 +61,7 @@ def reference_dir(project_root: Path) -> Path:
 
 @pytest.fixture
 def default_config(gear_paths) -> BuildConfig:
-    """Create a default build configuration (uses balanced gear config)."""
+    """Create a default build configuration using selected gear profile."""
     return create_default_config(
         gear_json_path=gear_paths.json_path,
         config_dir=gear_paths.config_dir,
@@ -54,7 +70,7 @@ def default_config(gear_paths) -> BuildConfig:
 
 @pytest.fixture
 def production_config(gear_paths) -> BuildConfig:
-    """Create a production build configuration with gear JSON."""
+    """Create a production build configuration using selected gear profile."""
     return create_default_config(
         scale=1.0,
         tolerance="production",
@@ -66,7 +82,7 @@ def production_config(gear_paths) -> BuildConfig:
 
 @pytest.fixture
 def prototype_config(gear_paths) -> BuildConfig:
-    """Create a 2x prototype configuration."""
+    """Create a 2x prototype configuration using selected gear profile."""
     return create_default_config(
         scale=2.0,
         tolerance="prototype_fdm",
