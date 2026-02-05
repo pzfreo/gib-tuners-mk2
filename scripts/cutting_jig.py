@@ -66,7 +66,7 @@ M3_CLEARANCE = 3.4          # M3 bolt clearance hole
 M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
 M3_HEAD_DEPTH = 3.0         # M3 socket head height
 HEAT_INSERT_OD = 5.0        # M3 heat-set insert outer diameter
-HEAT_INSERT_DEPTH = 4.0     # M3 heat-set insert height
+HEAT_INSERT_POCKET = 9.0    # Pocket depth (4mm insert + 5mm for push-in and bolt clearance)
 
 
 def compute_gaps(housing_centers, housing_length, frame_length):
@@ -203,8 +203,8 @@ def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps):
     bolt_clearance = bolt_clearance.move(Location((0, insert_y, -channel_depth / 2)))
     jig = jig - bolt_clearance
 
-    insert_hole = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_DEPTH + 0.5)
-    insert_z = -channel_depth - (HEAT_INSERT_DEPTH + 0.5) / 2
+    insert_hole = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_POCKET)
+    insert_z = -channel_depth - (HEAT_INSERT_POCKET) / 2
     insert_hole = insert_hole.move(Location((0, insert_y, insert_z)))
     jig = jig - insert_hole
 
