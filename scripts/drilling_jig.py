@@ -32,8 +32,11 @@ from build123d import (
     Axis,
     Location,
     Cylinder,
+    Text,
+    extrude,
     export_step,
 )
+import math
 
 from gib_tuners.config.defaults import (
     create_default_config,
@@ -104,9 +107,69 @@ HEAT_INSERT_POCKET = 9.0    # Pocket depth (4mm insert + 5mm for push-in and bol
 M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
 M3_HEAD_DEPTH = 3.0         # M3 socket head height
 
+# ============================================================
+# Text engraving
+# ============================================================
+ENGRAVE_DEPTH = 0.6         # Engraving depth into surface
+FONT_SIZE = 4.0             # Text height in mm
+
+
+def drill_label(diameter_mm: float) -> str:
+    """Convert drill diameter to practical label (e.g. 7.05 -> 'Ø7')."""
+    rounded = math.floor(diameter_mm)
+    return f"Ø{rounded}"
+
+
+def engrave_on_face(solid, text_str, font_size, x, y, z, rotation=0):
+    """Engrave text into a horizontal face (top, facing +Z).
+
+    Text is created in XY plane, extruded downward into the surface.
+    rotation: degrees around Z axis before positioning.
+    """
+    txt = Text(text_str, font_size=font_size)
+    txt_solid = extrude(txt, amount=ENGRAVE_DEPTH)
+    if rotation != 0:
+        txt_solid = txt_solid.rotate(Axis.Z, rotation)
+    txt_solid = txt_solid.move(Location((x, y, z - ENGRAVE_DEPTH)))
+    return solid - txt_solid
+
+
+def engrave_on_bottom(solid, text_str, font_size, x, y, z):
+    """Engrave text into a bottom face (facing -Z), readable from below.
+
+    Text is mirrored so it reads correctly when viewed from underneath.
+    """
+    txt = Text(text_str, font_size=font_size)
+    txt_solid = extrude(txt, amount=ENGRAVE_DEPTH)
+    # Rotate 180° around Y to mirror for bottom-face readability
+    # and flip extrusion direction into the solid
+    txt_solid = txt_solid.rotate(Axis.Y, 180)
+    txt_solid = txt_solid.move(Location((x, y, z + ENGRAVE_DEPTH)))
+    return solid - txt_solid
+
+
+def engrave_on_side(solid, text_str, font_size, x, y, z, face_dir="+X"):
+    """Engrave text on a side wall face.
+
+    face_dir: '+X' for right wall, '-X' for left wall.
+    Text reads correctly when viewed from that side.
+    """
+    txt = Text(text_str, font_size=font_size)
+    txt_solid = extrude(txt, amount=ENGRAVE_DEPTH)
+    if face_dir == "+X":
+        # Rotate so text faces +X, then shift inward so it cuts into wall
+        txt_solid = txt_solid.rotate(Axis.Y, 90)
+        txt_solid = txt_solid.move(Location((x - ENGRAVE_DEPTH, y, z)))
+    elif face_dir == "-X":
+        # Rotate so text faces -X (readable from left), shift inward
+        txt_solid = txt_solid.rotate(Axis.Z, 180)
+        txt_solid = txt_solid.rotate(Axis.Y, -90)
+        txt_solid = txt_solid.move(Location((x + ENGRAVE_DEPTH, y, z)))
+    return solid - txt_solid
+
 
 def create_clamshell(
-    mode, frame_outer, frame_length, channel_width, channel_depth,
+    mode, gear_name, frame_outer, frame_length, channel_width, channel_depth,
     jig_height, side_wall,
     post_bearing_positions, worm_entry_positions, peg_bearing_positions,
     mounting_hole_positions,
@@ -120,8 +183,11 @@ def create_clamshell(
 
     In production mode, side/top holes are M14 stepped bushing pockets.
     In prototype mode, all holes are simple through-holes at drill diameter.
+
+    Rear end is open for removable end stop (frame slides out the back).
     """
-    jig_length = frame_length + 2 * END_WALL
+    # Block spans from Y=-END_WALL to Y=frame_length (no rear wall)
+    jig_length = frame_length + END_WALL
 
     # Solid block
     block = Box(mode.jig_width, jig_length, jig_height)
@@ -131,9 +197,10 @@ def create_clamshell(
         (mode.top_slab - channel_depth) / 2,
     )))
 
-    # Cut pocket from below (frame cavity)
-    pocket = Box(channel_width, frame_length, channel_depth)
-    pocket = pocket.move(Location((0, frame_length / 2, -channel_depth / 2)))
+    # Cut pocket from below (frame cavity, open at rear)
+    pocket_length = frame_length + 1  # Extend past rear face
+    pocket = Box(channel_width, pocket_length, channel_depth)
+    pocket = pocket.move(Location((0, pocket_length / 2, -channel_depth / 2)))
     clamshell = block - pocket
 
     # --- Top face: post bearing holes (vertical) ---
@@ -218,6 +285,77 @@ def create_clamshell(
         )))
         clamshell = clamshell - insert
 
+    # --- Heat-set insert holes for removable end stop (rear face of side walls) ---
+    # Two bolts: one in each side wall, centered in wall thickness, mid-height
+    end_stop_bolt_z = (mode.top_slab - channel_depth) / 2  # Middle of jig height
+    for sign in [+1, -1]:
+        bolt_x = sign * (channel_width / 2 + side_wall / 2)
+        insert = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_POCKET)
+        insert = insert.rotate(Axis.X, 90)  # Horizontal, pointing in -Y
+        insert = insert.move(Location((
+            bolt_x,
+            frame_length - HEAT_INSERT_POCKET / 2,
+            end_stop_bolt_z,
+        )))
+        clamshell = clamshell - insert
+
+    # --- Engrave labels on clamshell ---
+    # "R" near rear of clamshell (where end stop attaches)
+    clamshell = engrave_on_face(
+        clamshell, "R", FONT_SIZE,
+        x=mode.jig_width / 2 - FONT_SIZE,  # Right side, away from holes
+        y=frame_length - FONT_SIZE,
+        z=mode.top_slab,
+    )
+
+    # Gear name rotated along length, 3mm in from front end and left side
+    gear_txt = Text(gear_name, font_size=FONT_SIZE * 0.7)
+    gear_bb = gear_txt.bounding_box()
+    gear_len = gear_bb.max.X - gear_bb.min.X
+    gear_solid = extrude(gear_txt, amount=ENGRAVE_DEPTH)
+    gear_solid = gear_solid.rotate(Axis.Z, -90)
+    # Position so text starts 3mm from front face, 3mm from left side
+    gear_solid = gear_solid.move(Location((
+        -mode.jig_width / 2 + 3,
+        -END_WALL + 3 + gear_len / 2,
+        mode.top_slab - ENGRAVE_DEPTH,
+    )))
+    clamshell = clamshell - gear_solid
+
+    # Label each hole type at the first housing only
+    first_worm_y, first_worm_z = worm_entry_positions[0]
+    first_peg_y, first_peg_z = peg_bearing_positions[0]
+    first_post_x, first_post_y = post_bearing_positions[0]
+    first_mount_y = mounting_hole_positions[0]
+
+    # Right wall: worm entry drill size above first hole
+    clamshell = engrave_on_side(
+        clamshell, drill_label(worm_entry_drill), FONT_SIZE * 0.8,
+        x=mode.jig_width / 2, y=first_worm_y,
+        z=first_worm_z + FONT_SIZE * 1.5, face_dir="+X",
+    )
+
+    # Left wall: peg bearing drill size above first hole
+    clamshell = engrave_on_side(
+        clamshell, drill_label(peg_bearing_drill), FONT_SIZE * 0.8,
+        x=-mode.jig_width / 2, y=first_peg_y,
+        z=first_peg_z + FONT_SIZE * 1.5, face_dir="-X",
+    )
+
+    # Top face: post bearing drill size next to first hole
+    clamshell = engrave_on_face(
+        clamshell, drill_label(post_bearing_drill), FONT_SIZE * 0.8,
+        x=FONT_SIZE, y=first_post_y,
+        z=mode.top_slab,
+    )
+
+    # Top face: mounting hole drill size next to first mounting hole
+    clamshell = engrave_on_face(
+        clamshell, drill_label(mounting_drill), FONT_SIZE * 0.8,
+        x=FONT_SIZE, y=first_mount_y,
+        z=mode.top_slab,
+    )
+
     return clamshell
 
 
@@ -232,8 +370,10 @@ def create_base_plate(
     The lip fits inside the clamshell pocket and pushes the frame flush
     against the pocket ceiling. Bolts go through the outer flanges.
     In prototype mode (lip_height=0), the plate is flat with no lip.
+
+    Matches clamshell length (front end wall only, rear is open for end stop).
     """
-    jig_length = frame_length + 2 * END_WALL
+    jig_length = frame_length + END_WALL
 
     # Outer plate (full width)
     plate = Box(mode.jig_width, jig_length, BASE_THICKNESS)
@@ -271,7 +411,61 @@ def create_base_plate(
         counterbore = counterbore.move(Location((bolt_x, bolt_y, cb_z)))
         base = base - counterbore
 
+    # Engrave wheel inlet drill size on bottom face (visible when assembled)
+    if wheel_inlet_positions:
+        base_bottom_z = -channel_depth - BASE_THICKNESS
+        base = engrave_on_bottom(
+            base, drill_label(wheel_inlet_drill), FONT_SIZE * 0.8,
+            x=mode.jig_width / 4,
+            y=wheel_inlet_positions[0] + FONT_SIZE * 1.5,
+            z=base_bottom_z,
+        )
+
     return base
+
+
+def create_end_stop(
+    mode, channel_width, channel_depth, side_wall, jig_height,
+) -> Part:
+    """Create the removable rear end stop.
+
+    Bolts to rear of clamshell side walls. Simple wall piece — no plug.
+    The end stop sits at Y=frame_length, closing off the pocket.
+    """
+    # Outer dimensions match clamshell cross-section
+    stop_width = mode.jig_width
+    stop_height = jig_height
+    stop_depth = 10.0  # Deeper than END_WALL for rigidity
+
+    # Start with solid block
+    stop = Box(stop_width, stop_depth, stop_height)
+    stop = stop.move(Location((0, stop_depth / 2, (mode.top_slab - channel_depth) / 2)))
+
+    # Cut the bottom to match channel profile (so frame can slide past when removed)
+    # Actually we want a solid end wall — no cutout needed. The pocket is open.
+    # But for the frame to seat properly, we need the bottom of the stop to align
+    # with the pocket floor. Let's make it solid — frame butts against it.
+
+    # M3 bolt clearance holes with counterbores (through the side wings)
+    end_stop_bolt_z = (mode.top_slab - channel_depth) / 2  # Match clamshell inserts
+    for sign in [+1, -1]:
+        bolt_x = sign * (channel_width / 2 + side_wall / 2)
+        # Clearance hole through full depth
+        clearance = Cylinder(M3_CLEARANCE / 2, stop_depth + 2)
+        clearance = clearance.rotate(Axis.X, 90)
+        clearance = clearance.move(Location((bolt_x, stop_depth / 2, end_stop_bolt_z)))
+        stop = stop - clearance
+        # Counterbore on rear face
+        counterbore = Cylinder(M3_HEAD_DIA / 2, M3_HEAD_DEPTH + 0.5)
+        counterbore = counterbore.rotate(Axis.X, 90)
+        counterbore = counterbore.move(Location((
+            bolt_x,
+            stop_depth - (M3_HEAD_DEPTH + 0.5) / 2,
+            end_stop_bolt_z,
+        )))
+        stop = stop - counterbore
+
+    return stop
 
 
 def create_brass_ghost(frame_outer, frame_inner, frame_length) -> Part:
@@ -403,7 +597,7 @@ def main():
 
     # Build geometry
     clamshell = create_clamshell(
-        mode=mode,
+        mode=mode, gear_name=args.gear,
         frame_outer=frame_outer, frame_length=frame_length,
         channel_width=channel_width, channel_depth=channel_depth,
         jig_height=jig_height, side_wall=side_wall,
@@ -428,6 +622,12 @@ def main():
         bolt_positions=bolt_positions,
     )
 
+    end_stop = create_end_stop(
+        mode=mode,
+        channel_width=channel_width, channel_depth=channel_depth,
+        side_wall=side_wall, jig_height=jig_height,
+    )
+
     brass_ghost = create_brass_ghost(frame_outer, frame_inner, frame_length)
 
     # Export STEP files
@@ -442,11 +642,18 @@ def main():
     export_step(base_plate, str(base_path))
     print(f"Exported: {base_path}")
 
+    end_stop_path = output_dir / f"drilling_jig_end_stop_{mode.name}.step"
+    export_step(end_stop, str(end_stop_path))
+    print(f"Exported: {end_stop_path}")
+
     # Try to show in OCP viewer
     try:
         from ocp_vscode import show_object
         show_object(clamshell, name="clamshell", options={"color": "blue"})
         show_object(base_plate, name="base_plate", options={"color": "red", "alpha": 0.5})
+        # Position end stop at rear of clamshell
+        end_stop_positioned = end_stop.move(Location((0, frame_length, 0)))
+        show_object(end_stop_positioned, name="end_stop", options={"color": "green", "alpha": 0.7})
         show_object(brass_ghost, name="brass_frame", options={"alpha": 0.3, "color": "orange"})
         print("Sent to OCP viewer")
     except (ImportError, RuntimeError) as e:
