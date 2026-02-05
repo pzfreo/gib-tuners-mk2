@@ -62,8 +62,11 @@ FIXED_PLUG_LENGTH = 3.0     # Fixed plug extends 3mm into brass
 # ============================================================
 # Hardware
 # ============================================================
-M5_CLEARANCE = 5.5          # M5 bolt clearance hole
-HEAT_INSERT_OD = 6.4        # M5 heat-set insert outer diameter
+M3_CLEARANCE = 3.4          # M3 bolt clearance hole
+M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
+M3_HEAD_DEPTH = 3.0         # M3 socket head height
+HEAT_INSERT_OD = 5.0        # M3 heat-set insert outer diameter
+HEAT_INSERT_DEPTH = 4.0     # M3 heat-set insert height
 
 
 def compute_gaps(housing_centers, housing_length, frame_length):
@@ -122,10 +125,13 @@ def create_end_stop(frame_outer, frame_wall):
 
     end_stop = body + plug
 
-    # M5 clearance hole through body
-    bolt_hole = Cylinder(M5_CLEARANCE / 2, body_height + 2)
-    bolt_hole = bolt_hole.move(Location((0, OUTER_BODY_Y_LENGTH / 2, -body_height / 2)))
-    end_stop = end_stop - bolt_hole
+    # M3 clearance hole through body with counterbore for bolt head
+    bolt_y = OUTER_BODY_Y_LENGTH / 2
+    bolt_hole = Cylinder(M3_CLEARANCE / 2, body_height + 2)
+    bolt_hole = bolt_hole.move(Location((0, bolt_y, -body_height / 2)))
+    counterbore = Cylinder(M3_HEAD_DIA / 2, M3_HEAD_DEPTH + 0.5)
+    counterbore = counterbore.move(Location((0, bolt_y, -(M3_HEAD_DEPTH + 0.5) / 2)))
+    end_stop = end_stop - bolt_hole - counterbore
 
     return end_stop
 
@@ -193,12 +199,13 @@ def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps):
     # Bolt clearance hole + heat-set insert for moveable end stop
     insert_y = frame_length + OUTER_BODY_Y_LENGTH / 2
 
-    bolt_clearance = Cylinder(M5_CLEARANCE / 2, channel_depth + 1)
+    bolt_clearance = Cylinder(M3_CLEARANCE / 2, channel_depth + 1)
     bolt_clearance = bolt_clearance.move(Location((0, insert_y, -channel_depth / 2)))
     jig = jig - bolt_clearance
 
-    insert_hole = Cylinder(HEAT_INSERT_OD / 2, FLOOR_THICKNESS + 1)
-    insert_hole = insert_hole.move(Location((0, insert_y, -channel_depth - FLOOR_THICKNESS / 2)))
+    insert_hole = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_DEPTH + 0.5)
+    insert_z = -channel_depth - (HEAT_INSERT_DEPTH + 0.5) / 2
+    insert_hole = insert_hole.move(Location((0, insert_y, insert_z)))
     jig = jig - insert_hole
 
     return jig
@@ -286,8 +293,8 @@ def main():
     )))
 
     # Export STEP files
-    output_dir = PROJECT_ROOT / "output"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = PROJECT_ROOT / "output" / args.gear
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     step_path = output_dir / "cutting_jig_prototype.step"
     export_step(jig, str(step_path))
