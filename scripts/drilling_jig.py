@@ -64,11 +64,11 @@ BASE_THICKNESS = 8.0
 # ============================================================
 # Hardware
 # ============================================================
-M5_CLEARANCE = 5.5          # M5 bolt clearance hole
-HEAT_INSERT_OD = 6.4        # M5 heat-set insert outer diameter
-HEAT_INSERT_DEPTH = 6.0     # Insert depth into clamshell wall
-M5_COUNTERBORE_D = 10.0     # Socket head cap screw counterbore
-M5_COUNTERBORE_DEPTH = 5.0  # Counterbore depth
+M3_CLEARANCE = 3.4          # M3 bolt clearance hole
+HEAT_INSERT_OD = 5.0        # M3 heat-set insert outer diameter
+HEAT_INSERT_DEPTH = 4.0     # M3 heat-set insert height
+M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
+M3_HEAD_DEPTH = 3.0         # M3 socket head height
 
 
 def create_clamshell(
@@ -193,14 +193,14 @@ def create_base_plate(
         guide = guide.move(Location((0, y, plate_z + (lip_height / 2))))
         base = base - guide
 
-    # M5 bolt clearance holes + counterbores (in outer flanges)
+    # M3 bolt clearance holes + counterbores (in outer flanges)
     for bolt_x, bolt_y in bolt_positions:
-        clearance = Cylinder(M5_CLEARANCE / 2, BASE_THICKNESS + 2)
+        clearance = Cylinder(M3_CLEARANCE / 2, BASE_THICKNESS + 2)
         clearance = clearance.move(Location((bolt_x, bolt_y, plate_z)))
         base = base - clearance
 
-        counterbore = Cylinder(M5_COUNTERBORE_D / 2, M5_COUNTERBORE_DEPTH)
-        cb_z = -channel_depth - BASE_THICKNESS + M5_COUNTERBORE_DEPTH / 2
+        cb_z = -channel_depth - BASE_THICKNESS + (M3_HEAD_DEPTH + 0.5) / 2
+        counterbore = Cylinder(M3_HEAD_DIA / 2, M3_HEAD_DEPTH + 0.5)
         counterbore = counterbore.move(Location((bolt_x, bolt_y, cb_z)))
         base = base - counterbore
 
@@ -347,8 +347,8 @@ def main():
     brass_ghost = create_brass_ghost(frame_outer, frame_inner, frame_length)
 
     # Export STEP files
-    output_dir = PROJECT_ROOT / "output"
-    output_dir.mkdir(exist_ok=True)
+    output_dir = PROJECT_ROOT / "output" / args.gear
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     clamshell_path = output_dir / "drilling_jig_clamshell.step"
     export_step(clamshell, str(clamshell_path))
