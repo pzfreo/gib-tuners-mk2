@@ -26,6 +26,9 @@ from build123d import (
     Axis,
     Location,
     Cylinder,
+    Text,
+    chamfer,
+    extrude,
     export_step,
 )
 
@@ -43,7 +46,7 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # ============================================================
 JIG_WIDTH = 30.0            # Wide enough for stability
 FLOOR_THICKNESS = 8.0       # Thick floor for robustness
-CHANNEL_CLEARANCE = 0.3     # Channel oversize vs frame
+CHANNEL_CLEARANCE = 0.1     # Channel oversize vs frame (per axis)
 END_STOP_LENGTH = 10.0      # Solid end stop at Y=0
 END_STOP_TRAVEL = 30.0      # Extra length for moveable end stop
 
@@ -66,7 +69,7 @@ M3_CLEARANCE = 3.4          # M3 bolt clearance hole
 M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
 M3_HEAD_DEPTH = 3.0         # M3 socket head height
 HEAT_INSERT_OD = 5.0        # M3 heat-set insert outer diameter
-HEAT_INSERT_DEPTH = 4.0     # M3 heat-set insert height
+HEAT_INSERT_POCKET = 9.0    # Pocket depth (4mm insert + 5mm for push-in and bolt clearance)
 
 
 def compute_gaps(housing_centers, housing_length, frame_length):
@@ -104,7 +107,7 @@ def create_end_stop(frame_outer, frame_wall):
     - Outer body sits on channel floor, flush with jig top
     - M5 clearance hole through body for bolt into heat-set insert in jig floor
     """
-    channel_depth = frame_outer
+    channel_depth = frame_outer + CHANNEL_CLEARANCE
     frame_inner = frame_outer - 2 * frame_wall
     inner_plug_size = frame_inner - 2 * PLUG_CLEARANCE
     outer_body_size = frame_outer - OUTER_BODY_CLEARANCE
@@ -121,6 +124,17 @@ def create_end_stop(frame_outer, frame_wall):
     inner_top_z = -channel_depth + frame_outer - frame_wall
     plug_center_z = (inner_bottom_z + inner_top_z) / 2
     plug = Box(inner_plug_size, INNER_PLUG_LENGTH, inner_plug_size)
+
+    # 45° chamfer on exposed bottom edges (eliminates support material trap)
+    chamfer_size = channel_depth - (frame_outer - frame_wall)
+    if chamfer_size > 0.1:
+        bottom_edges = plug.edges().filter_by_position(
+            Axis.Z, -inner_plug_size / 2 - 0.01, -inner_plug_size / 2 + 0.01
+        )
+        # Exclude edge at Y=+INNER_PLUG_LENGTH/2 (joins body)
+        exposed = [e for e in bottom_edges if e.bounding_box().min.Y < INNER_PLUG_LENGTH / 2 - 0.01]
+        plug = chamfer(exposed, length=chamfer_size)
+
     plug = plug.move(Location((0, -INNER_PLUG_LENGTH / 2, plug_center_z)))
 
     end_stop = body + plug
@@ -136,13 +150,17 @@ def create_end_stop(frame_outer, frame_wall):
     return end_stop
 
 
-def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps):
+ENGRAVE_DEPTH = 0.6
+FONT_SIZE = 4.0
+
+
+def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps, gear_name=""):
     """Create the cutting jig geometry.
 
     All frame dimensions derived from config.
     """
     channel_width = frame_outer + CHANNEL_CLEARANCE
-    channel_depth = frame_outer
+    channel_depth = frame_outer + CHANNEL_CLEARANCE
     jig_height = channel_depth + FLOOR_THICKNESS
     jig_length = frame_length + END_STOP_LENGTH + END_STOP_TRAVEL
 
@@ -189,6 +207,17 @@ def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps):
     inner_top_z = -channel_depth + frame_outer - frame_wall
     plug_center_z = (inner_bottom_z + inner_top_z) / 2
     fixed_plug = Box(inner_plug_size, FIXED_PLUG_LENGTH, inner_plug_size)
+
+    # 45° chamfer on exposed bottom edges (eliminates support material trap)
+    chamfer_size = channel_depth - (frame_outer - frame_wall)
+    if chamfer_size > 0.1:
+        bottom_edges = fixed_plug.edges().filter_by_position(
+            Axis.Z, -inner_plug_size / 2 - 0.01, -inner_plug_size / 2 + 0.01
+        )
+        # Exclude back edge (at Y=-FIXED_PLUG_LENGTH/2, embedded in end wall)
+        exposed = [e for e in bottom_edges if e.bounding_box().max.Y > -FIXED_PLUG_LENGTH / 2 + 0.01]
+        fixed_plug = chamfer(exposed, length=chamfer_size)
+
     fixed_plug = fixed_plug.move(Location((
         0,
         FIXED_PLUG_LENGTH / 2,
@@ -203,10 +232,25 @@ def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps):
     bolt_clearance = bolt_clearance.move(Location((0, insert_y, -channel_depth / 2)))
     jig = jig - bolt_clearance
 
-    insert_hole = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_DEPTH + 0.5)
-    insert_z = -channel_depth - (HEAT_INSERT_DEPTH + 0.5) / 2
+    insert_hole = Cylinder(HEAT_INSERT_OD / 2, HEAT_INSERT_POCKET)
+    insert_z = -channel_depth - (HEAT_INSERT_POCKET) / 2
     insert_hole = insert_hole.move(Location((0, insert_y, insert_z)))
     jig = jig - insert_hole
+
+    # Engrave gear name on bottom face (readable when flipped over)
+    if gear_name:
+        jig_bottom_z = -channel_depth - FLOOR_THICKNESS
+        txt = Text(gear_name, font_size=FONT_SIZE * 0.7)
+        txt_solid = extrude(txt, amount=ENGRAVE_DEPTH)
+        txt_solid = txt_solid.rotate(Axis.Z, 90)
+        # Mirror for bottom-face readability
+        txt_solid = txt_solid.rotate(Axis.Y, 180)
+        txt_solid = txt_solid.move(Location((
+            0,
+            frame_length / 2,
+            jig_bottom_z + ENGRAVE_DEPTH,
+        )))
+        jig = jig - txt_solid
 
     return jig
 
@@ -272,13 +316,14 @@ def main():
     print(f"Creating cutting jig for gear profile '{args.gear}'...")
     print(f"  Frame: {frame_outer}mm outer, {frame_wall}mm wall, "
           f"{frame_length}mm long, {fp.num_housings} housings")
-    print(f"  Channel: {channel_width}mm wide x {frame_outer}mm deep")
-    print(f"  Jig: {JIG_WIDTH}mm x {jig_length}mm x {frame_outer + FLOOR_THICKNESS}mm")
+    channel_depth = frame_outer + CHANNEL_CLEARANCE
+    print(f"  Channel: {channel_width}mm wide x {channel_depth}mm deep")
+    print(f"  Jig: {JIG_WIDTH}mm x {jig_length}mm x {channel_depth + FLOOR_THICKNESS}mm")
     print(f"  Partial cut depth: {partial_cut_depth}mm (leaves {frame_wall}mm bottom wall)")
     print(f"  Gaps: {len(gaps)} regions, {len(gaps) * 2 - 1} saw slots + 1 end cut")
 
     # Build geometry
-    jig = create_cutting_jig(frame_outer, frame_wall, frame_length, gaps)
+    jig = create_cutting_jig(frame_outer, frame_wall, frame_length, gaps, gear_name=args.gear)
     end_stop = create_end_stop(frame_outer, frame_wall)
 
     # Position end stop for visualization
