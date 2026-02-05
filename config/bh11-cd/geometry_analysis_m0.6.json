@@ -6,10 +6,10 @@
     "worm_starts": 1,
     "wheel_teeth": 11
   },
-  "analysis_timestamp": "2026-02-02T08:01:51.236247",
+  "analysis_timestamp": "2026-02-02T13:36:35.773251",
   "mesh_alignment": {
     "optimal_rotation_deg": 0.0,
-    "interference_volume_mm3": 0,
+    "interference_volume_mm3": 0.0,
     "within_tolerance": true,
     "tooth_pitch_deg": 32.72727272727273,
     "worm_position": {
@@ -21,20 +21,20 @@
   },
   "rim_thickness": {
     "wheel": {
-      "minimum_thickness_mm": 0.9138,
+      "minimum_thickness_mm": 0.9122,
       "bore_diameter_mm": 3.5,
       "is_valid": true,
       "has_warning": false,
       "warning_threshold_mm": 0.75,
       "message": "Wheel rim thickness: 0.91mm",
       "measurement_point_bore": {
-        "x_mm": -0.7396,
-        "y_mm": -1.586,
+        "x_mm": 1.1249,
+        "y_mm": 1.3406,
         "z_mm": 0.0
       },
       "measurement_point_outer": {
-        "x_mm": -1.1258,
-        "y_mm": -2.4142,
+        "x_mm": 1.7112,
+        "y_mm": 2.0393,
         "z_mm": 0.0
       }
     }
