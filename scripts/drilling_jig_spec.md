@@ -190,7 +190,7 @@ Y positions match post bearing holes (at post axis).
 
 ## Fastener Layout
 
-### Base Plate to Clamshell (4x M5)
+### Base Plate to Clamshell (4x M3)
 
 | Bolt | X (mm) | Y (mm) | Notes |
 |------|--------|--------|-------|
@@ -199,8 +199,8 @@ Y positions match post bearing holes (at post axis).
 | B3 | -12.6 | 5.0 | Left flange, near front |
 | B4 | -12.6 | 140.0 | Left flange, near rear |
 
-- Clamshell: M5 heat-set inserts (dia 6.4mm x 6mm deep) in wall bottom faces
-- Base plate: M5 clearance holes (dia 5.5mm) with counterbore (dia 10mm x 5mm deep) from below
+- Clamshell: M3 heat-set inserts (dia 5.0mm x 4.0mm deep) in wall bottom faces
+- Base plate: M3 clearance holes (dia 3.4mm) with counterbore (dia 5.5mm x 3.5mm deep) from below
 
 Bolt X positions are centered in the outer flanges (outside the base plate lip).
 
@@ -264,7 +264,7 @@ Z=-24.9+-----------+-----------------+-------------+
 
 ### Step 2: Bottom Holes (with base plate)
 
-8. Bolt base plate to clamshell bottom (4x M5 bolts)
+8. Bolt base plate to clamshell bottom (4x M3 bolts)
 9. Flip jig upside down
 10. Drill 5x wheel inlet holes through base plate guides (dia 5.1mm, vertical)
 
@@ -274,8 +274,8 @@ Z=-24.9+-----------+-----------------+-------------+
 |------|-----|-------------|
 | M14 drill bushing, dia 4.05mm bore | 10 | Post bearing (5) + peg bearing (5) |
 | M14 drill bushing, dia 7.05mm bore | 5 | Worm entry |
-| M5 x 16mm socket head cap screw | 4 | Base plate attachment (through 8mm plate + 6.9mm lip clearance) |
-| M5 heat-set insert (dia 6.4mm) | 4 | In clamshell wall bottoms |
+| M3 socket head cap screw (5.5mm head) | 4 | Base plate attachment (through 8mm plate + 6.9mm lip clearance) |
+| M3 heat-set insert (dia 5.0mm x 4.0mm) | 4 | In clamshell wall bottoms |
 
 Note: Bushing bore diameters are config-dependent. Values above are for bh11-cd. Use `--gear` to see values for other profiles.
 
@@ -313,5 +313,5 @@ A left-hand variant would swap these sides. This can be added as a parameter in 
 | Precision features | Saw guide slots (1mm wide) | M14 stepped bushing pockets |
 | Channel width | 10.3mm | 10.3mm (same) |
 | Channel depth | 10.0mm | 16.9mm (extended for bushing enclosure) |
-| Hardware | M5 heat-set + bolt | 15x M14 bushings + 4x M5 |
-| Config | Hardcoded | Gear-profile driven (--gear) |
+| Hardware | M3 heat-set + bolt | 15x M14 bushings + 4x M3 |
+| Config | Gear-profile driven (--gear) | Gear-profile driven (--gear) |

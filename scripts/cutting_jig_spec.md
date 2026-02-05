@@ -123,15 +123,16 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 | Plug size | 7.7mm x 7.7mm | Fits in brass inner cavity (0.05mm clearance per side) |
 | Plug length | 5mm | Extends into brass tube (in -Y direction) |
 | Plug Z position | Z=-5 | Centered in brass inner cavity |
-| Bolt hole | 5.5mm | M5 clearance, vertical through body |
+| Bolt hole | 3.4mm | M3 clearance, vertical through body |
+| Counterbore | 5.5mm x 3.5mm | M3 socket head recess |
 
 ## Hardware
 
 | Item | Specification | Location |
 |------|---------------|----------|
-| Heat-set insert | M5, 6.4mm OD | Jig floor at Y=157.5mm |
-| Bolt | M5 | Through end stop, channel floor, into insert |
-| Bolt clearance hole | 5.5mm | Through channel floor at Y=157.5mm |
+| Heat-set insert | M3, 5.0mm OD, 4.0mm deep | Jig floor at Y=157.5mm |
+| Bolt | M3 socket head cap screw (5.5mm head, 3.0mm tall) | Through end stop, channel floor, into insert |
+| Bolt clearance hole | 3.4mm | Through channel floor at Y=157.5mm |
 
 ## Coordinate System
 
@@ -151,8 +152,8 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 ## Files
 
 - `cutting_jig.py` - Parametric CAD script (reads gear definition JSON via --gear)
-- `output/cutting_jig_prototype.step` - Jig body geometry
-- `output/cutting_jig_end_stop.step` - End stop geometry
+- `output/{gear}/cutting_jig_prototype.step` - Jig body geometry
+- `output/{gear}/cutting_jig_end_stop.step` - End stop geometry
 
 ## Comparison: Cutting Jig vs Drilling Jig
 
@@ -164,4 +165,4 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 | Z location | Plugs in brass inner cavity | Lip pushes frame against ceiling |
 | Channel depth | 10mm (frame height) | 16.9mm (extended for bushing enclosure) |
 | Config | --gear (reads JSON) | --gear (reads JSON) |
-| Hardware | M5 heat-set + bolt | 15x M14 bushings + 4x M5 |
+| Hardware | M3 heat-set + bolt | 15x M14 bushings + 4x M3 |
