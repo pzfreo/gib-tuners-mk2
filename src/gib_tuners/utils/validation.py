@@ -255,16 +255,19 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
         message=f"Peg shaft ({peg_shaft}mm) must fit in bearing hole ({bearing_hole}mm)",
     ))
 
-    # 4. Wheel OD passes through bottom hole
-    wheel_od = gear.wheel.tip_diameter
+    # 4. Washer clears wheel inlet hole
+    # The wheel slides in sideways from the open frame end, not through this hole.
+    # The hole only needs to clear the M2 washer for post retention screw.
+    wheel_od = gear.wheel.tip_diameter  # Used by checks 4b, 4c below
+    washer_od = frame.washer_od_for_inlet
     wheel_hole = frame.wheel_inlet_hole
-    clearance = wheel_hole - wheel_od
+    clearance = wheel_hole - washer_od
     checks.append(ValidationCheck(
-        name="Wheel passes through bottom hole",
+        name="Washer clears wheel inlet hole",
         passed=clearance > 0,
-        expected=f"wheel hole > wheel OD",
-        actual=f"{clearance:.2f}mm clearance ({wheel_od}mm through {wheel_hole}mm hole)",
-        message=f"Wheel OD ({wheel_od}mm) must pass through bottom hole ({wheel_hole}mm)",
+        expected=f"wheel inlet hole > washer OD",
+        actual=f"{clearance:.2f}mm clearance ({washer_od}mm washer through {wheel_hole}mm hole)",
+        message=f"Washer ({washer_od}mm) must clear wheel inlet hole ({wheel_hole}mm)",
     ))
 
     # 4b. Wheel fits inside housing cavity

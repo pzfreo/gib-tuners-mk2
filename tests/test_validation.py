@@ -51,12 +51,12 @@ class TestSpecValidation:
         assert hole > shaft
         assert hole - shaft >= 0.04  # Bearing clearance (with float tolerance)
 
-    def test_wheel_passes_through_bottom_hole(self, config):
-        """Spec check: Wheel OD (7.5mm) passes through bottom hole (8.0mm)."""
-        wheel_od = config.gear.wheel.tip_diameter
+    def test_washer_clears_wheel_inlet_hole(self, config):
+        """Spec check: Washer clears wheel inlet hole (wheel slides in sideways)."""
+        washer_od = config.frame.washer_od_for_inlet
         wheel_hole = config.frame.wheel_inlet_hole
-        assert wheel_hole > wheel_od
-        assert wheel_hole - wheel_od >= 0.5  # 0.5mm clearance
+        assert wheel_hole > washer_od
+        assert wheel_hole - washer_od >= 0.1  # At least 0.1mm clearance
 
     def test_post_shaft_fits_in_top_hole(self, config):
         """Spec check: Post shaft fits in top hole with tight clearance."""

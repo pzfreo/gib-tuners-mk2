@@ -2,34 +2,49 @@
 
 Cutting jig for brass frame manufacturing. Holds brass box section stock and guides saw cuts to create the frame housings and gaps.
 
+All frame dimensions (outer size, wall thickness, housing length, pitch, etc.) are read from the JSON for the selected gear definition. Uses the same `--gear` argument and config loading as `build.py`.
+
+## Usage
+
+```bash
+python scripts/cutting_jig.py --gear bh11-cd
+python scripts/cutting_jig.py --gear balanced
+python scripts/cutting_jig.py --list-gears
+```
+
 ## Overview
 
 The jig consists of two parts:
 1. **Main jig body** - U-channel to hold brass, with saw guide slots (open top for saw access)
 2. **Moveable end stop** - Adjustable stop with plug to secure brass
 
-The cutting jig has an open top so the slitting saw can reach the brass. Locating plugs (7.7mm square) fit inside the brass tube's inner cavity to hold it down - one fixed at Y=0 and one on the moveable end stop at Y=145.
+The cutting jig has an open top so the slitting saw can reach the brass. Locating plugs fit inside the brass tube's inner cavity to hold it down - one fixed at Y=0 and one on the moveable end stop at Y=frame_length.
+
+Example values below are for the default frame parameters (10mm outer, 1.1mm wall, 5 housings, 145mm length).
 
 ## Jig Body Dimensions
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | Length | 185mm | Frame (145mm) + end stop (10mm) + travel (30mm) |
-| Width | 30mm | Provides 9.85mm thick side walls |
+| Width | 30mm | Provides ~9.85mm thick side walls |
 | Height | 18mm | Channel (10mm) + floor (8mm) |
-| Channel width | 10.3mm | Brass (10mm) + 0.3mm clearance |
-| Channel depth | 10mm | Brass sits flush with jig top |
+| Channel width | 10.3mm | Frame outer (10mm) + 0.3mm clearance |
+| Channel depth | 10mm | Matches frame outer dimension |
 | Floor thickness | 8mm | Solid base for rigidity |
 | End stop length | 10mm | Fixed stop at Y=0 |
 
-## Brass Frame Parameters
+## Brass Frame Parameters (from config)
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| Outer dimension | 10mm | Square box section |
-| Wall thickness | 1.1mm | Brass tube walls |
-| Inner dimension | 7.8mm | 10 - 2×1.1mm |
-| Frame length | 145mm | Total frame length |
+| Parameter | Value | Source |
+|-----------|-------|--------|
+| Outer dimension | 10mm | `frame.box_outer` |
+| Wall thickness | 1.1mm | `frame.wall_thickness` |
+| Inner dimension | 7.8mm | Derived: outer - 2 x wall |
+| Frame length | 145mm | Derived: `frame.total_length` |
+| Housing length | 16.2mm | `frame.housing_length` |
+| Tuner pitch | 27.2mm | `frame.tuner_pitch` |
+| Num housings | 5 | `frame.num_housings` |
 
 ## Saw Slots
 
@@ -37,8 +52,26 @@ The cutting jig has an open top so the slitting saw can reach the brass. Locatin
 |-----------|-------|-------------|
 | Slot width | 1mm | For slitting saw blade |
 | Saw kerf | 1mm | Material removed by cut |
-| Partial cut depth | 8.9mm | Leaves 1.1mm bottom wall |
-| Full cut depth | 10mm | Cuts through entire brass |
+| Partial cut depth | 8.9mm | Leaves 1.1mm bottom wall (frame_outer - wall) |
+| Full cut depth | 10mm | Cuts through entire brass (frame_outer) |
+
+### Gap Computation
+
+Gaps are computed dynamically from housing centers and housing length:
+
+```
+housing_centers = [18.1, 45.3, 72.5, 99.7, 126.9]  (from config)
+half_housing = 16.2 / 2 = 8.1
+
+gaps = [
+    (0.0, 10.0),       # Before first housing
+    (26.2, 37.2),       # Gap 1-2
+    (53.4, 64.4),       # Gap 2-3
+    (80.6, 91.6),       # Gap 3-4
+    (107.8, 118.8),     # Gap 4-5
+    (135.0, 145.0),     # After last housing
+]
+```
 
 ### Slot Positions (kerf-compensated)
 
@@ -74,9 +107,9 @@ Located at Y=0 on the jig, extends into brass tube to hold it down.
 
 | Parameter | Value | Description |
 |-----------|-------|-------------|
-| Size | 7.7mm × 7.7mm | Fits in 7.8mm inner cavity (0.05mm clearance per side) |
+| Size | 7.7mm x 7.7mm | Fits in 7.8mm inner cavity (0.05mm clearance per side) |
 | Length | 3mm | Extends into brass (Y=0 to Y=3) |
-| Z position | Z=-5 | Centered in brass inner cavity (Z=-8.9 to Z=-1.1) |
+| Z position | Z=-5 | Centered in brass inner cavity |
 
 ## Moveable End Stop
 
@@ -87,7 +120,7 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 | Body size (X) | 9.9mm | Fits in 10.3mm channel with clearance |
 | Body size (Y) | 25mm | For rigidity |
 | Body height | 10mm | Sits on channel floor (Z=-10) to jig top (Z=0) |
-| Plug size | 7.7mm × 7.7mm | Fits in brass inner cavity (0.05mm clearance per side) |
+| Plug size | 7.7mm x 7.7mm | Fits in brass inner cavity (0.05mm clearance per side) |
 | Plug length | 5mm | Extends into brass tube (in -Y direction) |
 | Plug Z position | Z=-5 | Centered in brass inner cavity |
 | Bolt hole | 5.5mm | M5 clearance, vertical through body |
@@ -117,7 +150,7 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 
 ## Files
 
-- `cutting_jig.py` - Parametric CAD script
+- `cutting_jig.py` - Parametric CAD script (reads gear definition JSON via --gear)
 - `output/cutting_jig_prototype.step` - Jig body geometry
 - `output/cutting_jig_end_stop.step` - End stop geometry
 
@@ -125,15 +158,10 @@ Sits inside the jig channel on the channel floor, with plug extending into the b
 
 | Feature | Cutting Jig | Drilling Jig |
 |---------|-------------|--------------|
-| Top | Open (saw access) | Lid (drill bushings) |
-| Brass hold-down | Internal plugs (7.7mm) | Lid clamps from above |
-| Y location | Fixed plug + moveable end stop | End stops |
-| Z location | Plugs in brass inner cavity | Lid pressure |
-| Lid thickness | N/A | 10mm (drill bushing depth) |
-
-### Reusable Parameters for Drilling Jig
-- Channel width: 10.3mm
-- Channel depth: 10mm
-- Floor thickness: 8mm
-- Side wall thickness: ~10mm
-- Heat-set inserts: M5, 6.4mm OD
+| Top | Open (saw access) | Closed (clamshell with drill bushings) |
+| Brass hold-down | Internal plugs (7.7mm) | Clamshell pocket + base plate lip |
+| Y location | Fixed plug + moveable end stop | Pocket end walls (fixed) |
+| Z location | Plugs in brass inner cavity | Lip pushes frame against ceiling |
+| Channel depth | 10mm (frame height) | 16.9mm (extended for bushing enclosure) |
+| Config | --gear (reads JSON) | --gear (reads JSON) |
+| Hardware | M5 heat-set + bolt | 15x M14 bushings + 4x M5 |
