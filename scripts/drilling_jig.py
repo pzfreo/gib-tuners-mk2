@@ -102,7 +102,7 @@ BASE_THICKNESS = 8.0
 # Hardware
 # ============================================================
 M3_CLEARANCE = 3.4          # M3 bolt clearance hole
-HEAT_INSERT_OD = 5.0        # M3 heat-set insert outer diameter
+HEAT_INSERT_OD = 4.7        # M3 heat-set insert pocket (undersized for melt-in grip)
 HEAT_INSERT_POCKET = 9.0    # Pocket depth (4mm insert + 5mm for push-in and bolt clearance)
 M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
 M3_HEAD_DEPTH = 3.0         # M3 socket head height
