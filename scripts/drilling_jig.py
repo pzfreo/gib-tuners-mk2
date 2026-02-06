@@ -111,7 +111,7 @@ M3_HEAD_DEPTH = 3.0         # M3 socket head height
 # Text engraving
 # ============================================================
 ENGRAVE_DEPTH = 0.6         # Engraving depth into surface
-FONT_SIZE = 4.0             # Text height in mm
+FONT_SIZE = 5.3             # Text height in mm
 
 
 def drill_label(diameter_mm: float) -> str:
