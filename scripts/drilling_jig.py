@@ -92,6 +92,7 @@ JIG_MODES = {
 # ============================================================
 END_WALL = 5.0              # End wall thickness (Y direction, acts as end stop)
 CHANNEL_CLEARANCE = 0.3     # Channel oversize vs frame
+FRAME_LENGTH_TOLERANCE = 4.0  # Extra cavity length for plug to seat square and accommodate variation
 
 # ============================================================
 # Base plate dimensions
@@ -186,8 +187,10 @@ def create_clamshell(
 
     Rear end is open for removable end stop (frame slides out the back).
     """
-    # Block spans from Y=-END_WALL to Y=frame_length (no rear wall)
-    jig_length = frame_length + END_WALL
+    # Block spans from Y=-END_WALL to Y=frame_length+tolerance (no rear wall)
+    # Extra cavity length lets end stop plug clamp shorter frames against front wall
+    cavity_length = frame_length + FRAME_LENGTH_TOLERANCE
+    jig_length = cavity_length + END_WALL
 
     # Solid block
     block = Box(mode.jig_width, jig_length, jig_height)
@@ -198,7 +201,7 @@ def create_clamshell(
     )))
 
     # Cut pocket from below (frame cavity, open at rear)
-    pocket_length = frame_length + 1  # Extend past rear face
+    pocket_length = cavity_length + 1  # Extend past rear face
     pocket = Box(channel_width, pocket_length, channel_depth)
     pocket = pocket.move(Location((0, pocket_length / 2, -channel_depth / 2)))
     clamshell = block - pocket
@@ -294,7 +297,7 @@ def create_clamshell(
         insert = insert.rotate(Axis.X, 90)  # Horizontal, pointing in -Y
         insert = insert.move(Location((
             bolt_x,
-            frame_length - HEAT_INSERT_POCKET / 2,
+            cavity_length - HEAT_INSERT_POCKET / 2,
             end_stop_bolt_z,
         )))
         clamshell = clamshell - insert
@@ -373,7 +376,7 @@ def create_base_plate(
 
     Matches clamshell length (front end wall only, rear is open for end stop).
     """
-    jig_length = frame_length + END_WALL
+    jig_length = frame_length + FRAME_LENGTH_TOLERANCE + END_WALL
 
     # Outer plate (full width)
     plate = Box(mode.jig_width, jig_length, BASE_THICKNESS)
@@ -425,12 +428,13 @@ def create_base_plate(
 
 
 def create_end_stop(
-    mode, channel_width, channel_depth, side_wall, jig_height,
+    mode, frame_outer, channel_width, channel_depth, side_wall, jig_height,
 ) -> Part:
-    """Create the removable rear end stop.
+    """Create the removable rear end stop with clamping plug.
 
-    Bolts to rear of clamshell side walls. Simple wall piece — no plug.
-    The end stop sits at Y=frame_length, closing off the pocket.
+    Bolts to rear of clamshell side walls. A 10x10mm plug protrudes into
+    the cavity to push the frame against the front wall, accommodating
+    up to FRAME_LENGTH_TOLERANCE variation in frame length.
     """
     # Outer dimensions match clamshell cross-section
     stop_width = mode.jig_width
@@ -441,10 +445,12 @@ def create_end_stop(
     stop = Box(stop_width, stop_depth, stop_height)
     stop = stop.move(Location((0, stop_depth / 2, (mode.top_slab - channel_depth) / 2)))
 
-    # Cut the bottom to match channel profile (so frame can slide past when removed)
-    # Actually we want a solid end wall — no cutout needed. The pocket is open.
-    # But for the frame to seat properly, we need the bottom of the stop to align
-    # with the pocket floor. Let's make it solid — frame butts against it.
+    # Plug that protrudes into cavity (pushes frame against front wall)
+    plug_size = frame_outer  # 10x10mm matches frame outer
+    plug_length = FRAME_LENGTH_TOLERANCE + 1.0  # Extends past tolerance range
+    plug = Box(plug_size, plug_length, plug_size)
+    plug = plug.move(Location((0, -plug_length / 2, -channel_depth / 2)))
+    stop = stop + plug
 
     # M3 bolt clearance holes with counterbores (through the side wings)
     end_stop_bolt_z = (mode.top_slab - channel_depth) / 2  # Match clamshell inserts
@@ -623,7 +629,7 @@ def main():
     )
 
     end_stop = create_end_stop(
-        mode=mode,
+        mode=mode, frame_outer=frame_outer,
         channel_width=channel_width, channel_depth=channel_depth,
         side_wall=side_wall, jig_height=jig_height,
     )
@@ -652,7 +658,8 @@ def main():
         show_object(clamshell, name="clamshell", options={"color": "blue"})
         show_object(base_plate, name="base_plate", options={"color": "red", "alpha": 0.5})
         # Position end stop at rear of clamshell
-        end_stop_positioned = end_stop.move(Location((0, frame_length, 0)))
+        cavity_length = frame_length + FRAME_LENGTH_TOLERANCE
+        end_stop_positioned = end_stop.move(Location((0, cavity_length, 0)))
         show_object(end_stop_positioned, name="end_stop", options={"color": "green", "alpha": 0.7})
         show_object(brass_ghost, name="brass_frame", options={"alpha": 0.3, "color": "orange"})
         print("Sent to OCP viewer")
