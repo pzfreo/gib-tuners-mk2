@@ -7,7 +7,7 @@ Parametric CAD project for historic guitar tuner restoration using build123d. Th
 ## Key Files
 
 - `spec.md` - Master engineering specification (source of truth for all dimensions)
-- `config/worm_gear.json` - Gear calculator parameters for worm/wheel (13T, 7.5mm wheel)
+- `config/<profile>/worm_gear.json` - Gear calculator parameters for worm/wheel (per gear profile)
 - `src/gib_tuners/config/parameters.py` - All dataclasses defining component geometry
 - `src/gib_tuners/config/tolerances.py` - Tolerance profiles for different manufacturing methods
 
@@ -129,11 +129,11 @@ pytest --cov=src/gib_tuners tests/
 
 ## Reference Files
 
-The `reference/` directory contains:
-- `worm_m0.5_z1.step` - Cylindrical worm reference geometry
-- `wheel_m0.5_z13.step` - 13-tooth worm wheel (7.5mm OD)
-- `rhframe.step` - Reference right-hand frame geometry
-- `peg.dxf`, `pegsmall.dxf` - Peg head profile references
+The `reference/` directory contains legacy reference geometry. Current gear geometry is in `config/<profile>/`:
+- `config/<profile>/worm_m0.6_z1.step` - Worm reference geometry
+- `config/<profile>/wheel_m0.6_z<N>.step` - Worm wheel (N = tooth count)
+- `reference/rhframe.step` - Reference right-hand frame geometry
+- `reference/peg.dxf`, `pegsmall.dxf` - Peg head profile references
 
 ## Incremental Assembly Workflow
 
@@ -169,15 +169,15 @@ The `reference/` directory contains:
 | Num housings | 5 (default) | Tuning stations (1 to N) |
 | Tuner pitch | 27.2mm | Center-to-center spacing |
 | Total length | *computed* | 145.0mm for 5 housings |
-| Center distance | 5.75mm | Worm-to-wheel axis distance |
-| Gear module | 0.5 | M0.5 worm drive (cylindrical or globoid) |
+| Center distance | *from JSON* | `assembly.centre_distance_mm` in worm_gear.json |
+| Gear module | 0.6 | M0.6 worm drive (cylindrical or globoid) |
 
 ## Manufacturing Constraints
 
 **Wall thickness is fixed at 1.1mm** - this is determined by the brass box section stock used in manufacturing. Never change this value.
 
 To create axial play for rotating assemblies, we extend the shafts:
-- String post bearing section = `wall_thickness + post_bearing_axial_play` (1.3mm)
+- String post bearing section = `wall_thickness + post_bearing_axial_play` (1.2mm)
 - Peg head bearing section = `wall_thickness + peg_bearing_axial_play` (1.3mm)
 
 This allows the frame to "float" between the clamping surfaces, enabling free rotation.

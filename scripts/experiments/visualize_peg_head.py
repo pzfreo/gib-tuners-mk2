@@ -2,9 +2,11 @@
 """Peg head with worm - exact dimensions per user spec."""
 
 import sys
+import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from build123d import import_step, Box, Align, Location, Cylinder
 

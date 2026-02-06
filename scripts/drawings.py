@@ -74,7 +74,7 @@ Examples:
     parser.add_argument("--hand", choices=["right", "left", "both"], default="right")
     parser.add_argument("--scale", type=float, default=1.0)
     parser.add_argument("--output-dir", type=Path, default=Path("drawings"))
-    parser.add_argument("--num-housings", type=int, choices=[1, 2, 3, 4, 5], default=5)
+    parser.add_argument("-n", "--num-housings", type=int, choices=[1, 2, 3, 4, 5], default=5)
 
     return parser.parse_args()
 

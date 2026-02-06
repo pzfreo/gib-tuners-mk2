@@ -37,9 +37,9 @@ class ToleranceConfig:
 @dataclass(frozen=True)
 class DDCutParams:
     """Double-D cut parameters for anti-rotation interface."""
-    diameter: float = 3.5  # Nominal shaft/bore diameter
-    flat_depth: float = 0.5  # Depth of each flat (14% of diameter)
-    across_flats: float = 2.5  # Distance between flats
+    diameter: float = 3.5  # Nominal shaft/bore diameter (from worm_gear.json)
+    flat_depth: float = 0.5  # Depth of each flat (~14% of diameter)
+    across_flats: float = 2.5  # Distance between flats (diameter - 2*flat_depth)
 
 
 @dataclass(frozen=True)
@@ -133,7 +133,7 @@ class FrameParams:
 @dataclass(frozen=True)
 class WormParams:
     """Parameters for the worm (integral to peg head)."""
-    # Defaults match "balanced" config (M0.6, 10:1)
+    # Overridden from config/<profile>/worm_gear.json at load time
     module: float = 0.6
     num_starts: int = 1
     pitch_diameter: float = 5.8
@@ -141,7 +141,7 @@ class WormParams:
     root_diameter: float = 4.3
     lead: float = 1.885  # π × module
     lead_angle_deg: float = 5.91
-    length: float = 7.8  # From manufacturing config
+    length: float = 7.6  # From manufacturing config
     hand: Hand = Hand.RIGHT
     worm_type: WormType = WormType.CYLINDRICAL
 
@@ -153,20 +153,19 @@ class WormParams:
 @dataclass(frozen=True)
 class WheelParams:
     """Parameters for the worm wheel."""
-    # Defaults match "balanced" config (M0.6, 10T)
     module: float = 0.6
     num_teeth: int = 10
     pitch_diameter: float = 6.0
     tip_diameter: float = 7.2
     root_diameter: float = 4.5
     face_width: float = 7.6  # From manufacturing config
-    bore: DDCutParams = DDCutParams(diameter=3.25, flat_depth=0.45, across_flats=2.35)
+    bore: DDCutParams = DDCutParams()  # 3.5mm DD bore (from worm_gear.json)
 
 
 @dataclass(frozen=True)
 class GearParams:
     """Combined gear set parameters."""
-    # Defaults match "balanced" config (M0.6, 10:1)
+    # Overridden from config/<profile>/worm_gear.json at load time
     worm: WormParams
     wheel: WheelParams
     center_distance: float = 5.9
@@ -229,7 +228,7 @@ class PegHeadParams:
 
     # Shaft (new, added programmatically)
     shaft_diameter: float = 4.0  # Bearing section diameter
-    worm_length: float = 7.8  # From gear config manufacturing.worm_length_mm
+    worm_length: float = 7.6  # From gear config manufacturing.worm_length_mm
     # Axial play for free rotation (gap between cap and frame)
     peg_bearing_axial_play: float = 0.2
     washer_clearance: float = 0.1  # Extension beyond frame
@@ -294,8 +293,8 @@ class StringPostParams:
     # This gap allows the post+wheel assembly to rotate freely in the frame
     post_bearing_axial_play: float = 0.1
 
-    # Wheel interface (matches balanced wheel bore)
-    dd_cut: DDCutParams = DDCutParams(diameter=3.25, flat_depth=0.45, across_flats=2.35)
+    # Wheel interface (matches wheel bore from worm_gear.json)
+    dd_cut: DDCutParams = DDCutParams()  # 3.5mm DD (from worm_gear.json)
     # Clearance ensures screw clamps wheel to shoulder (DD doesn't bottom out in wheel bore)
     dd_cut_clearance: float = 0.1
 

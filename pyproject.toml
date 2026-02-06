@@ -37,3 +37,8 @@ packages = ["src/gib_tuners"]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
+filterwarnings = [
+    "ignore::DeprecationWarning:build123d",
+    "ignore::DeprecationWarning:ezdxf",
+    "ignore::DeprecationWarning:pyparsing",
+]

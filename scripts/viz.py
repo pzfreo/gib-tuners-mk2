@@ -14,10 +14,12 @@ Usage:
 import argparse
 import sys
 import tempfile
+import warnings
 from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from build123d import Location, export_stl
 

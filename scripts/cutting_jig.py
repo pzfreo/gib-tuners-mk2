@@ -15,10 +15,12 @@ Usage:
 
 import argparse
 import sys
+import warnings
 from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from build123d import (
     Box,
@@ -265,7 +267,7 @@ def main():
         help="Gear config name (e.g., 'bh11-cd'). Use --list-gears to see options.",
     )
     parser.add_argument(
-        "--num-housings", type=int, default=None,
+        "-n", "--num-housings", type=int, default=None,
         help="Override number of housings (default: from config, typically 5)",
     )
     parser.add_argument(

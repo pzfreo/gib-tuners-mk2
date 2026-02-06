@@ -1,5 +1,10 @@
 """Parametric CAD for historic guitar tuner restoration."""
 
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="build123d")
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="ezdxf")
+warnings.filterwarnings("ignore", message=".*deprecated.*", module="pyparsing")
+
 from .config.parameters import (
     BuildConfig,
     FrameParams,
