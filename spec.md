@@ -42,7 +42,7 @@ The build123d script shall support the following parameters:
 | `prototype_resin` | +0.10mm | +0.20mm | 1:1 resin print validation |
 | `prototype_fdm` | +0.20mm | +0.30mm | 2:1 FDM functional test |
 
-*Bearing holes: post bearing (4.05mm), peg bearing (4.05mm). Clearance holes: worm entry (7.05mm), wheel inlet (5.1mm).*
+*Bearing holes: post bearing (5.05mm), peg bearing (4.05mm). Clearance holes: worm entry (7.05mm), wheel inlet (5.1mm).*
 
 ### **Scale Parameter**
 | Parameter | Default | Description |
@@ -91,7 +91,7 @@ The build123d script shall support the following parameters:
 |------|------------|-------|
 | Mounting plate surface | Z=0 | Visible from above |
 | Mounting holes | Z=0 to Z=-1.1 | Drilled through top plate |
-| Post bearing holes | Z=0 to Z=-1.1 | Posts emerge upward (+Z) |
+| Post bearing holes (ø5.05mm) | Z=0 to Z=-1.1 | Posts emerge upward (+Z) |
 | "R"/"L" etching | Z=-1.1 | Inside surface of mounting plate |
 | Worm entry (RH) | RIGHT side (+X) | Larger ø7.05mm hole |
 | Peg bearing (RH) | LEFT side (-X) | Smaller ø4.05mm hole |
@@ -131,8 +131,8 @@ To enable assembly without soldering:
 
 1. **Bottom Face (Wheel Inlet):** ø5.1mm through-hole.
    * *Function:* Allows M2 washer/screw access for post retention. Wheel slides in sideways from open frame end.
-2. **Top Face (Post Bearing):** ø4.05mm through-hole (reamed).
-   * *Function:* Acts as the journal bearing for the String Post (4.0mm shaft, +0.05mm clearance).
+2. **Top Face (Post Bearing):** ø5.05mm through-hole (reamed).
+   * *Function:* Acts as the journal bearing for the String Post (5.0mm shaft, +0.05mm clearance).
 3. **Side Faces (Worm Axle):** Asymmetric through-holes.
    * **Entry Side:** ø7.05mm (worm tip 7.0mm + 0.2mm clearance).
    * **Bearing Side:** ø4.05mm (bearing shaft 4.0mm + 0.05mm clearance, reamed).
@@ -303,8 +303,9 @@ The worm thread is imported from `config/<profile>/worm_m0.6_z1.step`:
 
 * **Manufacturing:** Swiss Sliding Head Lathe (Swiss Auto) or manual lathe.
 * **Stock:** 8.0mm round brass/steel bar.
-* **Cap:** Decorative 7.5mm cap with chamfered edges.
+* **Cap:** Decorative 7.5mm cap with 0.25mm fillet edges and 3 concentric V-grooves (0.33mm wide/deep, outer OD 6mm).
 * **Top Section:** 6.0mm visible post (runs in the Top Face hole).
+* **Frame Bearing:** 5.0mm shaft (runs in ø5.05mm frame hole).
 * **Gear Interface:** 3.5mm DD cut section to mate with Worm Wheel DD bore.
 * **Retention:** M2 tap bore in bottom of DD section for nut + washer.
 * **String Hole:** ø1.5mm cross-hole, centered in visible post (2.75mm from frame top).
@@ -315,10 +316,10 @@ The worm thread is imported from `config/<profile>/worm_m0.6_z1.step`:
 |---------|----------|--------|-------------|
 | DD cut (wheel interface) | 3.25mm DD | *derived* | = `wheel.face_width` (7.5-7.6mm) |
 | M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
-| Frame bearing | 4.0mm | *derived* | = `wall_thickness + axial_play` (1.2mm) |
+| Frame bearing | 5.0mm | *derived* | = `wall_thickness + axial_play` (1.2mm) |
 | Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
 | String hole | ø1.5mm | through | Cross-drilled, centered in post (2.75mm from frame) |
-| Cap | 7.5mm | 1.0mm | Decorative cap, chamfered edges |
+| Cap | 7.5mm | 1.0mm | 0.25mm fillet top/bottom, 3× V-grooves (0.33mm, outer OD 6mm) |
 
 **Derived lengths:**
 - `bearing_length` = `wall_thickness` (1.1mm) + `post_bearing_axial_play` (0.1mm) = **1.2mm**
@@ -347,7 +348,7 @@ An M2 screw threads into the tap bore from below, with a washer to retain the wh
 
 ### **String Post Retention**
 
-* **Pull-up prevention:** 7.5mm cap cannot pass through 4.2mm frame hole
+* **Pull-up prevention:** 7.5mm cap cannot pass through 5.05mm frame hole
 * **Pull-down prevention:** M2 screw + washer in tap bore
   * Washer OD: ~5mm (larger than 3.5mm DD bore)
   * Screw holds washer in place
@@ -357,11 +358,11 @@ An M2 screw threads into the tap bore from below, with a washer to retain the wh
 
 **Assembly Constraints:**
 - Worm MUST be installed first (required for globoid meshing, recommended for cylindrical)
-- Wheel (7.05mm OD) cannot fit through post bearing hole (4.05mm) - insert separately
+- Wheel (7.05mm OD) cannot fit through post bearing hole (5.05mm) - insert separately
 
 1. Install peg head (worm) first - secure with M2 screw + washer
 2. Slide wheel sideways into cavity from open frame end (meshes with worm)
-3. Insert string post from above through bearing hole (ø4.05mm)
+3. Insert string post from above through bearing hole (ø5.05mm)
 4. DD section engages wheel bore, creating the sandwich
 5. Tap M2 thread into post (stronger with wheel supporting the DD section)
 6. Thread M2 screw + washer through bottom hole (ø5.1mm) into tap bore
@@ -374,8 +375,8 @@ The string post and wheel rotate as a unit. The frame is NOT clamped between the
 
 When the M2 retention screw is tightened:
 1. Screw pulls wheel upward toward post
-2. Wheel rises until it contacts the **4mm→3.25mm shoulder** on the post
-3. Post shoulder (6mm→4mm) rests on frame top surface
+2. Wheel rises until it contacts the **5mm→3.25mm shoulder** on the post
+3. Post shoulder (6mm→5mm) rests on frame top surface
 4. Frame floats between these two reference points with axial play
 
 ### Cross-Section (Y-Z plane through post axis)
@@ -387,7 +388,7 @@ POST SHOULDER ══════╧═══════════════
 ─────────────────────────────────────────────  FRAME TOP SURFACE
 ░░░░░░░░░░░░░░░░░░░░│░░░░░░░░░░░░░░░░░░░░░░░  wall (1.1mm)
 ─────────────────────│───────────────────────  CAVITY CEILING (Z=-1.1)
-                     │ bearing (4mm Ø)
+                     │ bearing (5mm Ø)
                      │    ↕ axial_play        ← FREE GAP (frame floats here)
     ─────────────────┼───────────────────────  CLAMP SHOULDER (Z=-1.2)
                      │ DD section (3.25mm)    ↑
@@ -432,7 +433,7 @@ POST SHOULDER ══════╧═══════════════
 1. **Cut Stock:** Cut 10.0mm Box section to 145mm.
 2. **Mill Profile:** Clamp stock. Mill away the Top and Side walls in the "Gap" sections to create the 5 isolated boxes.
 3. **Drill Vertical:**
-   * Drill & ream **ø4.05mm** post bearing holes on Top Face (post shaft 4.0mm + 0.05mm clearance).
+   * Drill & ream **ø5.05mm** post bearing holes on Top Face (post shaft 5.0mm + 0.05mm clearance).
    * Drill **ø5.1mm** wheel inlet holes on Bottom Face (M2 washer access).
    * Drill **ø3.0mm** mounting holes on Bottom Plate at specified Y positions.
 4. **Drill Horizontal (Asymmetric):**
@@ -464,9 +465,9 @@ Investment cast peg head with integral shaft and worm thread:
 ### **Phase 4: String Post Production**
 
 1. Turn from **8mm brass/steel bar:**
-   * 7.5mm cap (1mm high, chamfered)
+   * 7.5mm cap (1mm high, 0.25mm fillet, 3× V-grooves)
    * 6mm visible post (5.5mm high)
-   * 4mm frame bearing section (1.2mm, through frame + axial play)
+   * 5mm frame bearing section (1.2mm, through frame + axial play)
    * 3.25mm DD cut gear interface (7.5mm, matches wheel width)
    * M2 tap bore (~4mm deep, for screw retention)
 2. Mill DD flats on 3.25mm shaft section
@@ -479,8 +480,8 @@ Investment cast peg head with integral shaft and worm thread:
 
 1. **Install Peg Head (Worm):** Slide **Peg Head + Worm** through **Entry Hole** (ø7.05mm). The ø4.0mm shaft passes through opposite **Bearing Hole** (ø4.05mm).
 2. **Secure Peg Head:** Place **5.5mm washer** on shaft end, thread **M2 × 3mm pan head screw** to retain.
-3. **Insert Wheel:** Slide **Worm Wheel** sideways into cavity from open frame end. Wheel (7.05mm OD) cannot fit through post bearing hole (4.05mm) - must insert separately.
-4. **Insert Post:** Slide **String Post** from above through **Top Hole** (ø4.05mm). DD section engages wheel bore.
+3. **Insert Wheel:** Slide **Worm Wheel** sideways into cavity from open frame end. Wheel (7.05mm OD) cannot fit through post bearing hole (5.05mm) - must insert separately.
+4. **Insert Post:** Slide **String Post** from above through **Top Hole** (ø5.05mm). DD section engages wheel bore.
 5. **Tap Post:** Drill and tap M2 hole in post (stronger with wheel supporting DD section).
 6. **Secure Post:** Thread **M2 × 3mm screw + washer** through **Bottom Hole** (ø5.1mm) into post tap bore.
 7. **Complete:** Peg head secured with M2 screw + washer, post secured with M2 screw + washer.
@@ -553,8 +554,8 @@ Before manufacturing, verify (values loaded from `worm_gear.json`):
 - [x] Worm OD passes through entry hole with clearance
 - [x] Peg head shaft (4.0mm) fits in bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
 - [x] Wheel OD enters sideways from open frame end (worm first for globoid) ✓
-- [x] Post shaft (4.0mm) fits in top bearing hole (4.05mm) ✓ 0.05mm clearance (reamed)
-- [x] Post cap (7.5mm) stops pull-through top hole (4.05mm) ✓
+- [x] Post shaft (5.0mm) fits in top bearing hole (5.05mm) ✓ 0.05mm clearance (reamed)
+- [x] Post cap (7.5mm) stops pull-through top hole (5.05mm) ✓
 - [x] Peg head cap (8.5mm) stops pull-in through entry hole ✓
 - [x] M2 screw + washer (5.5mm OD) stops peg pull-out through bearing hole (4.05mm) ✓
 - [x] Center distance (from JSON) fits within frame geometry ✓
