@@ -102,7 +102,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--num-housings",
+        "-n", "--num-housings",
         type=int,
         choices=[1, 2, 3, 4, 5],
         default=5,

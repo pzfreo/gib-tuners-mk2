@@ -2,9 +2,11 @@
 """Debug script to visualize peg head positioning in frame."""
 
 import sys
+import warnings
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 from build123d import Location, Axis, Box, Align
 

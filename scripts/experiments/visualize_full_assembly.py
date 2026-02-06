@@ -26,7 +26,7 @@ from gib_tuners.assembly.gang_assembly import (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Visualize full tuner assembly")
-    parser.add_argument("--num-housings", type=int, default=5, choices=[1, 2, 3, 4, 5])
+    parser.add_argument("-n", "--num-housings", type=int, default=5, choices=[1, 2, 3, 4, 5])
     parser.add_argument("--hand", choices=["right", "left"], default="right")
     parser.add_argument("--scale", type=float, default=1.0)
     parser.add_argument("--no-step", action="store_true", help="Use placeholder wheel")

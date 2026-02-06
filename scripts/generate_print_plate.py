@@ -23,6 +23,7 @@ Usage:
 import argparse
 import sys
 import tempfile
+import warnings
 from pathlib import Path
 from dataclasses import replace, dataclass
 import math
@@ -31,6 +32,7 @@ import numpy as np
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 try:
     import trimesh
@@ -230,7 +232,7 @@ Examples:
         help="Hand variant (default: right)",
     )
     parser.add_argument(
-        "--num-housings",
+        "-n", "--num-housings",
         type=int,
         default=1,
         choices=[1, 2, 3, 4, 5],
