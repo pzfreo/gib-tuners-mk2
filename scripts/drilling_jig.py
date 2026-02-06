@@ -11,10 +11,13 @@ Two modes:
 - production: M14 stepped bushing pockets (blind M14 + smaller bore)
 - prototype: Simple through-holes at drill diameter (faster to print)
 
-Right-hand frame only. Uses the same config loading as build.py (--gear).
+Supports --hand right/left/both.  For LH the worm-entry and peg-bearing
+holes swap walls; base plate and end stop are symmetric.
 
 Usage:
     python scripts/drilling_jig.py --gear bh11-cd
+    python scripts/drilling_jig.py --gear bh11-cd --hand left
+    python scripts/drilling_jig.py --gear bh11-cd --hand both
     python scripts/drilling_jig.py --gear bh11-cd --mode prototype
     python scripts/drilling_jig.py --gear balanced --num-housings 3
 """
@@ -178,6 +181,7 @@ def create_clamshell(
     mounting_hole_positions,
     post_bearing_drill, worm_entry_drill, peg_bearing_drill, mounting_drill,
     bolt_positions,
+    hand_label="R",
 ) -> Part:
     """Create the clamshell (top + sides) with drill guide features.
 
@@ -305,9 +309,9 @@ def create_clamshell(
         clamshell = clamshell - insert
 
     # --- Engrave labels on clamshell ---
-    # "R" near rear of clamshell (where end stop attaches)
+    # Hand label near rear of clamshell (where end stop attaches)
     clamshell = engrave_on_face(
-        clamshell, "R", FONT_SIZE,
+        clamshell, hand_label, FONT_SIZE,
         x=mode.jig_width / 2 - FONT_SIZE,  # Right side, away from holes
         y=frame_length - FONT_SIZE,
         z=mode.top_slab,
@@ -499,6 +503,10 @@ def main():
         help="Override number of housings (default: from config, typically 5)",
     )
     parser.add_argument(
+        "--hand", choices=["right", "left", "both"], default="right",
+        help="Hand variant: right, left, or both (default: right)",
+    )
+    parser.add_argument(
         "--mode", choices=list(JIG_MODES.keys()), default="production",
         help="Jig mode: 'production' (M14 bushing pockets) or 'prototype' (simple guide holes)",
     )
@@ -603,23 +611,14 @@ def main():
     print(f"  Drill sizes: post={post_bearing_drill}mm, worm={worm_entry_drill}mm, "
           f"peg={peg_bearing_drill}mm, mount={mounting_drill}mm, inlet={wheel_inlet_drill}mm")
 
-    # Build geometry
-    clamshell = create_clamshell(
-        mode=mode, gear_name=args.gear,
-        frame_outer=frame_outer, frame_length=frame_length,
-        channel_width=channel_width, channel_depth=channel_depth,
-        jig_height=jig_height, side_wall=side_wall,
-        post_bearing_positions=post_bearing_positions,
-        worm_entry_positions=worm_entry_positions,
-        peg_bearing_positions=peg_bearing_positions,
-        mounting_hole_positions=mounting_hole_positions,
-        post_bearing_drill=post_bearing_drill,
-        worm_entry_drill=worm_entry_drill,
-        peg_bearing_drill=peg_bearing_drill,
-        mounting_drill=mounting_drill,
-        bolt_positions=bolt_positions,
-    )
+    # Determine which hand(s) to build
+    hands = []
+    if args.hand in ("right", "both"):
+        hands.append(Hand.RIGHT)
+    if args.hand in ("left", "both"):
+        hands.append(Hand.LEFT)
 
+    # Base plate and end stop are symmetric — build once
     base_plate = create_base_plate(
         mode=mode,
         frame_length=frame_length, channel_width=channel_width,
@@ -638,14 +637,10 @@ def main():
 
     brass_ghost = create_brass_ghost(frame_outer, frame_inner, frame_length)
 
-    # Export STEP files
     output_dir = PROJECT_ROOT / "output" / args.gear
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    clamshell_path = output_dir / f"drilling_jig_clamshell_{mode.name}.step"
-    export_step(clamshell, str(clamshell_path))
-    print(f"Exported: {clamshell_path}")
-
+    # Export symmetric parts once (no hand suffix)
     base_path = output_dir / f"drilling_jig_base_plate_{mode.name}.step"
     export_step(base_plate, str(base_path))
     print(f"Exported: {base_path}")
@@ -654,10 +649,74 @@ def main():
     export_step(end_stop, str(end_stop_path))
     print(f"Exported: {end_stop_path}")
 
-    # Try to show in OCP viewer
+    # Build and export clamshell per hand
+    clamshells = {}
+    for hand in hands:
+        hand_label = "R" if hand == Hand.RIGHT else "L"
+
+        # For LH, swap which drill/positions go on which wall
+        if hand == Hand.RIGHT:
+            rw_positions, rw_drill = worm_entry_positions, worm_entry_drill
+            lw_positions, lw_drill = peg_bearing_positions, peg_bearing_drill
+        else:
+            rw_positions, rw_drill = peg_bearing_positions, peg_bearing_drill
+            lw_positions, lw_drill = worm_entry_positions, worm_entry_drill
+
+        clamshell = create_clamshell(
+            mode=mode, gear_name=args.gear,
+            frame_outer=frame_outer, frame_length=frame_length,
+            channel_width=channel_width, channel_depth=channel_depth,
+            jig_height=jig_height, side_wall=side_wall,
+            post_bearing_positions=post_bearing_positions,
+            worm_entry_positions=rw_positions,
+            peg_bearing_positions=lw_positions,
+            mounting_hole_positions=mounting_hole_positions,
+            post_bearing_drill=post_bearing_drill,
+            worm_entry_drill=rw_drill,
+            peg_bearing_drill=lw_drill,
+            mounting_drill=mounting_drill,
+            bolt_positions=bolt_positions,
+            hand_label=hand_label,
+        )
+        clamshells[hand] = clamshell
+
+        # RH keeps original filename; LH gets _lh suffix
+        suffix = "" if hand == Hand.RIGHT else "_lh"
+        clamshell_path = output_dir / f"drilling_jig_clamshell_{mode.name}{suffix}.step"
+        export_step(clamshell, str(clamshell_path))
+        print(f"Exported: {clamshell_path}")
+
+    # Validate LH is a true mirror of RH (when both are built)
+    if Hand.RIGHT in clamshells and Hand.LEFT in clamshells:
+        from build123d import Plane
+        rh = clamshells[Hand.RIGHT]
+        lh = clamshells[Hand.LEFT]
+        rh_mirrored = rh.mirror(Plane.YZ)
+        # Compare bounding boxes
+        rh_bb = rh_mirrored.bounding_box()
+        lh_bb = lh.bounding_box()
+        bb_match = (
+            abs(rh_bb.min.X - lh_bb.min.X) < 0.01
+            and abs(rh_bb.max.X - lh_bb.max.X) < 0.01
+            and abs(rh_bb.min.Y - lh_bb.min.Y) < 0.01
+            and abs(rh_bb.max.Y - lh_bb.max.Y) < 0.01
+            and abs(rh_bb.min.Z - lh_bb.min.Z) < 0.01
+            and abs(rh_bb.max.Z - lh_bb.max.Z) < 0.01
+        )
+        # Compare volumes (text engravings differ, so allow small tolerance)
+        rh_vol = rh_mirrored.volume
+        lh_vol = lh.volume
+        vol_pct = abs(rh_vol - lh_vol) / rh_vol * 100 if rh_vol > 0 else 0
+        vol_match = vol_pct < 0.5  # <0.5% difference (text only)
+        print(f"  Mirror validation: bbox={'PASS' if bb_match else 'FAIL'}, "
+              f"volume={'PASS' if vol_match else 'FAIL'} "
+              f"(RH_mirrored={rh_vol:.1f}mm³, LH={lh_vol:.1f}mm³, diff={vol_pct:.2f}%)")
+
+    # Try to show in OCP viewer (show last-built clamshell)
+    last_clamshell = clamshells[hands[-1]]
     try:
         from ocp_vscode import show_object
-        show_object(clamshell, name="clamshell", options={"color": "blue"})
+        show_object(last_clamshell, name="clamshell", options={"color": "blue"})
         show_object(base_plate, name="base_plate", options={"color": "red", "alpha": 0.5})
         # Position end stop at rear of clamshell
         cavity_length = frame_length + FRAME_LENGTH_TOLERANCE
