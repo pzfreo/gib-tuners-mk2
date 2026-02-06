@@ -58,13 +58,13 @@ class FrameParams:
     tuner_pitch: float = 27.2  # Center-to-center spacing between tuners
 
     # Hole diameters (nominal, before tolerance adjustment)
-    # Bearing holes use 0.05mm clearance (can be reamed at assembly if needed)
-    post_bearing_hole: float = 4.05  # Top face, for string post shaft (4.0mm)
+    bearing_clearance: float = 0.05  # Clearance added to shaft diameter for bearing holes
+    post_bearing_hole: float = 5.05  # Top face, for string post shaft (bearing_dia + clearance)
     # Wheel inlet: wheel slides in sideways, hole only needs to clear M2 washer
     washer_od_for_inlet: float = 4.9  # M2 washer OD
     wheel_inlet_tolerance: float = 0.2  # Clearance for washer fit
     worm_entry_hole: float = 7.2  # Side face, for worm insertion (> 7mm worm tip)
-    peg_bearing_hole: float = 4.05  # Side face, for peg shaft bearing (4.0mm)
+    peg_bearing_hole: float = 4.05  # Side face, for peg shaft bearing (shaft_dia + clearance)
     mounting_hole: float = 3.0  # Bottom plate, for headstock bolts
 
     @property
@@ -278,13 +278,18 @@ class StringPostParams:
     cap_diameter: float = 7.5
     cap_height: float = 1.0
     cap_chamfer: float = 0.3
+    cap_fillet: float = 0.25  # Edge roundover radius (top and bottom)
+    cap_groove_count: int = 3  # Decorative concentric V-grooves on cap top
+    cap_groove_width: float = 0.33  # Groove width at surface
+    cap_groove_depth: float = 0.33  # Groove depth (triangular profile)
+    cap_groove_outer_od: float = 6.0  # Outer edge of outermost groove (diameter)
 
     # Visible post (above frame)
     post_diameter: float = 6.0
     post_height: float = 5.5
 
     # Frame bearing section
-    bearing_diameter: float = 4.0
+    bearing_diameter: float = 5.0
     # Axial play for free rotation (see spec.md Section 5a)
     # This gap allows the post+wheel assembly to rotate freely in the frame
     post_bearing_axial_play: float = 0.1
