@@ -151,7 +151,7 @@ def create_end_stop(frame_outer, frame_wall):
 
 
 ENGRAVE_DEPTH = 0.6
-FONT_SIZE = 4.0
+FONT_SIZE = 5.3
 
 
 def create_cutting_jig(frame_outer, frame_wall, frame_length, gaps, gear_name=""):
