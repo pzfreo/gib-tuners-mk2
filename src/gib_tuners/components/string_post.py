@@ -17,6 +17,9 @@ from build123d import (
     Cylinder,
     Location,
     Part,
+    Polygon,
+    fillet,
+    revolve,
 )
 
 from ..config.parameters import BuildConfig
@@ -88,12 +91,35 @@ def create_string_post(config: BuildConfig) -> Part:
     post = post.locate(Location((0, 0, z)))
     z += post_h
 
-    # Cap
+    # Cap with rounded edges and decorative grooves
     cap = Cylinder(
         radius=cap_d / 2,
         height=cap_h,
         align=(Align.CENTER, Align.CENTER, Align.MIN),
     )
+    cap_fillet_r = params.cap_fillet * scale
+    top_edges = cap.edges().filter_by_position(Axis.Z, cap_h - 0.01, cap_h + 0.01)
+    bot_edges = cap.edges().filter_by_position(Axis.Z, -0.01, 0.01)
+    cap = fillet(top_edges + bot_edges, radius=cap_fillet_r)
+
+    # Concentric V-grooves on cap top
+    if params.cap_groove_count > 0:
+        gw = params.cap_groove_width * scale
+        gd = params.cap_groove_depth * scale
+        half_w = gw / 2
+        # Outermost groove: outer edge at cap_groove_outer_od/2
+        outer_center = (params.cap_groove_outer_od / 2 - half_w) * scale
+        min_r = 0.75 * scale
+        n = params.cap_groove_count
+        for i in range(n):
+            # Evenly spaced from min_r to outer_center
+            r = min_r + i * (outer_center - min_r) / (n - 1) if n > 1 else outer_center
+            tri = Polygon([(r - half_w, 0), (r + half_w, 0), (r, -gd)], align=None)
+            tri_xz = tri.rotate(Axis.X, 90)
+            groove = revolve(tri_xz, axis=Axis.Z, revolution_arc=360)
+            groove = groove.move(Location((0, 0, cap_h)))
+            cap = cap - groove
+
     cap = cap.locate(Location((0, 0, z)))
 
     # Combine all sections

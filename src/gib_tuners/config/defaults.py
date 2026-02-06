@@ -399,10 +399,12 @@ def create_default_config(
     peg_head = PegHeadParams(**peg_head_kwargs)
 
     # Derive FrameParams with bearing holes from component dimensions + clearance
-    # All bearing holes use BEARING_CLEARANCE for tight fit (can be reamed if needed)
-    worm_entry_hole = peg_head.shoulder_diameter + BEARING_CLEARANCE
-    peg_bearing_hole = peg_head.shaft_diameter + BEARING_CLEARANCE
-    post_bearing_hole = string_post.bearing_diameter + BEARING_CLEARANCE
+    bearing_clearance = frame_overrides.get(
+        "bearing_clearance", FrameParams.bearing_clearance
+    )
+    worm_entry_hole = peg_head.shoulder_diameter + bearing_clearance
+    peg_bearing_hole = peg_head.shaft_diameter + bearing_clearance
+    post_bearing_hole = string_post.bearing_diameter + bearing_clearance
 
     frame_kwargs = {
         "worm_entry_hole": worm_entry_hole,
