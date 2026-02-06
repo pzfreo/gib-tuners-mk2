@@ -30,6 +30,12 @@ utils/           - Mirroring for LH/RH, validation
 - Scale factor applied via `BuildConfig`
 - RIGHT hand is the default; LEFT is a mirror
 
+## Core Principles
+
+- **Never rebuild working code from scratch.** When fixing bugs or refactoring, always start from the existing working implementation and make minimal, incremental changes. If something works, preserve it.
+- **Follow specs exactly.** Always read and follow provided JSON specifications, diagrams, and design documents exactly. If something in the spec is ambiguous, ask — do not guess or flip-flop between interpretations.
+- **Stop means stop.** When the user says a problem is solved or tells you not to pursue something, STOP working on it immediately. Do not re-investigate, re-analyze, or revisit it unless explicitly asked.
+
 ## Code Reuse (CRITICAL)
 
 **Always start from existing working code. Never reinvent what already exists.**
@@ -116,6 +122,8 @@ python scripts/animate.py --worm-revs 1
 
 ## Testing
 
+When tests fail, investigate the root cause. Never mark tests as xfail/skip without explicit user approval. Dig into why the test fails and fix the underlying issue.
+
 ```bash
 # Run all tests
 pytest tests/
@@ -134,6 +142,14 @@ The `reference/` directory contains legacy reference geometry. Current gear geom
 - `config/<profile>/wheel_m0.6_z<N>.step` - Worm wheel (N = tooth count)
 - `reference/rhframe.step` - Reference right-hand frame geometry
 - `reference/peg.dxf`, `pegsmall.dxf` - Peg head profile references
+
+## CAD / Geometry Guidelines
+
+For CAD/geometry work: Always verify component positioning incrementally — place one component at a time and confirm before adding the next. Never assume spatial relationships; check coordinates against specs before committing.
+
+## Refactoring Rules
+
+For refactoring or restructuring tasks: Run the full application/test suite after EACH discrete change, not just at the end. Report any regressions immediately before proceeding to the next change.
 
 ## Incremental Assembly Workflow
 
