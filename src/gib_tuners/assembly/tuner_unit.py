@@ -112,10 +112,10 @@ def create_tuner_unit(
     if mesh_rotation != 0.0:
         wheel = wheel.rotate(Axis.Z, mesh_rotation)
 
-    # Wheel sits on post DD section
-    # DD section spans from post Z=0 to Z=dd_h
-    # Wheel STEP is centered at Z=0, so shift up by half face width
-    wheel_z = post_z_offset + face_width / 2
+    # Wheel sits on post DD section, clamped up against bearing shoulder
+    # DD section spans from post Z=0 to Z=dd_h (shorter than wheel by dd_cut_clearance)
+    # Position wheel top at DD top (bearing bottom), leaving compression gap at bottom
+    wheel_z = post_z_offset + dd_h - face_width / 2
     wheel = wheel.locate(Location((0, 0, wheel_z)))
     components["wheel"] = wheel
 

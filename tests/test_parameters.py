@@ -176,7 +176,7 @@ class TestDerivedParameters:
         dd_cut_length = config.string_post.get_dd_cut_length(wheel_face_width)
         clearance = config.string_post.dd_cut_clearance
         assert dd_cut_length == wheel_face_width - clearance
-        assert clearance == 0.1  # Ensures screw clamps wheel to shoulder
+        assert clearance == 0.5  # Bottom gap for compression clamping
 
     def test_worm_entry_hole_derived_from_shoulder_diameter(self, gear_json_path):
         """Test that worm_entry_hole is derived from peg shoulder diameter."""
