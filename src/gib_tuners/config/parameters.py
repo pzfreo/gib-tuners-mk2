@@ -158,6 +158,7 @@ class WheelParams:
     pitch_diameter: float = 6.0
     tip_diameter: float = 7.2
     root_diameter: float = 4.5
+    profile_shift: float = 0.0  # Wheel profile shift coefficient (from worm_gear.json)
     face_width: float = 7.6  # From manufacturing config
     bore: DDCutParams = DDCutParams()  # 3.5mm DD bore (from worm_gear.json)
 

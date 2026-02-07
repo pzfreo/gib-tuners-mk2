@@ -306,6 +306,7 @@ def load_gear_params(json_path: Path, config_dir: Optional[Path] = None) -> Gear
         pitch_diameter=wheel_data["pitch_diameter_mm"],
         tip_diameter=wheel_data["tip_diameter_mm"],
         root_diameter=wheel_data["root_diameter_mm"],
+        profile_shift=wheel_data.get("profile_shift", 0.0),
         face_width=manufacturing_data.get("wheel_width_mm", 6.0),
         bore=wheel_bore,
     )

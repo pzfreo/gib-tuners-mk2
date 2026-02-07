@@ -424,16 +424,19 @@ def validate_geometry(config: BuildConfig) -> ValidationResult:
         message=f"Worm and wheel must have matching modules",
     ))
 
-    # 13. Verify center distance calculation
+    # 13. Verify center distance is in sane range relative to pitch diameters
+    # Exact CD is computed by the external gear calculator (profile shift, operating
+    # pressure angle, etc.) and cannot be rederived from PDs alone.
     worm_pd = gear.worm.pitch_diameter
     wheel_pd = gear.wheel.pitch_diameter
-    calculated_cd = (worm_pd + wheel_pd) / 2
+    reference_cd = (worm_pd + wheel_pd) / 2
+    cd_ratio = center_distance / reference_cd if reference_cd > 0 else 0
     checks.append(ValidationCheck(
         name="Center distance calculation",
-        passed=abs(center_distance - calculated_cd) < 0.01,
-        expected=f"CD = (worm PD + wheel PD) / 2",
-        actual=f"specified {center_distance}mm, calculated {calculated_cd}mm",
-        message=f"Center distance should be (worm PD + wheel PD) / 2",
+        passed=0.7 < cd_ratio < 1.3,
+        expected=f"CD within 70-130% of reference (worm PD + wheel PD) / 2",
+        actual=f"specified {center_distance}mm, reference {reference_cd:.2f}mm ({cd_ratio:.0%})",
+        message=f"Center distance from gear calculator must be in reasonable range vs pitch diameters",
     ))
 
     all_passed = all(check.passed for check in checks)
