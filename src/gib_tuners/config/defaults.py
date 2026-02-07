@@ -168,7 +168,7 @@ def calculate_worm_z(config: "BuildConfig") -> float:
         return -box_outer / 2
 
     if worm_z_mode == WormZMode.ALIGNED:
-        # Calculate wheel_z
+        # Calculate wheel_z (clamped: wheel top at DD top, gap at bottom)
         post_params = config.string_post
         gear_params = config.gear
         frame_params = config.frame
@@ -176,11 +176,11 @@ def calculate_worm_z(config: "BuildConfig") -> float:
         dd_h = post_params.get_dd_cut_length(face_width) * scale
         bearing_h = post_params.get_bearing_length(frame_params.wall_thickness) * scale
         post_z_offset = -(dd_h + bearing_h)
-        return post_z_offset + (face_width * scale) / 2
+        return post_z_offset + dd_h - (face_width * scale) / 2
 
     # AUTO mode: detect based on worm type and virtual_hobbing
     if requires_worm_alignment(config):
-        # Aligned: calculate wheel_z
+        # Aligned: calculate wheel_z (clamped position)
         post_params = config.string_post
         gear_params = config.gear
         frame_params = config.frame
@@ -188,7 +188,7 @@ def calculate_worm_z(config: "BuildConfig") -> float:
         dd_h = post_params.get_dd_cut_length(face_width) * scale
         bearing_h = post_params.get_bearing_length(frame_params.wall_thickness) * scale
         post_z_offset = -(dd_h + bearing_h)
-        return post_z_offset + (face_width * scale) / 2
+        return post_z_offset + dd_h - (face_width * scale) / 2
 
     # Default: centered in frame
     return -box_outer / 2

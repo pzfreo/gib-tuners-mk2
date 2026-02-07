@@ -2,18 +2,18 @@
   "design_info": {
     "module_mm": 0.6,
     "ratio": 11,
-    "centre_distance_mm": 6.199999999999999,
+    "centre_distance_mm": 6.035,
     "worm_starts": 1,
     "wheel_teeth": 11
   },
-  "analysis_timestamp": "2026-02-06T19:28:19.930698",
+  "analysis_timestamp": "2026-02-07T14:09:54.017460",
   "mesh_alignment": {
     "optimal_rotation_deg": 0.0,
     "interference_volume_mm3": 0.0,
     "within_tolerance": true,
     "tooth_pitch_deg": 32.72727272727273,
     "worm_position": {
-      "x_mm": 6.199999999999999,
+      "x_mm": 6.035,
       "y_mm": 0.0,
       "z_mm": 0.0
     },
@@ -21,20 +21,20 @@
   },
   "rim_thickness": {
     "wheel": {
-      "minimum_thickness_mm": 0.9071,
+      "minimum_thickness_mm": 0.9138,
       "bore_diameter_mm": 3.5,
       "is_valid": true,
       "has_warning": false,
       "warning_threshold_mm": 0.75,
       "message": "Wheel rim thickness: 0.91mm",
       "measurement_point_bore": {
-        "x_mm": 0.1525,
-        "y_mm": 1.7433,
+        "x_mm": 1.1249,
+        "y_mm": -1.3406,
         "z_mm": 0.0
       },
       "measurement_point_outer": {
-        "x_mm": 0.2316,
-        "y_mm": 2.647,
+        "x_mm": 1.7123,
+        "y_mm": -2.0406,
         "z_mm": 0.0
       }
     }

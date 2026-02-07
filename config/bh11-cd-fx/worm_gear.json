@@ -13,7 +13,7 @@
     "hand": "right",
     "profile_shift": 0,
     "type": "globoid",
-    "throat_reduction_mm": 0.6,
+    "throat_reduction_mm": 0.165,
     "throat_curvature_radius_mm": 3.3
   },
   "wheel": {
@@ -28,7 +28,7 @@
     "max_od_mm": 7.6
   },
   "assembly": {
-    "centre_distance_mm": 6.199999999999999,
+    "centre_distance_mm": 6.035,
     "pressure_angle_deg": 20,
     "backlash_mm": 0,
     "hand": "right",
@@ -53,7 +53,7 @@
   "manufacturing": {
     "profile": "ZI",
     "virtual_hobbing": true,
-    "hobbing_steps": 144,
+    "hobbing_steps": 72,
     "worm_length_mm": 7.6,
     "wheel_width_mm": 7.6
   },

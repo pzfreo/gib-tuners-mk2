@@ -56,16 +56,12 @@ def create_post_wheel_assembly(
     else:
         wheel = create_wheel_placeholder(config)
 
-    # Position wheel on DD section
-    # The DD section starts at Z=0 and extends to Z=dd_cut_length
-    # The wheel STEP is centered at Z=0 (extends from -face_width/2 to +face_width/2)
-    # We need to shift it up so its bottom is at Z=0
+    # Position wheel on DD section (clamped against shoulder)
+    # DD section: Z=0 to Z=dd_h (shorter than wheel by dd_cut_clearance)
+    # Wheel STEP centered at Z=0, so position with top at DD top
     face_width = wheel_params.face_width * scale
-    # Note: dd_cut_length is derived from wheel.face_width, so they match
-
-    # Shift wheel so its bottom is at Z=0 (center of DD section)
-    # Wheel center is at Z=0 in STEP, so shift up by half the face width
-    wheel_z = face_width / 2
+    dd_h = post_params.get_dd_cut_length(config.gear.wheel.face_width) * scale
+    wheel_z = dd_h - face_width / 2
 
     wheel = wheel.locate(Location((0, 0, wheel_z)))
     components["wheel"] = wheel

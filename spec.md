@@ -308,7 +308,7 @@ All worm parameters are loaded from `config/<profile>/worm_gear.json` → `worm`
 * **Cap:** Decorative 7.5mm cap with 0.25mm fillet edges and 3 concentric V-grooves (0.33mm wide/deep, outer OD 6mm).
 * **Top Section:** 6.0mm visible post (runs in the Top Face hole).
 * **Frame Bearing:** 5.0mm shaft (runs in ø5.05mm frame hole).
-* **Gear Interface:** 3.5mm DD cut section to mate with Worm Wheel DD bore.
+* **Gear Interface:** DD cut section (bore dia minus 0.1mm clearance) for slip-fit rotational location in wheel bore. Compression retention via M2 washer+screw.
 * **Retention:** M2 tap bore in bottom of DD section for nut + washer.
 * **String Hole:** ø1.5mm cross-hole, centered in visible post (2.75mm from frame top).
 
@@ -316,7 +316,7 @@ All worm parameters are loaded from `config/<profile>/worm_gear.json` → `worm`
 
 | Section | Diameter | Length | Description |
 |---------|----------|--------|-------------|
-| DD cut (wheel interface) | 3.5mm DD | *derived* | = `wheel.face_width` - `dd_cut_clearance` |
+| DD cut (wheel interface) | bore_dia - `dd_shaft_clearance` | *derived* | = `wheel.face_width` - `dd_cut_clearance` |
 | M2 tap bore | ø1.6mm | 4mm deep | Tapped hole in bottom of DD for retention |
 | Frame bearing | 5.0mm | *derived* | = `wall_thickness + axial_play` (1.2mm) |
 | Visible post | 6.0mm | 5.5mm | Above frame, aesthetic |
@@ -325,18 +325,20 @@ All worm parameters are loaded from `config/<profile>/worm_gear.json` → `worm`
 
 **Derived lengths:**
 - `bearing_length` = `wall_thickness` (1.1mm) + `post_bearing_axial_play` (0.1mm) = **1.2mm**
-- `dd_cut_length` = `wheel.face_width` - `dd_cut_clearance` (e.g. 7.6 - 0.1 = **7.5mm**)
+- `dd_cut_length` = `wheel.face_width` - `dd_cut_clearance` (e.g. 7.6 - 0.5 = **7.1mm**)
 
-**Total length:** cap + post + bearing + DD = 1.0 + 5.5 + 1.2 + dd_cut_length (e.g. **15.2mm**)
+**Total length:** cap + post + bearing + DD = 1.0 + 5.5 + 1.2 + dd_cut_length (e.g. **14.8mm**)
 
 ### **DD Cut Shaft Interface**
 
-The string post DD cut section mates with the wheel's DD bore. DD dimensions are loaded from `features.wheel.bore_diameter_mm` in `worm_gear.json`:
+The string post DD cut section provides rotational location in the wheel's DD bore. The shaft DD is undersized by `dd_shaft_clearance` (0.1mm) for a slip fit; compression from the M2 washer+screw provides retention force. DD bore dimensions are loaded from `features.wheel.bore_diameter_mm` in `worm_gear.json`:
 
-* **Shaft diameter:** 3.5mm (from `bore_diameter_mm`)
-* **Flat depth:** 0.5mm (each side, ~14% of diameter)
-* **Across flats:** 2.5mm (diameter - 2 × flat_depth)
-* **Length:** = `wheel.face_width` - `dd_cut_clearance` (derived from gear config)
+* **Bore diameter:** from JSON `bore_diameter_mm` (e.g. 3.5mm)
+* **Shaft diameter:** bore_diameter - `dd_shaft_clearance` (e.g. 3.4mm)
+* **Flat depth:** 0.5mm (each side)
+* **Shaft across flats:** bore AF - `dd_shaft_clearance` (e.g. 2.4mm)
+* **Length:** = `wheel.face_width` - `dd_cut_clearance` (e.g. 7.6 - 0.5 = 7.1mm)
+* **Bottom gap:** `dd_cut_clearance` (0.5mm) — compression travel for washer clamping
 
 ### **M2 Tap Bore Retention**
 
@@ -411,9 +413,10 @@ POST SHOULDER ══════╧═══════════════
 | `wall_thickness` | design choice | 1.1mm |
 | `post_bearing_axial_play` | design choice | 0.1mm |
 | `wheel.face_width` | from gear config | 7.5-7.6mm |
-| `dd_cut_clearance` | design choice | 0.1mm |
+| `dd_shaft_clearance` | design choice | 0.1mm |
+| `dd_cut_clearance` | design choice | 0.5mm |
 | `bearing_length` | `wall_thickness + axial_play` | 1.2mm |
-| `dd_cut_length` | `wheel.face_width - dd_cut_clearance` | 7.4-7.5mm |
+| `dd_cut_length` | `wheel.face_width - dd_cut_clearance` | 7.1-7.2mm |
 
 **Key points:**
 - `axial_play` is a design choice (0.1mm provides free rotation)
@@ -470,9 +473,9 @@ Investment cast peg head with integral shaft and worm thread:
    * 7.5mm cap (1mm high, 0.25mm fillet, 3× V-grooves)
    * 6mm visible post (5.5mm high)
    * 5mm frame bearing section (1.2mm, through frame + axial play)
-   * 3.5mm DD cut gear interface (matches wheel bore from JSON)
+   * DD cut gear interface (bore_dia - 0.1mm clearance, slip fit in wheel bore)
    * M2 tap bore (~4mm deep, for screw retention)
-2. Mill DD flats on 3.5mm shaft section
+2. Mill DD flats on shaft section (undersized for slip fit)
 3. Tap M2 hole in bottom
 4. Cross-drill ø1.5mm string hole (2.75mm from frame top)
 

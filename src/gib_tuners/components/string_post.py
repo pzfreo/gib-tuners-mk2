@@ -68,8 +68,14 @@ def create_string_post(config: BuildConfig) -> Part:
     z = 0.0
 
     # DD cut section (mates with wheel) - starts at Z=0
-    dd_params = params.dd_cut
-    dd_section = create_dd_cut_shaft(dd_params, dd_length, scale)
+    # Shaft DD is undersized by dd_shaft_clearance for a slip fit in the bore
+    from dataclasses import replace as _replace
+    shaft_dd = _replace(
+        params.dd_cut,
+        diameter=params.dd_cut.diameter - params.dd_shaft_clearance,
+        across_flats=params.dd_cut.across_flats - params.dd_shaft_clearance,
+    )
+    dd_section = create_dd_cut_shaft(shaft_dd, dd_length, scale)
     dd_section = dd_section.locate(Location((0, 0, z)))
     z += dd_length
 

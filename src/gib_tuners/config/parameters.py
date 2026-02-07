@@ -294,9 +294,11 @@ class StringPostParams:
     post_bearing_axial_play: float = 0.1
 
     # Wheel interface (matches wheel bore from worm_gear.json)
-    dd_cut: DDCutParams = DDCutParams()  # 3.5mm DD (from worm_gear.json)
-    # Clearance ensures screw clamps wheel to shoulder (DD doesn't bottom out in wheel bore)
-    dd_cut_clearance: float = 0.1
+    dd_cut: DDCutParams = DDCutParams()  # 3.5mm DD bore dims (from worm_gear.json)
+    # Diametral clearance: shaft DD is smaller than bore DD for slip fit
+    dd_shaft_clearance: float = 0.1  # shaft 3.4mm/2.4mm AF vs bore 3.5mm/2.5mm AF
+    # Bottom gap: DD shorter than wheel so screw/washer clamps wheel to shoulder
+    dd_cut_clearance: float = 0.5
 
     # M2 tap bore (drilled into bottom of DD section for screw retention)
     thread_size: str = "M2"
