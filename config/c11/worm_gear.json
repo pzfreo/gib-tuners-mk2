@@ -1,0 +1,63 @@
+{
+  "worm": {
+    "module_mm": 0.6,
+    "num_starts": 1,
+    "pitch_diameter_mm": 5.8,
+    "tip_diameter_mm": 7,
+    "root_diameter_mm": 4.3,
+    "lead_mm": 1.8849555921538759,
+    "lead_angle_deg": 5.9061411137705,
+    "addendum_mm": 0.6,
+    "dedendum_mm": 0.75,
+    "thread_thickness_mm": 0.9424777960769379,
+    "hand": "right",
+    "profile_shift": 0,
+    "type": "cylindrical",
+    "throat_reduction_mm": null,
+    "throat_curvature_radius_mm": null
+  },
+  "wheel": {
+    "module_mm": 0.6,
+    "num_teeth": 11,
+    "pitch_diameter_mm": 6.6,
+    "tip_diameter_mm": 7.6,
+    "root_diameter_mm": 5.1,
+    "addendum_mm": 0.5,
+    "dedendum_mm": 0.75,
+    "profile_shift": 0,
+    "tip_reduction_mm": 0.2
+  },
+  "assembly": {
+    "centre_distance_mm": 6.199999999999999,
+    "pressure_angle_deg": 25,
+    "backlash_mm": 0,
+    "hand": "right",
+    "ratio": 11
+  },
+  "features": {
+    "worm": {
+      "bore_type": "none",
+      "relief_groove": {
+        "type": "full-radius",
+        "width_mm": null,
+        "depth_mm": null,
+        "radius_mm": 0.35
+      }
+    },
+    "wheel": {
+      "bore_type": "custom",
+      "bore_diameter_mm": 3.5,
+      "anti_rotation": "ddcut"
+    }
+  },
+  "manufacturing": {
+    "profile": "ZI",
+    "virtual_hobbing": false,
+    "hobbing_steps": 72,
+    "trim_to_min_engagement": false,
+    "worm_length_mm": 7.6,
+    "wheel_width_mm": 7.6
+  },
+  "measured_geometry": null,
+  "schema_version": "2.1"
+}
