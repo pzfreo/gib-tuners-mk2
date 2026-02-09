@@ -23,6 +23,7 @@ from build123d import (
     Align,
     Axis,
     Box,
+    Compound,
     Cylinder,
     Location,
     Part,
@@ -118,7 +119,7 @@ def create_peg_head(
     if include_worm and worm_step.exists():
         # Import worm
         worm_imported = import_step(worm_step)
-        if hasattr(worm_imported, '__iter__') and not isinstance(worm_imported, Part):
+        if hasattr(worm_imported, '__iter__') and not isinstance(worm_imported, (Part, Compound)):
             worm = _to_part(worm_imported[0])
         else:
             worm = _to_part(worm_imported)
@@ -126,19 +127,33 @@ def create_peg_head(
         worm_half = worm_len / 2
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
 
-        # Create continuous core shaft from Z=0 to shaft end.
-        # This ensures a solid bridge between the peg head (Z<=0) and the
-        # worm + bearing, even if the worm STEP lacks a solid core.
-        # The shaft (4mm) sits inside the worm root (4.3mm).
+        # Create core shaft that bridges peg head (Z<=0) to worm and bearing.
+        # Use worm root diameter for the section inside the worm to ensure
+        # solid overlap with the worm STEP (shaft_dia may be smaller than
+        # worm root, causing disjoint solids that break boolean operations).
+        # Small overlaps (0.1mm) at boundaries ensure OCCT boolean fusion.
+        worm_root_radius = config.gear.worm.root_diameter / 2
+        core_radius = max(shaft_dia / 2, worm_root_radius)
+        overlap = 0.1  # mm overlap for reliable boolean fusion
+
         core_shaft = Cylinder(
-            radius=shaft_dia / 2,
-            height=total_shaft_length,
+            radius=core_radius,
+            height=worm_len + overlap,  # extend into bearing section
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
-        core_shaft = core_shaft.locate(Location((0, 0, 0)))
+        # Start slightly below Z=0 to overlap with peg head body
+        core_shaft = core_shaft.locate(Location((0, 0, -overlap)))
 
-        # Fuse all parts: core shaft bridges any gaps
-        result = peg_head + core_shaft + worm_positioned
+        # Bearing shaft beyond worm (shaft diameter for bearing fit)
+        bearing_shaft = Cylinder(
+            radius=shaft_dia / 2,
+            height=bearing_wall + overlap,  # extend into core section
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        )
+        bearing_shaft = bearing_shaft.locate(Location((0, 0, worm_len - overlap)))
+
+        # Fuse all parts: overlapping boundaries ensure solid union
+        result = peg_head + core_shaft + bearing_shaft + worm_positioned
     else:
         # No worm: create full shaft from Z=0 to end
         full_shaft = Cylinder(
@@ -157,6 +172,21 @@ def create_peg_head(
     )
     tap_hole = tap_hole.locate(Location((0, 0, total_shaft_length)))
     result = result - tap_hole
+
+    # Boolean ops with some STEP files produce ShapeList with degenerate
+    # zero-volume artifacts. Filter these out and keep the main solid.
+    if hasattr(result, '__iter__') and not isinstance(result, (Part, Compound)):
+        solids = [s for s in result if hasattr(s, 'volume') and s.volume > 0.001]
+        if len(solids) == 1:
+            result = _to_part(solids[0])
+        elif len(solids) > 1:
+            # Multiple real solids - fuse them
+            fused = solids[0]
+            for s in solids[1:]:
+                fused = fused + s
+            result = _to_part(fused)
+        else:
+            result = _to_part(result[0])
 
     # Rotate for assembly orientation (pip at +X, shaft at -X)
     # -90° around Y: +Z → -X, -Z → +X
