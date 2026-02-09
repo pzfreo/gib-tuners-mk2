@@ -121,8 +121,10 @@ FONT_SIZE = 5.3             # Text height in mm
 
 
 def drill_label(diameter_mm: float) -> str:
-    """Convert drill diameter to practical label (e.g. 7.05 -> 'Ø7')."""
-    rounded = math.floor(diameter_mm)
+    """Convert drill diameter to practical label (e.g. 7.05 -> 'Ø7.1')."""
+    rounded = round(diameter_mm, 1)
+    if rounded == int(rounded):
+        return f"Ø{int(rounded)}"
     return f"Ø{rounded}"
 
 
