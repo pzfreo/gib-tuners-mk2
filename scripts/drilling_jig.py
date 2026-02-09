@@ -40,6 +40,7 @@ from build123d import (
     Text,
     extrude,
     export_step,
+    export_stl,
 )
 import math
 
@@ -118,6 +119,18 @@ M3_HEAD_DEPTH = 3.0         # M3 socket head height
 # ============================================================
 ENGRAVE_DEPTH = 0.6         # Engraving depth into surface
 FONT_SIZE = 5.3             # Text height in mm
+
+
+def export_part(part, base_path: Path, fmt: str):
+    """Export a part in the requested format(s)."""
+    if fmt in ("step", "both"):
+        step_path = base_path.with_suffix(".step")
+        export_step(part, str(step_path))
+        print(f"Exported: {step_path}")
+    if fmt in ("stl", "both"):
+        stl_path = base_path.with_suffix(".stl")
+        export_stl(part, str(stl_path))
+        print(f"Exported: {stl_path}")
 
 
 def drill_label(diameter_mm: float) -> str:
@@ -513,6 +526,10 @@ def main():
         help="Jig mode: 'production' (M14 bushing pockets) or 'prototype' (simple guide holes)",
     )
     parser.add_argument(
+        "--format", choices=["step", "stl", "both"], default="step",
+        help="Export format: step, stl, or both (default: step)",
+    )
+    parser.add_argument(
         "--list-gears", action="store_true",
         help="List available gear configurations and exit",
     )
@@ -643,13 +660,9 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Export symmetric parts once (no hand suffix)
-    base_path = output_dir / f"drilling_jig_base_plate_{mode.name}.step"
-    export_step(base_plate, str(base_path))
-    print(f"Exported: {base_path}")
-
-    end_stop_path = output_dir / f"drilling_jig_end_stop_{mode.name}.step"
-    export_step(end_stop, str(end_stop_path))
-    print(f"Exported: {end_stop_path}")
+    fmt = args.format
+    export_part(base_plate, output_dir / f"drilling_jig_base_plate_{mode.name}", fmt)
+    export_part(end_stop, output_dir / f"drilling_jig_end_stop_{mode.name}", fmt)
 
     # Build and export clamshell per hand
     clamshells = {}
@@ -684,9 +697,7 @@ def main():
 
         # RH keeps original filename; LH gets _lh suffix
         suffix = "" if hand == Hand.RIGHT else "_lh"
-        clamshell_path = output_dir / f"drilling_jig_clamshell_{mode.name}{suffix}.step"
-        export_step(clamshell, str(clamshell_path))
-        print(f"Exported: {clamshell_path}")
+        export_part(clamshell, output_dir / f"drilling_jig_clamshell_{mode.name}{suffix}", fmt)
 
     # Validate LH is a true mirror of RH (when both are built)
     if Hand.RIGHT in clamshells and Hand.LEFT in clamshells:
