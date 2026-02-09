@@ -128,12 +128,11 @@ def create_peg_head(
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
 
         # Create core shaft that bridges peg head (Z<=0) to worm and bearing.
-        # Use worm root diameter for the section inside the worm to ensure
-        # solid overlap with the worm STEP (shaft_dia may be smaller than
-        # worm root, causing disjoint solids that break boolean operations).
-        # Small overlaps (0.1mm) at boundaries ensure OCCT boolean fusion.
+        # Use slightly under worm root diameter to ensure the shaft surface
+        # is INSIDE the worm solid, not coincident with it. Coincident surfaces
+        # cause OCCT boolean fusion to consume the worm teeth.
         worm_root_radius = config.gear.worm.root_diameter / 2
-        core_radius = max(shaft_dia / 2, worm_root_radius)
+        core_radius = max(shaft_dia / 2, worm_root_radius - 0.1)
         overlap = 0.1  # mm overlap for reliable boolean fusion
 
         core_shaft = Cylinder(

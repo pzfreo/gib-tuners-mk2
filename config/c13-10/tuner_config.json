@@ -1,0 +1,8 @@
+{
+  "peg_head": {
+    "shaft_diameter": 4.5
+  },
+  "frame": {
+    "wall_thickness": 1.0
+  }
+}
