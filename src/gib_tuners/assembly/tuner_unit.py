@@ -212,10 +212,11 @@ def create_tuner_unit(
         components["peg_screw"] = peg_screw
 
         # Wheel retention hardware (M2 washer + screw from below)
-        # Washer sits below the DD section bottom (at post_z_offset in frame coords)
+        # Washer sits below the wheel bottom (wheel extends below DD by dd_cut_clearance)
         wheel_washer_thickness = 0.5 * scale
         wheel_washer = create_wheel_retention_washer(config)
-        wheel_washer_z = post_z_offset - wheel_washer_thickness
+        wheel_bottom_z = wheel_z - face_width / 2
+        wheel_washer_z = wheel_bottom_z - wheel_washer_thickness
         wheel_washer = wheel_washer.locate(Location((0, 0, wheel_washer_z)))
         components["wheel_washer"] = wheel_washer
 
