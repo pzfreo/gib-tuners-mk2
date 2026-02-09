@@ -126,16 +126,19 @@ def create_peg_head(
         worm_half = worm_len / 2
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
 
-        # Create bearing shaft starting at worm end
-        bearing_shaft = Cylinder(
+        # Create continuous core shaft from Z=0 to shaft end.
+        # This ensures a solid bridge between the peg head (Z<=0) and the
+        # worm + bearing, even if the worm STEP lacks a solid core.
+        # The shaft (4mm) sits inside the worm root (4.3mm).
+        core_shaft = Cylinder(
             radius=shaft_dia / 2,
-            height=bearing_wall,
+            height=total_shaft_length,
             align=(Align.CENTER, Align.CENTER, Align.MIN),
         )
-        bearing_shaft = bearing_shaft.locate(Location((0, 0, worm_len)))
+        core_shaft = core_shaft.locate(Location((0, 0, 0)))
 
-        # Fuse all parts using regular union
-        result = peg_head + worm_positioned + bearing_shaft
+        # Fuse all parts: core shaft bridges any gaps
+        result = peg_head + core_shaft + worm_positioned
     else:
         # No worm: create full shaft from Z=0 to end
         full_shaft = Cylinder(
