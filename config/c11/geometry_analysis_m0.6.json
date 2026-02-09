@@ -6,7 +6,7 @@
     "worm_starts": 1,
     "wheel_teeth": 11
   },
-  "analysis_timestamp": "2026-02-09T11:21:38.887636",
+  "analysis_timestamp": "2026-02-09T11:44:21.866333",
   "mesh_alignment": {
     "optimal_rotation_deg": 15.819453614307424,
     "interference_volume_mm3": 0.020207964873737348,
