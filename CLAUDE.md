@@ -186,7 +186,11 @@ For refactoring or restructuring tasks: Run the full application/test suite afte
 | Tuner pitch | 27.2mm | Center-to-center spacing |
 | Total length | *computed* | 145.0mm for 5 housings |
 | Center distance | *from JSON* | `assembly.centre_distance_mm` in worm_gear.json |
-| Gear module | 0.6 | M0.6 worm drive (cylindrical or globoid) |
+| Gear module | *from JSON* | M0.5 (c13) or M0.6 (c11/bh) worm drive |
+
+## Preferred Gear Profile
+
+**c13 is the current best model** (`config/c13/`). Cylindrical worm, M0.5, 13-tooth wheel, 20° pressure angle, centre distance 6.25mm. Uses `tuner_config.json` to override shaft diameter to 4.5mm (matching worm root). Use `--gear c13` for builds.
 
 ## Manufacturing Constraints
 
