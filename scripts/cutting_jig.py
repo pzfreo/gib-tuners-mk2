@@ -32,6 +32,7 @@ from build123d import (
     chamfer,
     extrude,
     export_step,
+    export_stl,
 )
 
 from gib_tuners.config.defaults import (
@@ -72,6 +73,18 @@ M3_HEAD_DIA = 5.5           # M3 socket head cap screw OD
 M3_HEAD_DEPTH = 3.0         # M3 socket head height
 HEAT_INSERT_OD = 4.7        # M3 heat-set insert pocket (undersized for melt-in grip)
 HEAT_INSERT_POCKET = 9.0    # Pocket depth (4mm insert + 5mm for push-in and bolt clearance)
+
+
+def export_part(part, base_path: Path, fmt: str):
+    """Export a part in the requested format(s)."""
+    if fmt in ("step", "both"):
+        step_path = base_path.with_suffix(".step")
+        export_step(part, str(step_path))
+        print(f"Exported: {step_path}")
+    if fmt in ("stl", "both"):
+        stl_path = base_path.with_suffix(".stl")
+        export_stl(part, str(stl_path))
+        print(f"Exported: {stl_path}")
 
 
 def compute_gaps(housing_centers, housing_length, frame_length):
@@ -271,6 +284,10 @@ def main():
         help="Override number of housings (default: from config, typically 5)",
     )
     parser.add_argument(
+        "--format", choices=["step", "stl", "both"], default="step",
+        help="Export format: step, stl, or both (default: step)",
+    )
+    parser.add_argument(
         "--list-gears", action="store_true",
         help="List available gear configurations and exit",
     )
@@ -339,17 +356,13 @@ def main():
         0, frame_length / 2, -frame_outer + frame_outer / 2,
     )))
 
-    # Export STEP files
+    # Export files
     output_dir = PROJECT_ROOT / "output" / args.gear
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    step_path = output_dir / "cutting_jig_prototype.step"
-    export_step(jig, str(step_path))
-    print(f"Exported: {step_path}")
-
-    end_stop_path = output_dir / "cutting_jig_end_stop.step"
-    export_step(end_stop, str(end_stop_path))
-    print(f"Exported: {end_stop_path}")
+    fmt = args.format
+    export_part(jig, output_dir / "cutting_jig_prototype", fmt)
+    export_part(end_stop, output_dir / "cutting_jig_end_stop", fmt)
 
     # Try to show in OCP viewer
     try:
