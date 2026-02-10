@@ -144,6 +144,13 @@ Examples:
     )
 
     parser.add_argument(
+        "--label-frames",
+        choices=["yes", "no"],
+        default="yes",
+        help="Engrave L/R labels on frames (default: yes, use no for CNC)",
+    )
+
+    parser.add_argument(
         "--gear",
         type=str,
         required=True,
@@ -449,7 +456,8 @@ def main() -> int:
     # Build frame (L/R dependent - mirror RH for LH)
     if "frame" in components_to_build:
         print(f"Building frame ({args.num_housings}-gang)...")
-        rh_frame = create_frame(config)
+        label = args.label_frames == "yes"
+        rh_frame = create_frame(config, label=label)
 
         if build_rh:
             basename = f"frame_rh_{args.num_housings}gang"
@@ -457,7 +465,7 @@ def main() -> int:
 
         if build_lh:
             lh_config = replace(config, hand=Hand.LEFT)
-            lh_frame = create_frame(lh_config)
+            lh_frame = create_frame(lh_config, label=label)
             basename = f"frame_lh_{args.num_housings}gang"
             exported.extend(export_component(lh_frame, output_dir, basename, args.format))
 

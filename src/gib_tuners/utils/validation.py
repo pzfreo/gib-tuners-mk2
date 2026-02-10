@@ -92,8 +92,32 @@ def check_shape_quality(part: Part, name: str = "Part") -> ShapeQualityResult:
         issues.append(f"Edge analysis failed: {e}")
 
     if non_manifold_count > 0:
-        issues.append(f"{non_manifold_count} non-manifold edges detected")
-        warnings.warn(f"{name}: {non_manifold_count} non-manifold edges detected")
+        # Measure NME edge arc lengths to distinguish degenerate (sub-micron)
+        # artifacts from genuine topology problems
+        significant_nme = 0
+        try:
+            from OCP.BRepAdaptor import BRepAdaptor_Curve
+            from OCP.GCPnts import GCPnts_AbscissaPoint
+
+            for i in range(1, edge_face_map.Extent() + 1):
+                faces_i = edge_face_map.FindFromIndex(i)
+                if faces_i.Extent() > 2:
+                    edge_topo = TopoDS.Edge_s(edge_face_map.FindKey(i))
+                    curve = BRepAdaptor_Curve(edge_topo)
+                    arc_len = GCPnts_AbscissaPoint.Length_s(curve)
+                    if arc_len > 0.001:  # > 1 micron
+                        significant_nme += 1
+        except Exception:
+            significant_nme = non_manifold_count  # Can't measure, assume all significant
+
+        if significant_nme > 0:
+            issues.append(f"{significant_nme} non-manifold edges detected")
+            warnings.warn(f"{name}: {significant_nme} non-manifold edges detected")
+        else:
+            issues.append(
+                f"{non_manifold_count} degenerate non-manifold edges "
+                f"(sub-micron, from boolean kernel noise)"
+            )
 
     if free_edge_count > 0:
         issues.append(f"{free_edge_count} free edges detected")
