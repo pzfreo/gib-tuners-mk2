@@ -32,7 +32,7 @@ from ..config.defaults import calculate_worm_z
 from ..utils.validation import check_shape_quality
 
 
-def create_frame(config: BuildConfig) -> Part:
+def create_frame(config: BuildConfig, label: bool = True) -> Part:
     """Create the 5-gang frame geometry.
 
     The frame is oriented with:
@@ -208,25 +208,26 @@ def create_frame(config: BuildConfig) -> Part:
 
     # Etch "L" or "R" on inside surface of mounting plate to identify hand
     # Visible when looking from below (into the mechanism cavity)
-    letter = "R" if config.hand == Hand.RIGHT else "L"
-    text_height = 3.0 * scale  # 3mm tall text
-    etch_depth = 0.3 * scale  # 0.3mm deep etch
+    if label:
+        letter = "R" if config.hand == Hand.RIGHT else "L"
+        text_height = 3.0 * scale  # 3mm tall text
+        etch_depth = 0.3 * scale  # 0.3mm deep etch
 
-    # Position between frame end and first mounting hole
-    # First mounting hole is at end_length/2 = 5mm, so put text at ~2mm
-    text_y = 2.0 * scale
+        # Position between frame end and first mounting hole
+        # First mounting hole is at end_length/2 = 5mm, so put text at ~2mm
+        text_y = 2.0 * scale
 
-    # Create text flat on XY plane, extrude upward, position on inside of mounting plate
-    # Text is on the underside, so mirror it in X so it reads correctly from below
-    text_sketch = Text(letter, font_size=text_height, align=(Align.CENTER, Align.CENTER))
-    text_solid = extrude(text_sketch, etch_depth)
-    # Mirror in X so text reads correctly when viewed from below (-Z direction)
-    text_solid = text_solid.mirror(Plane.YZ)
-    # Rotate 90 deg around Z so text reads along Y axis (frame length direction)
-    text_solid = text_solid.rotate(Axis.Z, -90)
-    # Move text so it cuts into inside surface of mounting plate (at Z=-wall)
-    text_solid = text_solid.locate(Location((0, text_y, -wall)))
-    frame = frame - text_solid
+        # Create text flat on XY plane, extrude upward, position on inside of mounting plate
+        # Text is on the underside, so mirror it in X so it reads correctly from below
+        text_sketch = Text(letter, font_size=text_height, align=(Align.CENTER, Align.CENTER))
+        text_solid = extrude(text_sketch, etch_depth)
+        # Mirror in X so text reads correctly when viewed from below (-Z direction)
+        text_solid = text_solid.mirror(Plane.YZ)
+        # Rotate 90 deg around Z so text reads along Y axis (frame length direction)
+        text_solid = text_solid.rotate(Axis.Z, -90)
+        # Move text so it cuts into inside surface of mounting plate (at Z=-wall)
+        text_solid = text_solid.locate(Location((0, text_y, -wall)))
+        frame = frame - text_solid
 
     # Check shape quality (warns if non-manifold edges detected)
     check_shape_quality(frame, "frame")
