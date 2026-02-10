@@ -42,6 +42,56 @@ def _to_part(shape) -> Part:
         return Part(shape.wrapped)
     return shape
 
+
+def _heal_shape(shape, tolerance: float = 0.01):
+    """Apply OCCT shape healing to fix non-manifold edges after boolean ops.
+
+    Uses ShapeFix_Shape to repair topology issues. Some NME artifacts from worm
+    thread geometry (~29nm arc length) are intrinsic to OCCT's boolean kernel
+    and cannot be removed without destroying solid geometry.
+
+    Args:
+        shape: Part, Solid, or ShapeList to heal
+        tolerance: Healing tolerance in mm (default 0.01mm)
+
+    Returns:
+        Healed shape (same type as input, or Part)
+    """
+    from OCP.ShapeFix import ShapeFix_Shape
+    from OCP.TopoDS import TopoDS_Shape
+
+    # Get the underlying TopoDS_Shape, handling ShapeList/list results
+    if hasattr(shape, '__iter__') and not isinstance(shape, Part):
+        # ShapeList — filter out zero-volume degenerate artifacts, then heal the main solid
+        items = list(shape)
+        solids = [s for s in items if hasattr(s, 'volume') and s.volume > 0.001]
+        if len(solids) == 1:
+            shape = _to_part(solids[0])
+        elif len(solids) > 1:
+            fused = solids[0]
+            for s in solids[1:]:
+                fused = fused + s
+            shape = _to_part(fused)
+        elif items:
+            shape = _to_part(items[0])
+        else:
+            return shape
+
+    if not hasattr(shape, 'wrapped'):
+        return shape
+
+    wrapped = shape.wrapped
+    if not isinstance(wrapped, TopoDS_Shape):
+        return _to_part(shape)
+
+    # ShapeFix_Shape — fixes topology (shell orientation, wire issues)
+    fixer = ShapeFix_Shape(wrapped)
+    fixer.SetPrecision(tolerance)
+    fixer.Perform()
+    healed = fixer.Shape()
+
+    return Part(healed)
+
 # Reference STEP file locations
 REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
 PEG_HEAD_STEP = REFERENCE_DIR / "peghead7mm.step"
@@ -153,6 +203,7 @@ def create_peg_head(
 
         # Fuse all parts: overlapping boundaries ensure solid union
         result = peg_head + core_shaft + bearing_shaft + worm_positioned
+        result = _heal_shape(result)
     else:
         # No worm: create full shaft from Z=0 to end
         full_shaft = Cylinder(
@@ -171,6 +222,7 @@ def create_peg_head(
     )
     tap_hole = tap_hole.locate(Location((0, 0, total_shaft_length)))
     result = result - tap_hole
+    result = _heal_shape(result)
 
     # Boolean ops with some STEP files produce ShapeList with degenerate
     # zero-volume artifacts. Filter these out and keep the main solid.
