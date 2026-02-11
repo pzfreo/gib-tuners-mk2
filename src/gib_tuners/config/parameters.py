@@ -3,7 +3,7 @@
 All dimensions are in millimeters. Parameters are frozen for immutability.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Tuple
 
@@ -43,6 +43,17 @@ class DDCutParams:
 
 
 @dataclass(frozen=True)
+class EngravingParams:
+    """Decorative border engraving on frame top plate."""
+    inset: float = 1.0        # Distance from frame edge to outer border line
+    band_width: float = 1.0   # Width of decorative band
+    depth: float = 0.2        # Groove depth
+    groove_width: float = 0.2 # Width of each groove line
+    hatch_spacing: float = 2.0  # Spacing between diagonal hatch lines
+    enabled: bool = True       # Toggle engraving on/off
+
+
+@dataclass(frozen=True)
 class FrameParams:
     """Parameters for an N-gang frame (1 to N tuning stations)."""
     # Box section dimensions (measured: 10x10 outer, 7.8x7.8 inner)
@@ -66,6 +77,9 @@ class FrameParams:
     worm_entry_hole: float = 7.2  # Side face, for worm insertion (> 7mm worm tip)
     peg_bearing_hole: float = 4.05  # Side face, for peg shaft bearing (shaft_dia + clearance)
     mounting_hole: float = 3.0  # Bottom plate, for headstock bolts
+
+    # Decorative engraving
+    engraving: EngravingParams = field(default_factory=EngravingParams)
 
     @property
     def box_inner(self) -> float:
