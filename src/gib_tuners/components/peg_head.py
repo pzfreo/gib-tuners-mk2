@@ -88,9 +88,15 @@ def _heal_shape(shape, tolerance: float = 0.01):
     fixer = ShapeFix_Shape(wrapped)
     fixer.SetPrecision(tolerance)
     fixer.Perform()
-    healed = fixer.Shape()
+    healed = Part(fixer.Shape())
 
-    return Part(healed)
+    # Guard: if healing collapsed the solid volume, return original unchanged.
+    # This happens with swept worm geometry where ShapeFix destroys valid topology.
+    original_vol = shape.volume if hasattr(shape, 'volume') else 0
+    if original_vol > 0.001 and healed.volume < 0.001:
+        return shape
+
+    return healed
 
 # Reference STEP file locations
 REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
@@ -178,11 +184,16 @@ def create_peg_head(
         worm_positioned = worm.locate(Location((0, 0, worm_half)))
 
         # Create core shaft that bridges peg head (Z<=0) to worm and bearing.
-        # Use slightly under worm root diameter to ensure the shaft surface
-        # is INSIDE the worm solid, not coincident with it. Coincident surfaces
-        # cause OCCT boolean fusion to consume the worm teeth.
+        # Must be INSIDE the worm solid (not coincident with root — that causes
+        # OCCT to consume worm teeth). Must also clear any relief groove to
+        # avoid creating a degenerate thin ring at the groove intersection.
         worm_root_radius = config.gear.worm.root_diameter / 2
-        core_radius = max(shaft_dia / 2, worm_root_radius - 0.1)
+        relief_r = config.gear.worm.relief_groove_radius
+        if relief_r > 0:
+            # Stay below relief groove bottom with margin
+            core_radius = worm_root_radius - relief_r - 0.05
+        else:
+            core_radius = max(shaft_dia / 2, worm_root_radius - 0.1)
         overlap = 0.1  # mm overlap for reliable boolean fusion
 
         core_shaft = Cylinder(
@@ -193,6 +204,16 @@ def create_peg_head(
         # Start slightly below Z=0 to overlap with peg head body
         core_shaft = core_shaft.locate(Location((0, 0, -overlap)))
 
+        # Fill the top relief groove to strengthen the tap hole region.
+        # The groove weakens the bore where the M2 tap hole is drilled.
+        # Threads have terminated here so no risk of consuming teeth.
+        groove_fill = Cylinder(
+            radius=worm_root_radius - 0.01,
+            height=1.0,  # covers the relief groove region
+            align=(Align.CENTER, Align.CENTER, Align.MAX),
+        )
+        groove_fill = groove_fill.locate(Location((0, 0, worm_len + overlap)))
+
         # Bearing shaft beyond worm (shaft diameter for bearing fit)
         bearing_shaft = Cylinder(
             radius=shaft_dia / 2,
@@ -202,7 +223,7 @@ def create_peg_head(
         bearing_shaft = bearing_shaft.locate(Location((0, 0, worm_len - overlap)))
 
         # Fuse all parts: overlapping boundaries ensure solid union
-        result = peg_head + core_shaft + bearing_shaft + worm_positioned
+        result = peg_head + core_shaft + groove_fill + bearing_shaft + worm_positioned
         result = _heal_shape(result)
     else:
         # No worm: create full shaft from Z=0 to end

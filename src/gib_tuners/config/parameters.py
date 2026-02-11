@@ -158,6 +158,7 @@ class WormParams:
     length: float = 7.6  # From manufacturing config
     hand: Hand = Hand.RIGHT
     worm_type: WormType = WormType.CYLINDRICAL
+    relief_groove_radius: float = 0.0  # Relief groove radius (0 = no groove)
 
     # Globoid-specific
     throat_reduction: float = 0.1
@@ -249,8 +250,8 @@ class PegHeadParams:
     washer_clearance: float = 0.1  # Extension beyond frame
 
     def get_bearing_wall(self, wall_thickness: float) -> float:
-        """Bearing section length = wall + axial play."""
-        return wall_thickness + self.peg_bearing_axial_play
+        """Bearing section length = wall + axial play + washer clearance."""
+        return wall_thickness + self.peg_bearing_axial_play + self.washer_clearance
 
     # M2 tap hole
     tap_drill: float = 1.6  # M2 tap drill diameter

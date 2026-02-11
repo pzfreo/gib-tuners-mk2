@@ -271,6 +271,11 @@ def load_gear_params(json_path: Path, config_dir: Optional[Path] = None) -> Gear
     # Parse virtual hobbing flag
     virtual_hobbing = manufacturing_data.get("virtual_hobbing", False)
 
+    # Parse worm features (relief groove)
+    worm_features = features_data.get("worm", {})
+    relief_groove = worm_features.get("relief_groove", {})
+    relief_groove_radius = relief_groove.get("radius_mm", 0.0) or 0.0
+
     # Parse worm parameters
     worm = WormParams(
         module=worm_data["module_mm"],
@@ -285,6 +290,7 @@ def load_gear_params(json_path: Path, config_dir: Optional[Path] = None) -> Gear
         worm_type=worm_type,
         throat_reduction=worm_data.get("throat_reduction_mm", 0.1),
         throat_curvature_radius=worm_data.get("throat_curvature_radius_mm", 3.0),
+        relief_groove_radius=relief_groove_radius,
     )
 
     # Parse wheel bore (DD cut) - updated for 7.5mm wheel

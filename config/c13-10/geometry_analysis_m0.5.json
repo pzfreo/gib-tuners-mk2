@@ -6,10 +6,10 @@
     "worm_starts": 1,
     "wheel_teeth": 13
   },
-  "analysis_timestamp": "2026-02-09T23:10:07.098148",
+  "analysis_timestamp": "2026-02-11T12:26:18.706109",
   "mesh_alignment": {
-    "optimal_rotation_deg": 15.174388798975015,
-    "interference_volume_mm3": 0.0010464381355134343,
+    "optimal_rotation_deg": 15.19081367837006,
+    "interference_volume_mm3": 0.0017629143991758187,
     "within_tolerance": true,
     "tooth_pitch_deg": 27.692307692307693,
     "worm_position": {
@@ -17,7 +17,7 @@
       "y_mm": 6.25,
       "z_mm": 0.0
     },
-    "message": "Good mesh - interference 0.0010mm\u00b3 within tolerance (reduced by 3.3698mm\u00b3 from unrotated position)"
+    "message": "Good mesh - interference 0.0018mm\u00b3 within tolerance (reduced by 3.4391mm\u00b3 from unrotated position)"
   },
   "rim_thickness": {
     "wheel": {
