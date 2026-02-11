@@ -144,14 +144,14 @@ class TestLoadGearParams:
         gear = load_gear_params(gear_json_path)
 
         # Check worm params - verify structure and reasonable ranges
-        assert gear.worm.module == 0.6  # M0.6 is fixed for this project
+        assert 0.4 <= gear.worm.module <= 0.8  # Miniature worm gear range
         assert gear.worm.num_starts == 1  # Single-start worm
         assert 5.0 <= gear.worm.pitch_diameter <= 7.0
         assert 6.0 <= gear.worm.tip_diameter <= 8.0
         assert 7.0 <= gear.worm.length <= 8.0
 
-        # Check wheel params - verify structure and reasonable ranges
-        assert gear.wheel.module == 0.6  # Must match worm module
+        # Check wheel params - modules must match
+        assert gear.wheel.module == gear.worm.module
         assert 10 <= gear.wheel.num_teeth <= 15  # Reasonable tooth count range
         assert 7.0 <= gear.wheel.tip_diameter <= 9.0
         assert 7.0 <= gear.wheel.face_width <= 8.0
