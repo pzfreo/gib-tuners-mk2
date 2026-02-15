@@ -18,7 +18,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--gear",
         action="store",
-        default=os.environ.get("GEAR_CONFIG", "balanced"),
+        default=os.environ.get("GEAR_CONFIG", "c13-10"),
         help="Gear configuration profile to use (default: balanced, or GEAR_CONFIG env var)",
     )
 
