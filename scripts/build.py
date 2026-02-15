@@ -38,7 +38,7 @@ from gib_tuners.components.frame import create_frame
 from gib_tuners.components.peg_head import create_peg_head
 from gib_tuners.components.string_post import create_string_post
 from gib_tuners.components.wheel import load_wheel, create_wheel_placeholder
-from gib_tuners.assembly.gang_assembly import create_positioned_assembly, run_interference_report
+from gib_tuners.assembly.gang_assembly import create_positioned_assembly, run_interference_report, COLOR_MAP
 from gib_tuners.export.stl_export import export_stl
 from gib_tuners.export.step_export import export_step
 from gib_tuners.utils.mirror import mirror_for_left_hand
@@ -360,6 +360,56 @@ def export_component(shape, output_dir: Path, basename: str, fmt: str) -> list[P
     return exported
 
 
+def export_assembly_glb(assemblies: list, output_path: Path, spacing: float = 0) -> None:
+    """Export positioned assembly as a colored GLB file.
+
+    Args:
+        assemblies: List of (hand, config, assembly) tuples
+        output_path: Path to output .glb file
+        spacing: X offset between assemblies when showing both hands
+    """
+    import trimesh
+    import tempfile
+    import os
+
+    scene = trimesh.Scene()
+
+    for i, (hand, config, assembly) in enumerate(assemblies):
+        hand_label = "RH" if hand == Hand.RIGHT else "LH"
+        if len(assemblies) > 1:
+            x_offset = spacing / 2 if hand == Hand.RIGHT else -spacing / 2
+        else:
+            x_offset = 0
+
+        for name, part in assembly["all_parts"].items():
+            from build123d import Location
+            if x_offset != 0:
+                part = part.move(Location((x_offset, 0, 0)))
+
+            base_name = name.rsplit("_", 1)[0] if name != "frame" else "frame"
+            color_tuple, alpha = COLOR_MAP.get(base_name, ((0.5, 0.5, 0.5), None))
+
+            with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as f:
+                temp_path = f.name
+            try:
+                export_stl(part, Path(temp_path))
+                mesh = trimesh.load(temp_path, process=False)
+                if isinstance(mesh, trimesh.Scene):
+                    mesh = mesh.to_geometry()
+            finally:
+                os.unlink(temp_path)
+
+            r, g, b = [int(c * 255) for c in color_tuple]
+            a = int((alpha if alpha is not None else 1.0) * 255)
+            mesh.visual.face_colors = [r, g, b, a]
+
+            display_name = f"{hand_label}_{name}" if len(assemblies) > 1 else name
+            scene.add_geometry(mesh, node_name=display_name, geom_name=display_name)
+
+    scene.export(str(output_path))
+    print(f"  -> {output_path} ({len(scene.geometry)} parts)")
+
+
 def main() -> int:
     """Main entry point."""
     # Handle --list-gears before argparse requires --gear
@@ -523,6 +573,41 @@ def main() -> int:
 
         except Exception as e:
             print(f"  Warning: Failed to build wheel: {e}")
+
+    # Export GLB assembly (colored, positioned)
+    if "all" in args.components:
+        print("Building GLB assembly...")
+        assemblies = []
+        if build_rh:
+            # Reuse interference assembly if available, otherwise build
+            try:
+                rh_assembly
+            except NameError:
+                rh_assembly = create_positioned_assembly(
+                    config,
+                    wheel_step_path=gear_paths.wheel_step,
+                    worm_step_path=gear_paths.worm_step,
+                )
+            assemblies.append((Hand.RIGHT, config, rh_assembly))
+
+        if build_lh:
+            try:
+                lh_assembly
+            except NameError:
+                lh_config = replace(config, hand=Hand.LEFT)
+                lh_assembly = create_positioned_assembly(
+                    lh_config,
+                    wheel_step_path=gear_paths.wheel_step,
+                    worm_step_path=gear_paths.worm_step,
+                )
+            assemblies.append((Hand.LEFT, replace(config, hand=Hand.LEFT), lh_assembly))
+
+        if assemblies:
+            frame_width = config.frame.box_outer * args.scale
+            spacing = frame_width * 4
+            glb_path = output_dir / f"assembly_{args.num_housings}gang.glb"
+            export_assembly_glb(assemblies, glb_path, spacing if len(assemblies) > 1 else 0)
+            exported.append(glb_path)
 
     print()
     print(f"Exported {len(exported)} files to {output_dir}")

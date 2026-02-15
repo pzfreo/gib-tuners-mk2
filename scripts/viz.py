@@ -143,7 +143,7 @@ def export_assembly(
                 temp_path = f.name
             try:
                 export_stl(part, temp_path)
-                mesh = trimesh.load(temp_path)
+                mesh = trimesh.load(temp_path, process=False)
                 if isinstance(mesh, trimesh.Scene):
                     mesh = mesh.to_geometry()
             finally:
