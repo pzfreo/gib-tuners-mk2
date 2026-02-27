@@ -609,6 +609,21 @@ def main() -> int:
             export_assembly_glb(assemblies, glb_path, spacing if len(assemblies) > 1 else 0)
             exported.append(glb_path)
 
+            # STEP assembly export
+            from build123d import Compound
+            for hand, cfg, assembly in assemblies:
+                hand_label = "rh" if hand == Hand.RIGHT else "lh"
+                parts = list(assembly["all_parts"].values())
+                if parts:
+                    assembly_compound = Compound(parts)
+                    step_path = output_dir / f"assembly_{args.num_housings}gang_{hand_label}.step"
+                    try:
+                        export_step(assembly_compound, step_path)
+                        exported.append(step_path)
+                        print(f"  -> {step_path}")
+                    except Exception as e:
+                        print(f"  STEP assembly export failed for {hand_label}: {e}")
+
     print()
     print(f"Exported {len(exported)} files to {output_dir}")
 
