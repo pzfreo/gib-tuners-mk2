@@ -1,9 +1,10 @@
-"""Tests for assembly interference checks."""
+"""Tests for assembly interference checks and STEP assembly export."""
 
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from build123d import Compound
 
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.assembly import (
@@ -11,6 +12,7 @@ from gib_tuners.assembly import (
     create_positioned_assembly,
     run_interference_report,
 )
+from gib_tuners.export.step_export import export_step
 
 
 class TestAssemblyInterference:
@@ -99,3 +101,31 @@ class TestAssemblyInterference:
 
         # Should not have interference key when not checked
         assert "interference" not in assembly
+
+
+class TestAssemblyStepExport:
+    """Tests for STEP assembly export."""
+
+    def test_step_assembly_export(self, gear_paths, tmp_path):
+        """Test that a positioned assembly can be exported as a STEP file."""
+        config = create_default_config(
+            gear_json_path=gear_paths.json_path,
+            config_dir=gear_paths.config_dir,
+        )
+        config = replace(config, frame=replace(config.frame, num_housings=1))
+
+        assembly = create_positioned_assembly(
+            config,
+            wheel_step_path=gear_paths.wheel_step,
+            worm_step_path=gear_paths.worm_step,
+        )
+
+        parts = list(assembly["all_parts"].values())
+        assert len(parts) > 0
+
+        assembly_compound = Compound(parts)
+        step_path = tmp_path / "assembly_1gang_rh.step"
+        export_step(assembly_compound, step_path)
+
+        assert step_path.exists()
+        assert step_path.stat().st_size > 0
