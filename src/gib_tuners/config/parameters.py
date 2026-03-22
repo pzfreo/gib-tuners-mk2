@@ -76,7 +76,7 @@ class FrameParams:
     wheel_inlet_tolerance: float = 0.2  # Clearance for washer fit
     worm_entry_hole: float = 7.2  # Side face, for worm insertion (> 7mm worm tip)
     peg_bearing_hole: float = 4.05  # Side face, for peg shaft bearing (shaft_dia + clearance)
-    mounting_hole: float = 3.0  # Bottom plate, for headstock bolts
+    mounting_hole: float = 3.2  # Bottom plate, for headstock bolts
 
     # Decorative engraving
     engraving: EngravingParams = field(default_factory=EngravingParams)

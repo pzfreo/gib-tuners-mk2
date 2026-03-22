@@ -57,7 +57,7 @@ Key advantages of c13 over earlier profiles (cyl11, bh11-cd-fx):
 4. Drill 5x wheel inlet holes — bottom face, ø5.1mm
 5. Drill 5x worm entry holes — one side face, ø7.1mm
 6. Drill + ream 5x peg bearing holes — opposite side face, ø4.55mm (H7)
-7. Drill 6x ø3.0mm mounting holes in bottom plate (in gaps between housings)
+7. Drill 6x ø3.2mm mounting holes in bottom plate (in gaps between housings)
 8. Engrave "R" or "L" on inside surface (laser or engraving cutter)
 9. Deburr all edges
 

@@ -258,7 +258,7 @@ Z=-24.9+-----------+-----------------+-------------+
 2. Drop brass frame into pocket (mounting plate faces down into pocket ceiling)
 3. Flip clamshell right-side up (frame held by gravity + pocket fit)
 4. Drill 5x post bearing holes through top bushings (dia 4.05mm, vertical)
-5. Drill 6x mounting holes through top guides (dia 3.0mm, vertical)
+5. Drill 6x mounting holes through top guides (dia 3.2mm, vertical)
 6. Clamp jig on side, drill 5x worm entry holes through right wall bushings (dia 7.05mm, horizontal)
 7. Flip, drill 5x peg bearing holes through left wall bushings (dia 4.05mm, horizontal)
 
