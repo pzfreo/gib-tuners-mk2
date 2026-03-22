@@ -322,8 +322,9 @@ class StringPostParams:
     thread_length: float = 4.0  # Depth of tapped hole (for 4mm M2 screw)
 
     # String hole
-    string_hole_diameter: float = 1.5
+    string_hole_diameter: float = 1.7
     string_hole_position: float = 2.75  # Centered in visible post (post_height / 2)
+    string_hole_chamfer: float = 0.3  # Chamfer at hole entry/exit to protect string
 
     def get_bearing_length(self, wall_thickness: float) -> float:
         """Bearing length = wall + axial play.

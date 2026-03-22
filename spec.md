@@ -477,7 +477,7 @@ Investment cast peg head with integral shaft and worm thread:
    * M2 tap bore (~4mm deep, for screw retention)
 2. Mill DD flats on shaft section (undersized for slip fit)
 3. Tap M2 hole in bottom
-4. Cross-drill ø1.5mm string hole (2.75mm from frame top)
+4. Cross-drill ø1.7mm string hole (2.75mm from frame top), chamfer both entries (0.3mm)
 
 ### **Phase 5: Assembly (The "Sandwich" Logic)**
 

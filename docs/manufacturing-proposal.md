@@ -93,7 +93,7 @@ Key advantages of c13 over earlier profiles (cyl11, bh11-cd-fx):
 1. **Swiss lathe (primary):** Turn all 4 diameters, form cap fillet (0.25mm R), part off
 2. **Secondary ops (transfer or bench mill):**
    - Mill 2x DD flats (0.5mm deep, forming AF 2.5mm)
-   - Cross-drill ø1.5mm string hole (2.75mm from bearing shoulder)
+   - Cross-drill ø1.7mm string hole (2.75mm from bearing shoulder), chamfer both entries (0.3mm)
    - Tap M2 blind hole from bottom (4mm deep)
    - Cut 3x concentric V-grooves on cap face (0.33mm wide/deep, outer ø6mm)
 
