@@ -18,6 +18,7 @@ from build123d import (
     Location,
     Part,
     Polygon,
+    chamfer,
     fillet,
     revolve,
 )
@@ -63,6 +64,7 @@ def create_string_post(config: BuildConfig) -> Part:
 
     string_hole_d = params.string_hole_diameter * scale
     string_hole_pos = params.string_hole_position * scale
+    string_hole_chamfer = params.string_hole_chamfer * scale
 
     # Build from bottom up
     z = 0.0
@@ -153,6 +155,15 @@ def create_string_post(config: BuildConfig) -> Part:
     string_hole = string_hole.rotate(Axis.X, 90)
     string_hole = string_hole.locate(Location((0, 0, hole_z)))
     string_post = string_post - string_hole
+
+    # Chamfer the string hole edges to remove sharp corners
+    if string_hole_chamfer > 0:
+        # The boolean creates intersection edges where hole meets post surface.
+        # These are the only edges in the Z band of the hole within the post section.
+        hole_edges = string_post.edges().filter_by_position(
+            Axis.Z, hole_z - string_hole_d / 2 - 0.01, hole_z + string_hole_d / 2 + 0.01
+        )
+        string_post = chamfer(hole_edges, length=string_hole_chamfer)
 
     # Check shape quality (warns if non-manifold edges detected)
     check_shape_quality(string_post, "string_post")
