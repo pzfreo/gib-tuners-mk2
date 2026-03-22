@@ -440,7 +440,7 @@ POST SHOULDER ══════╧═══════════════
 3. **Drill Vertical:**
    * Drill & ream post bearing holes on Top Face (bearing_diameter + bearing_clearance).
    * Drill **ø5.1mm** wheel inlet holes on Bottom Face (M2 washer access).
-   * Drill **ø3.0mm** mounting holes on Bottom Plate at specified Y positions.
+   * Drill **ø3.2mm** mounting holes on Bottom Plate at specified Y positions.
 4. **Drill Horizontal (Asymmetric):**
    * Drill worm entry holes on one side (shoulder_diameter + bearing_clearance).
    * Drill & ream peg shaft bearing holes on opposite side (shaft_diameter + bearing_clearance).
