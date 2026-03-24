@@ -18,14 +18,16 @@ import math
 import pytest
 
 from build123d import import_step, Box, Align, Location, Part, Compound
-from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepAdaptor import BRepAdaptor_Curve, BRepAdaptor_Surface
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
 from OCP.BRepGProp import BRepGProp
-from OCP.GProp import GProp_GProps
 from OCP.GeomAbs import (
-    GeomAbs_Cylinder, GeomAbs_Plane, GeomAbs_Sphere,
+    GeomAbs_Circle, GeomAbs_Cylinder, GeomAbs_Plane, GeomAbs_Sphere,
     GeomAbs_Torus, GeomAbs_BSplineSurface,
 )
-from OCP.TopAbs import TopAbs_FACE
+from OCP.gp import gp_Dir, gp_Pln, gp_Pnt
+from OCP.GProp import GProp_GProps
+from OCP.TopAbs import TopAbs_EDGE, TopAbs_FACE
 from OCP.TopExp import TopExp_Explorer
 from OCP.TopoDS import TopoDS
 
@@ -393,3 +395,40 @@ class TestProductionComparison:
         assert abs(cnc_count - fixed_count) <= 4, (
             f"Face count changed significantly: {cnc_count} → {fixed_count}"
         )
+
+    def test_reinforcement_not_visible_inside_ring(self, cnc_and_fixed):
+        """Reinforcement cylinder must not protrude into the ring bore.
+
+        Slice the reinforced head at Z levels inside the ring body (-16.5
+        to -15.0) and check no new circles appear compared to the raw STEP.
+        A protruding reinforcement would show as an extra small circle
+        (1.5mm) inside the ring's larger bore.
+        """
+        cnc, fixed = cnc_and_fixed
+
+        def _section_circles(shape, z):
+            plane = gp_Pln(gp_Pnt(0, 0, z), gp_Dir(0, 0, 1))
+            sec = BRepAlgoAPI_Section(shape.wrapped, plane)
+            sec.Build()
+            circles = []
+            exp = TopExp_Explorer(sec.Shape(), TopAbs_EDGE)
+            while exp.More():
+                edge = TopoDS.Edge_s(exp.Current())
+                adaptor = BRepAdaptor_Curve(edge)
+                if adaptor.GetType() == GeomAbs_Circle:
+                    circles.append(adaptor.Circle().Radius() * 2)
+                exp.Next()
+            return sorted(circles)
+
+        # Sample Z levels inside the ring body (below the stalk region)
+        for z in [-16.5, -16.0, -15.5, -15.0]:
+            raw_circles = _section_circles(cnc, z)
+            fix_circles = _section_circles(fixed, z)
+            # The reinforcement cylinder (1.5mm) should not appear
+            new_small = [d for d in fix_circles
+                         if d < 3.0
+                         and not any(abs(d - r) < 0.1 for r in raw_circles)]
+            assert len(new_small) == 0, (
+                f"At Z={z}, reinforcement visible inside ring: "
+                f"new circles {[f'{d:.2f}' for d in new_small]}mm"
+            )

@@ -133,7 +133,7 @@ def reinforce_pip_stalk(shape: Part, diameter: float = PIP_STALK_REINFORCEMENT_D
     """
     # Stalk region: Z ≈ -17.6 to -16.6 (from STEP face analysis).
     # Use generous overlap into pip body and ring to ensure solid fusion.
-    stalk_z_top = -16.2    # into ring body
+    stalk_z_top = -16.8    # slight overlap into ring body
     stalk_z_bottom = -17.9  # into pip body (past fillet)
     stalk_height = stalk_z_top - stalk_z_bottom  # ~1.7mm
 
