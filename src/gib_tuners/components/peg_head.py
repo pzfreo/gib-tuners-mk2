@@ -106,6 +106,47 @@ PEG_HEAD_STEP = REFERENCE_DIR / "peghead7mm.step"
 DEFAULT_WORM_STEP = REFERENCE_DIR / "worm_m0.5_z1.step"
 DEFAULT_WORM_LENGTH = 7.8
 
+# Pip stalk reinforcement: OnShape STEP has a 1.0mm stalk that is too
+# fragile in CZ121 brass. See scripts/experiments/pip_shear_calc.py for
+# the engineering analysis.  1.5mm passes 30N bending with SF=2.0.
+PIP_STALK_REINFORCEMENT_DIAMETER = 1.5
+
+
+def reinforce_pip_stalk(shape: Part, diameter: float = PIP_STALK_REINFORCEMENT_DIAMETER) -> Part:
+    """Reinforce the pip stalk by unioning a larger cylinder over it.
+
+    The OnShape peg head has a 1.0mm diameter stalk connecting the 2.1mm pip
+    to the ring body.  This function adds a cylinder of the given diameter
+    in the stalk region, increasing the minimum cross-section.
+
+    The stalk is located on the Z axis between approximately Z=-17.6 (where
+    the pip-side fillet ends) and Z=-16.6 (where the ring body begins).
+    The reinforcement cylinder spans this gap with overlap into both
+    neighbouring solids so the boolean union is reliable.
+
+    Args:
+        shape: Raw imported peg head Part (Z axis, pip at negative Z).
+        diameter: Target stalk diameter in mm (default 1.5).
+
+    Returns:
+        Reinforced Part.
+    """
+    # Stalk region: Z ≈ -17.6 to -16.6 (from STEP face analysis).
+    # Use generous overlap into pip body and ring to ensure solid fusion.
+    stalk_z_top = -16.2    # into ring body
+    stalk_z_bottom = -17.9  # into pip body (past fillet)
+    stalk_height = stalk_z_top - stalk_z_bottom  # ~1.7mm
+
+    reinforcement = Cylinder(
+        radius=diameter / 2,
+        height=stalk_height,
+        align=(Align.CENTER, Align.CENTER, Align.MIN),
+    )
+    reinforcement = reinforcement.locate(Location((0, 0, stalk_z_bottom)))
+
+    result = shape + reinforcement
+    return _to_part(result)
+
 
 def create_peg_head(
     config: BuildConfig,
@@ -157,6 +198,9 @@ def create_peg_head(
             peg_head_full = peg_head_full + shape
     else:
         peg_head_full = peg_head_imported
+
+    # Reinforce the pip stalk (1.0mm → 1.5mm) before cutting
+    peg_head_full = reinforce_pip_stalk(_to_part(peg_head_full))
 
     # Cut peg head at Z=0 (keep Z ≤ 0)
     keep_box = Box(20, 20, 30, align=(Align.CENTER, Align.CENTER, Align.MAX))
