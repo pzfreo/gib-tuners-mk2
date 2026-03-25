@@ -1,8 +1,9 @@
 """Procedural peg head geometry — no STEP file dependency.
 
-Builds the peg head (ring, pip, cap, shoulder, gear shaft) entirely from
-parametric build123d operations.  This is a drop-in replacement for the
-STEP-imported head geometry in peg_head.py.
+Builds the peg head body (ring, pip, cap, shoulder, gear shaft) entirely from
+parametric build123d operations.  This replaces the STEP-imported head geometry
+step in peg_head.py; the worm, bearing shaft, and tap hole are added separately
+by the existing peg head pipeline.
 
 Part anatomy (top to bottom, positive Z to negative Z):
   gear shaft -> shoulder -> cap -> ringshaft -> ring -> stalk -> pip
@@ -18,6 +19,7 @@ Z-axis convention: Z=0 at shoulder top (datum), positive up (gear shaft),
 negative down (cap -> ringshaft -> ring -> stalk -> pip).
 """
 
+import logging
 import math
 from dataclasses import dataclass
 
@@ -41,6 +43,15 @@ from build123d import (
 
 from ..config.parameters import BuildConfig
 from ..utils.validation import check_shape_quality
+
+logger = logging.getLogger(__name__)
+
+__all__ = [
+    "PegHeadGeometryParams",
+    "DEFAULT_GEOMETRY",
+    "create_peg_head_geometry",
+    "create_peg_head_procedural",
+]
 
 
 @dataclass(frozen=True)
@@ -121,7 +132,12 @@ DEFAULT_GEOMETRY = PegHeadGeometryParams()
 def _extract_solid(shape):
     """Extract the largest solid from a boolean result."""
     if hasattr(shape, "solids") and shape.solids():
-        return max(shape.solids(), key=lambda s: s.volume)
+        solids = shape.solids()
+        if len(solids) > 1:
+            logger.warning(
+                "Boolean produced %d solids; keeping largest by volume", len(solids)
+            )
+        return max(solids, key=lambda s: s.volume)
     return shape
 
 
@@ -212,6 +228,10 @@ def create_peg_head_geometry(
     # ---------------------------------------------------------------
     sphere = Sphere(radius=g.sphere_r).translate(Vector(0, 0, sphere_cz))
     ring_disc = sphere.split(plane1).split(plane2)
+    if abs(ring_disc.volume - sphere.volume) < 1e-6:
+        raise ValueError(
+            "Ring split planes did not intersect sphere — check ring geometry params"
+        )
 
     bore_cyl = Cylinder(
         radius=g.bore_r,
@@ -250,6 +270,7 @@ def create_peg_head_geometry(
     # ---------------------------------------------------------------
     # 4. Stalk + pip: single revolve with pip fillets in profile
     # ---------------------------------------------------------------
+    # Fillet offset at 45° — used to place the arc midpoint
     f45 = g.pip_fillet_r * (1 - math.cos(math.radians(45)))
 
     with BuildPart() as pip_build:
@@ -314,8 +335,8 @@ def create_peg_head_geometry(
             )
             if hasattr(ring_assembly, "solids") and ring_assembly.solids():
                 ring_assembly = ring_assembly.solids()[0]
-        except Exception as e:
-            print(f"Warning: ring outer fillet failed: {e}")
+        except (ValueError, RuntimeError) as e:
+            logger.warning("Ring outer fillet failed (non-critical): %s", e)
 
     solid = ring_assembly.fuse(upper_body).fuse(stalk_pip)
 
@@ -341,8 +362,8 @@ def create_peg_head_geometry(
         try:
             solid = solid.fillet(g.ring_outer_fillet_r, bore_edges)
             solid = _extract_solid(solid)
-        except Exception as e:
-            print(f"Warning: bore fillet failed: {e}")
+        except (ValueError, RuntimeError) as e:
+            logger.warning("Bore fillet failed (non-critical): %s", e)
 
     return _extract_solid(solid)
 
