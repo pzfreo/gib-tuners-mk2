@@ -9,6 +9,7 @@ import pytest
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from gib_tuners.components.peg_head_procedural import create_peg_head_geometry
 from gib_tuners.config.defaults import create_default_config, load_gear_params, resolve_gear_config
 from gib_tuners.config.parameters import BuildConfig, Hand
 
@@ -90,3 +91,9 @@ def prototype_config(gear_paths) -> BuildConfig:
         gear_json_path=gear_paths.json_path,
         config_dir=gear_paths.config_dir,
     )
+
+
+@pytest.fixture(scope="session")
+def peg_head_geometry():
+    """Build procedural peg head geometry once for the whole test session."""
+    return create_peg_head_geometry()
