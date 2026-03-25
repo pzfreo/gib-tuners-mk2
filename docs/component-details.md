@@ -143,6 +143,27 @@ Decorative ring with integral worm shaft. **RH and LH have opposite thread direc
 
 Worm thread is integral to the peg shaft. No pins or setscrews used. Shaft must be concentric to worm pitch diameter within 0.01mm.
 
+### Procedural peg head geometry
+
+A parametric alternative to the STEP-imported head geometry exists in
+`src/gib_tuners/components/peg_head_procedural.py`. It builds the ring, pip,
+cap, shoulder, and gear shaft entirely from build123d revolve/spline/boolean
+operations — no STEP file dependency.
+
+This produces the **head body only** (Z=0 at shoulder datum, shaft in +Z,
+ring/pip in -Z). The worm, bearing shaft, and tap hole are added separately
+by the existing peg head pipeline.
+
+Origin: reverse-engineered from `reference/peghead7mm.step` via the
+`step-fingerprint` project. Validated by 43 geometric fingerprint tests
+(`tests/test_peg_head_procedural.py`) covering volume, surface area, bbox,
+inertia, face inventory, 20 cross-sections, and 15x12 radial profiles.
+
+Known intentional differences from the reference STEP:
+- Ringshaft uses a smooth spline (reference used cone+cylinder)
+- No small boss cylinder on shaft tip (replaced by worm in assembly)
+- Pip fillets drawn as arcs in the 2D revolve profile (exact torus surfaces)
+
 
 ## 4. Worm Wheel
 
