@@ -103,8 +103,8 @@ first_center = end_length + housing_length / 2 = 10 + 8.1 = 18.1mm
 ## Building
 
 ```bash
-# Production scale (1:1)
-python scripts/build.py --scale 1.0 --hand both
+# PRODUCTION BUILD (for CNC manufacturer) — use this exact command:
+python scripts/build.py --hand both --gear c13-10 -n 5 --label-frames no
 
 # 2x prototype for FDM printing
 python scripts/build.py --scale 2.0 --tolerance prototype_fdm
@@ -119,6 +119,10 @@ python scripts/viz.py                   # 5-gang (default)
 # Animate worm gear mechanism
 python scripts/animate.py --worm-revs 1
 ```
+
+> **Note:** `--label-frames no` is required for CNC files. With labels on, the L/R text
+> makes the two frame STEP files different sizes (asymmetric), which is confusing for the
+> manufacturer. Labels are useful for in-house identification only.
 
 ## Testing
 
@@ -190,7 +194,7 @@ For refactoring or restructuring tasks: Run the full application/test suite afte
 
 ## Preferred Gear Profile
 
-**c13 is the current best model** (`config/c13/`). Cylindrical worm, M0.5, 13-tooth wheel, 20° pressure angle, centre distance 6.25mm. Uses `tuner_config.json` to override shaft diameter to 4.5mm (matching worm root). Use `--gear c13` for builds.
+**c13-10 is the production gear profile** (`config/c13-10/`). Cylindrical worm, M0.5, 13-tooth wheel, 20° pressure angle. Use `--gear c13-10` for all production builds.
 
 ## Manufacturing Constraints
 
