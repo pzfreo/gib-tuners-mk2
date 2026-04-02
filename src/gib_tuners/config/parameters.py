@@ -245,13 +245,18 @@ class PegHeadParams:
     # Shaft (new, added programmatically)
     shaft_diameter: float = 4.0  # Bearing section diameter
     worm_length: float = 7.6  # From gear config manufacturing.worm_length_mm
-    # Axial play for free rotation (gap between cap and frame)
+    # Axial play for free rotation (gap between cap and frame) — kept for reference
     peg_bearing_axial_play: float = 0.2
     washer_clearance: float = 0.1  # Extension beyond frame
+    shaft_protrusion: float = 0.15  # mm shaft extends beyond outer frame face
 
-    def get_bearing_wall(self, wall_thickness: float) -> float:
-        """Bearing section length = wall + axial play + washer clearance."""
-        return wall_thickness + self.peg_bearing_axial_play + self.washer_clearance
+    def get_bearing_wall(self, box_outer: float) -> float:
+        """Bearing shaft extension beyond worm — constant regardless of wall thickness.
+
+        Shaft spans from worm shoulder (worm_length/2 from centre) to outer bearing
+        face (box_outer/2 from centre) plus fixed protrusion for washer/screw retention.
+        """
+        return box_outer / 2 - self.worm_length / 2 + self.shaft_protrusion
 
     # M2 tap hole
     tap_drill: float = 1.6  # M2 tap drill diameter
@@ -267,17 +272,9 @@ class PegHeadParams:
     washer_id: float = 2.7  # M2.5 washer ID (M2 screw head still captures it)
     washer_thickness: float = 0.5  # M2.5 washer thickness
 
-    def get_shaft_length(self, wall_thickness: float) -> float:
-        """Total shaft length from shoulder to end.
-
-        Note: No explicit shaft_gap is needed because the worm is centered
-        in the cavity, which provides clearance on both sides.
-        Protrusion beyond frame = peg_bearing_axial_play.
-        """
-        return (
-            self.worm_length +
-            self.get_bearing_wall(wall_thickness)
-        )
+    def get_shaft_length(self, box_outer: float) -> float:
+        """Total shaft length from shoulder to end."""
+        return self.worm_length + self.get_bearing_wall(box_outer)
 
 
 @dataclass(frozen=True)

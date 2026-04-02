@@ -169,7 +169,7 @@ def create_tuner_unit(
         # Peg retention washer - sits on bearing shaft end
         peg_washer = create_peg_retention_washer(config)
         peg_params = config.peg_head
-        shaft_length = peg_params.get_shaft_length(frame.wall_thickness) * scale
+        shaft_length = peg_params.get_shaft_length(frame.box_outer) * scale
         washer_thickness = peg_params.washer_thickness * scale
 
         # Shaft end position:
