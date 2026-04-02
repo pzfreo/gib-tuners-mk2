@@ -210,7 +210,7 @@ def create_peg_head(
     # Get shaft dimensions from params
     shaft_dia = params.shaft_diameter
     wall_thickness = config.frame.wall_thickness
-    bearing_wall = params.get_bearing_wall(wall_thickness)
+    bearing_wall = params.get_bearing_wall(config.frame.box_outer)
 
     # Total length from Z=0 to shaft end (for tap hole positioning)
     total_shaft_length = worm_len + bearing_wall
