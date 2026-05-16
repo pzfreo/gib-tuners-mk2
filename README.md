@@ -84,4 +84,24 @@ pytest tests/test_validation.py  # Spec Section 9 checks
 
 ## License
 
-Proprietary - All rights reserved.
+This project is released under the **Open Community License (OCL v1)** — a
+non-commercial, share-alike license for open hardware and software. See
+[`LICENSE`](./LICENSE) for the full text, or the canonical source at
+[OpenCommunityLicence/OpenCommunityLicence](https://github.com/OpenCommunityLicence/OpenCommunityLicence).
+
+In short:
+
+- **Non-commercial users** may freely use, copy, modify, and hack the
+  designs and code. If you redistribute your derivatives, you **must**
+  release them under OCL or another non-commercial share-alike license
+  that grants downstream users the same rights.
+- **Commercial / business users** may use and modify the designs solely
+  for their own internal production. Replicating, reselling, or
+  otherwise commercialising the product or its components (other than
+  internal right-to-repair) requires a **separate commercial license**
+  from the copyright holder.
+- Automated text and data mining of this repository is **not permitted**
+  without explicit prior permission.
+
+For commercial licensing enquiries, contact the copyright holder listed
+in [`LICENSE`](./LICENSE).
