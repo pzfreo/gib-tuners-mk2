@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "build123d>=0.10.0",
+    "build123d-drafting-helpers>=0.3.0",
     "ocp-vscode>=2.0.0",
     "trimesh[easy]>=4.0.0",
     "networkx>=3.0",
@@ -41,4 +42,11 @@ filterwarnings = [
     "ignore::DeprecationWarning:build123d",
     "ignore::DeprecationWarning:ezdxf",
     "ignore::DeprecationWarning:pyparsing",
+]
+
+[dependency-groups]
+dev = [
+    "fpdf2>=2.8.7",
+    "pillow>=12.2.0",
+    "resvg-py>=0.3.2",
 ]
