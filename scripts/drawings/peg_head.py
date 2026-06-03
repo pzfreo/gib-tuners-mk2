@@ -89,8 +89,8 @@ rev_vis, rev_hid = peg_2x.project_to_viewport((200, 0, 0), (0, 0, 1), look_at_2x
 
 # ── Sheet layout ───────────────────────────────────────────────────────────────
 # Side view at (152, 128); ring-end view to the left at (92, 128)
-SV_X, SV_Y = 152.0, 128.0
-REV_X, REV_Y = 90.0, 128.0
+SV_X, SV_Y = 152.0, 110.0
+REV_X, REV_Y = 90.0, 110.0
 
 sv  = Compound(children=list(sv_vis )).locate(Location((SV_X,  SV_Y,  0)))
 rev = Compound(children=list(rev_vis)).locate(Location((REV_X, REV_Y, 0)))
@@ -188,7 +188,7 @@ annotate(ldr_ring_bore, "ldr_ring_bore")
 tb = TitleBlock(
     "PEG HEAD", "DWG-003",
     scale="2:1",
-    material="INVESTMENT CAST BRASS",
+    material="CAST BRASS",
     general_tolerance="ISO 2768-m",
     designed_by="GIB TUNERS",
     date="2026-06-03",

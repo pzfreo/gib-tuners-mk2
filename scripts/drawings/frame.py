@@ -156,6 +156,25 @@ ldr_worm = Leader(
 )
 annotate(ldr_worm, "ldr_worm_entry")
 
+# ── End view dimensions ─────────────────────────────────────────────────────
+# Camera at +Y→-Y, up=+Z: world_X → page_X (-1), world_Z → page_Y (+1)
+# Scale 1:1. look_at z=-5 → END_Z(z) = EV_CY + z + 5
+END_X = lambda x: EV_CX - x
+END_Z = lambda z: EV_CY + z + 5
+d_end_w = Dimension(
+    (END_X(-box_outer / 2), END_Z(-box_outer) - 3, 0),
+    (END_X( box_outer / 2), END_Z(-box_outer) - 3, 0),
+    "below", 3, draft, label=f"{box_outer:.1f}",
+)
+annotate(d_end_w, "dim_end_width")
+
+d_end_h = Dimension(
+    (END_X(-box_outer / 2) + 3, END_Z(-box_outer), 0),
+    (END_X(-box_outer / 2) + 3, END_Z(0), 0),
+    "right", 3, draft, label=f"{box_outer:.1f}",
+)
+annotate(d_end_h, "dim_end_height")
+
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     "FRAME - 5 GANG", "DWG-001",
@@ -170,7 +189,8 @@ tb = TitleBlock(
 annotate(tb, "title_block")
 
 # ── Lint gate ─────────────────────────────────────────────────────────────────
-all_anns = list(dims_below) + [d_height, ldr_post, ldr_mount, ldr_worm, tb]
+all_anns = list(dims_below) + [d_height, ldr_post, ldr_mount, ldr_worm,
+                               d_end_w, d_end_h, tb]
 set_page(297, 210, margin=10)
 issues = lint_drawing(all_anns, drawing_scale=1.0)
 if issues:

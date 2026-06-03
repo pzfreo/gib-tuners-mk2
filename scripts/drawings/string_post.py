@@ -72,7 +72,7 @@ post_2x = string_post.scale(SCALE)
 z_center = total_h  # = total_h*SCALE/2 when SCALE=2
 
 # ── Project views ──────────────────────────────────────────────────────────────
-SV_X, SV_Y = 148.0, 135.0   # side view sheet centre
+SV_X, SV_Y = 148.0, 115.0   # side view sheet centre
 
 sv_vis,  sv_hid  = post_2x.project_to_viewport((-200, 0, z_center), (0, 1, 0), (0, 0, z_center))
 bev_vis, bev_hid = post_2x.project_to_viewport((0, 0, -200),        (0, 1, 0), (0, 0, z_center))
@@ -184,7 +184,7 @@ annotate(ldr_dd, "ldr_dd_bore")
 tb = TitleBlock(
     "STRING POST", "DWG-002",
     scale="2:1",
-    material="CZ121 FREE-CUTTING BRASS",
+    material="CZ121 BRASS",
     general_tolerance="ISO 2768-f",
     designed_by="GIB TUNERS",
     date="2026-06-03",

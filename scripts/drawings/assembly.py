@@ -88,15 +88,18 @@ tv_vis, tv_hid = asm_2x.project_to_viewport((0, y2, 200), (0, 1, 0), (0, y2, z2)
 ev_vis, ev_hid = asm_2x.project_to_viewport((0, -200, z2), (0, 0, 1), (0, y2, z2))
 
 # ── Sheet layout ───────────────────────────────────────────────────────────────
-# Front view: width ≈ total_length*2 = 72.4, height ≈ (box_outer + post_h)*2 ≈ 31mm
-# Plan view:  width ≈ 72.4, height ≈ box_outer*2 = 20mm (above front)
-# End view:   width ≈ box_outer*2 = 20, height ≈ 31 (left of front, third-angle)
+# Full assembly bbox: X=-7..22.9 (peg head extends far +X), Y=0..36.2, Z=-11.2..6.5
+# At SCALE=2: front view 72.4mm wide × 35.4mm tall; plan view 59.6mm wide × 72.4mm tall
+# End view from -Y shows peg head extending to X=22.9 → 45.8mm wide at 2:1
 #
-# Layout: end view at (100, 100), front view at (160, 100), plan view at (160, 145)
+# Layout chosen to clear overlap between end view and front view:
+#   EV_X=40  → end right edge at 40+45.8=85.8, front left at 195-36.2=158.8 → 73mm gap
+#   FV_X=195 → front centred at 195
+#   TV_X=185, TV_Y=155 → plan bottom 118.8, front top 93 → 25.8mm gap
 
-FV_X, FV_Y = 165.0, 90.0
-TV_X, TV_Y = 165.0, 163.0    # above front — gap ≥ 10mm above front-view top
-EV_X, EV_Y = 103.0, 90.0     # left of front
+FV_X, FV_Y = 195.0, 70.0
+TV_X, TV_Y = 185.0, 155.0    # above front
+EV_X, EV_Y = 40.0,  70.0     # far left of front
 
 fv = Compound(children=list(fv_vis)).locate(Location((FV_X, FV_Y, 0)))
 tv = Compound(children=list(tv_vis)).locate(Location((TV_X, TV_Y, 0)))
@@ -121,9 +124,9 @@ def TY(y): return TV_Y + (y - y_center) * SCALE
 def EX(x): return EV_X + x * SCALE
 def EZ(z): return EV_Y + (z - z_center) * SCALE
 
-# Profile extents
-FRONT_YBOT = FZ(-box_outer) - 3    # below frame bottom face
-FRONT_YTOP = FZ(post_h) + 2        # above post top
+# Profile extents  (with FV_Y=70: FZ(-11.2)=57.6, FZ(6.5)=93)
+FRONT_YBOT = FZ(-box_outer) - 3    # below frame bottom face (= 57)
+FRONT_YTOP = FZ(post_h) + 2        # above post top (= 93)
 
 # ── Frame length dimension (below front view) ──────────────────────────────────
 dims_below = place_dims([
@@ -149,45 +152,61 @@ d_frame_h = Dimension(
 )
 annotate(d_frame_h, "dim_frame_height")
 
-# ── Part identification leaders on front view ──────────────────────────────────
-# Get housing centre and post Y position from config
+# ── End view dimensions (box section) ─────────────────────────────────────────
+# Width across frame
+d_end_w = Dimension(
+    (EX(-box_outer / 2), EZ(-box_outer) - 4, 0),
+    (EX( box_outer / 2), EZ(-box_outer) - 4, 0),
+    "below", 4, draft, label=f"{box_outer:.1f}",
+)
+annotate(d_end_w, "dim_end_width")
+
+# Height of frame
+d_end_h = Dimension(
+    (EX(box_outer / 2) + 3, EZ(-box_outer), 0),
+    (EX(box_outer / 2) + 3, EZ(0), 0),
+    "right", 4, draft, label=f"{box_outer:.1f}",
+)
+annotate(d_end_h, "dim_end_height")
+
+# ── Part identification leaders ────────────────────────────────────────────────
 housing_y = fr.housing_centers[0]       # ≈ 18.1mm
 eff_cd    = gear.center_distance - gear.extra_backlash
-post_y    = housing_y - eff_cd / 2      # post bearing hole Y ≈ 15.2mm
+post_y    = housing_y - eff_cd / 2      # string post Y ≈ 15mm
 worm_z    = calculate_worm_z(config)    # ≈ -5.0mm
 
-# Peg head on the far side (+X), visible as cap profile in front view
-# In the FRONT view from -X, the peg head cap is visible at Y≈post_y, Z≈worm_z
+# Peg head ring in front view (visible as large circle)
 ldr_peg = Leader(
     tip=(FX(post_y), FZ(worm_z), 0),
-    elbow=(FX(post_y) - 12, FZ(worm_z) - 10, 0),
+    elbow=(FX(post_y) - 16, FZ(worm_z) - 12, 0),
     label="PEG HEAD",
     draft=draft,
 )
 annotate(ldr_peg, "ldr_peg_head")
 
-# String post above frame
+# String post above frame in front view
 ldr_post = Leader(
-    tip=(FX(post_y), FZ(post_h * 0.6), 0),
-    elbow=(FX(post_y) + 14, FZ(post_h * 0.6) + 10, 0),
+    tip=(FX(post_y), FZ(post_h * 0.5), 0),
+    elbow=(FX(post_y) + 18, FZ(post_h * 0.5) + 14, 0),
     label="STRING POST",
     draft=draft,
 )
 annotate(ldr_post, "ldr_string_post")
 
-# Worm wheel inside frame (at post_y, worm_z, visible as small circle)
+# Worm wheel — labelled in end view where its face is visible looking from -Y
+# Wheel center: X≈0, Z≈-5 (same as worm axis)
 ldr_wheel = Leader(
-    tip=(FX(post_y), FZ(worm_z - 2), 0),
-    elbow=(FX(post_y) + 14, FZ(worm_z - 2) - 10, 0),
+    tip=(EX(0), EZ(worm_z), 0),
+    elbow=(EX(box_outer / 2) + 16, EZ(worm_z) - 10, 0),
     label="WORM WHEEL",
     draft=draft,
 )
 annotate(ldr_wheel, "ldr_wheel")
 
-# Frame on end view (square cross-section)
+# Frame — label at top edge of end view
 ldr_frame = Leader(
-    tip=(EX(box_outer / 2), EZ(0), 0),
-    elbow=(EX(box_outer / 2) + 8, EZ(0) + 10, 0),
+    tip=(EX(0), EZ(0), 0),
+    elbow=(EX(0) - 14, EZ(0) + 12, 0),
     label="FRAME",
     draft=draft,
 )
@@ -201,14 +220,15 @@ tb = TitleBlock(
     general_tolerance="N/A",
     designed_by="GIB TUNERS",
     date="2026-06-03",
-    width=150.0,
+    width=170.0,
     draft=draft,
-).locate(Location((126, 11, 0)))
+).locate(Location((116, 11, 0)))
 annotate(tb, "title_block")
 
 # ── Lint gate ─────────────────────────────────────────────────────────────────
 all_anns = (list(dims_below)
             + [d_post_h, d_frame_h,
+               d_end_w, d_end_h,
                ldr_peg, ldr_post, ldr_wheel, ldr_frame, tb])
 set_page(297, 210, margin=10)
 issues = lint_drawing(all_anns, drawing_scale=SCALE)
