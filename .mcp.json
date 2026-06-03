@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "build123d-mcp": {
+      "command": "uv",
+      "args": [
+        "tool", "run", "--upgrade", "--python", "3.12",
+        "build123d-mcp",
+        "--allow-imports", "gib_tuners,dacite"
+      ],
+      "env": {
+        "PYTHONPATH": "/app/workspaces/pzfreo/gib-tuners-mk2/src"
+      }
+    }
+  }
+}
