@@ -1,7 +1,7 @@
 """Engineering drawing: Peg head.
 
 A4 landscape, scale 2:1.
-Two views: side profile (axis horizontal) + ring-end view.
+Four views: side profile (axis horizontal), ring-end view, shaft-end view, isometric.
 
 The peg head exits create_peg_head() with its axis along X:
   -X = bearing/shaft end (inside frame)
@@ -87,15 +87,31 @@ sv_vis, sv_hid = peg_2x.project_to_viewport((0, 200, 0), (0, 0, 1), look_at_2x)
 # Ring-end view — camera from +X (looking at ring face)
 rev_vis, rev_hid = peg_2x.project_to_viewport((200, 0, 0), (0, 0, 1), look_at_2x)
 
+# Shaft-end view — camera from -X (looking at bearing/worm shaft end)
+sev_vis, sev_hid = peg_2x.project_to_viewport((-200, 0, 0), (0, 0, 1), look_at_2x)
+
+# Isometric pictorial (1:1) — looking from diagonal
+iso_vis, iso_hid = peg_head.project_to_viewport(
+    (100, 100, 100), (0, 0, 1), (x_center, 0, 0)
+)
+
 # ── Sheet layout ───────────────────────────────────────────────────────────────
 # Side view at (152, 128); ring-end view to the left at (92, 128)
 SV_X, SV_Y = 152.0, 110.0
 REV_X, REV_Y = 90.0, 110.0
 
+# Shaft-end view to the right of side view; isometric far right
+SEV_X, SEV_Y = 215.0, 110.0    # shaft-end: right of side view
+ISO_X, ISO_Y = 263.0, 125.0    # isometric: far right
+
 sv  = Compound(children=list(sv_vis )).locate(Location((SV_X,  SV_Y,  0)))
 rev = Compound(children=list(rev_vis)).locate(Location((REV_X, REV_Y, 0)))
+sev = Compound(children=list(sev_vis)).locate(Location((SEV_X, SEV_Y, 0)))
+iso = Compound(children=list(iso_vis)).locate(Location((ISO_X, ISO_Y, 0)))
 sv_h  = (Compound(children=list(sv_hid )).locate(Location((SV_X,  SV_Y,  0))) if sv_hid  else None)
 rev_h = (Compound(children=list(rev_hid)).locate(Location((REV_X, REV_Y, 0))) if rev_hid else None)
+sev_h = (Compound(children=list(sev_hid)).locate(Location((SEV_X, SEV_Y, 0))) if sev_hid else None)
+iso_h = (Compound(children=list(iso_hid)).locate(Location((ISO_X, ISO_Y, 0))) if iso_hid else None)
 
 # ── Draft settings ─────────────────────────────────────────────────────────────
 draft = draft_preset(font_size=2.5, decimal_precision=1)
@@ -224,9 +240,9 @@ svg_exp.add_layer("hidden", line_color=hid_color,  line_weight=0.25,
                   line_type=LineType.HIDDEN)
 svg_exp.add_layer("dims",   line_color=dim_color,  fill_color=dim_color,
                   line_weight=0.05)
-for shape in [sv, rev]:
+for shape in [sv, rev, sev, iso]:
     svg_exp.add_shape(shape, layer="part")
-for shape in [s for s in [sv_h, rev_h] if s]:
+for shape in [s for s in [sv_h, rev_h, sev_h, iso_h] if s]:
     svg_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     svg_exp.add_shape(ann, layer="dims")
@@ -239,9 +255,9 @@ dxf_exp = ExportDXF()
 dxf_exp.add_layer("part",   line_weight=0.5)
 dxf_exp.add_layer("hidden", line_weight=0.25, line_type=LineType.HIDDEN)
 dxf_exp.add_layer("dims",   line_weight=0.05)
-for shape in [sv, rev]:
+for shape in [sv, rev, sev, iso]:
     dxf_exp.add_shape(shape, layer="part")
-for shape in [s for s in [sv_h, rev_h] if s]:
+for shape in [s for s in [sv_h, rev_h, sev_h, iso_h] if s]:
     dxf_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     dxf_exp.add_shape(ann, layer="dims")

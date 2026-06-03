@@ -8,6 +8,7 @@ Page order:
     DWG-002  string_post.svg
     DWG-003  peg_head.svg
     DWG-004  assembly.svg
+    DWG-005  worm_wheel.svg
 
 Run:
     uv run python scripts/drawings/make_pdf.py
@@ -29,6 +30,7 @@ PAGES = [
     "string_post.svg",
     "peg_head.svg",
     "assembly.svg",
+    "worm_wheel.svg",
 ]
 
 PAGE_W_MM = 297.0   # A4 landscape

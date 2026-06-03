@@ -1,7 +1,8 @@
 """Engineering drawing: String post.
 
 A4 landscape, scale 2:1.
-Three views: side (axis horizontal), bottom end (DD bore face), top end (cap face).
+Four views: side (axis horizontal), bottom end (DD bore face), top end (cap face),
+and isometric pictorial.
 
 Third-angle projection:
   - Bottom end view (left) — DD bore face at Z=0
@@ -78,6 +79,11 @@ sv_vis,  sv_hid  = post_2x.project_to_viewport((-200, 0, z_center), (0, 1, 0), (
 bev_vis, bev_hid = post_2x.project_to_viewport((0, 0, -200),        (0, 1, 0), (0, 0, z_center))
 tev_vis, tev_hid = post_2x.project_to_viewport((0, 0,  200),        (0, 1, 0), (0, 0, z_center))
 
+# Isometric pictorial (1:1) — looking from diagonal, centred on part midpoint
+iso_vis, iso_hid = string_post.project_to_viewport(
+    (100, 100, 100), (0, 0, 1), (0, 0, total_h / 2)
+)
+
 # Third-angle placement: bottom-end LEFT, cap-end RIGHT
 cap_r_2x   = cap_d * SCALE / 2    # 7.5
 half_len_2x = total_h              # 14.8 (= total_h*SCALE/2, since SCALE=2)
@@ -85,12 +91,16 @@ half_len_2x = total_h              # 14.8 (= total_h*SCALE/2, since SCALE=2)
 BEV_X = SV_X - half_len_2x - 13 - cap_r_2x   # 111.7
 TEV_X = SV_X + half_len_2x + 13 + cap_r_2x   # 184.3
 
-sv  = Compound(children=list(sv_vis )).locate(Location((SV_X,  SV_Y, 0)))
-bev = Compound(children=list(bev_vis)).locate(Location((BEV_X, SV_Y, 0)))
-tev = Compound(children=list(tev_vis)).locate(Location((TEV_X, SV_Y, 0)))
-sv_h  = (Compound(children=list(sv_hid )).locate(Location((SV_X,  SV_Y, 0))) if sv_hid  else None)
-bev_h = (Compound(children=list(bev_hid)).locate(Location((BEV_X, SV_Y, 0))) if bev_hid else None)
-tev_h = (Compound(children=list(tev_hid)).locate(Location((TEV_X, SV_Y, 0))) if tev_hid else None)
+ISO_X, ISO_Y = 246.0, 140.0   # isometric: right side of sheet, vertically centred
+
+sv  = Compound(children=list(sv_vis )).locate(Location((SV_X,  SV_Y,  0)))
+bev = Compound(children=list(bev_vis)).locate(Location((BEV_X, SV_Y,  0)))
+tev = Compound(children=list(tev_vis)).locate(Location((TEV_X, SV_Y,  0)))
+iso = Compound(children=list(iso_vis)).locate(Location((ISO_X, ISO_Y, 0)))
+sv_h  = (Compound(children=list(sv_hid )).locate(Location((SV_X,  SV_Y,  0))) if sv_hid  else None)
+bev_h = (Compound(children=list(bev_hid)).locate(Location((BEV_X, SV_Y,  0))) if bev_hid else None)
+tev_h = (Compound(children=list(tev_hid)).locate(Location((TEV_X, SV_Y,  0))) if tev_hid else None)
+iso_h = (Compound(children=list(iso_hid)).locate(Location((ISO_X, ISO_Y, 0))) if iso_hid else None)
 
 # ── Draft settings ─────────────────────────────────────────────────────────────
 draft = draft_preset(font_size=2.5, decimal_precision=1)
@@ -219,9 +229,9 @@ svg_exp.add_layer("hidden", line_color=hid_color,  line_weight=0.25,
                   line_type=LineType.HIDDEN)
 svg_exp.add_layer("dims",   line_color=dim_color,  fill_color=dim_color,
                   line_weight=0.05)
-for shape in [sv, bev, tev]:
+for shape in [sv, bev, tev, iso]:
     svg_exp.add_shape(shape, layer="part")
-for shape in [s for s in [sv_h, bev_h, tev_h] if s]:
+for shape in [s for s in [sv_h, bev_h, tev_h, iso_h] if s]:
     svg_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     svg_exp.add_shape(ann, layer="dims")
@@ -234,9 +244,9 @@ dxf_exp = ExportDXF()
 dxf_exp.add_layer("part",   line_weight=0.5)
 dxf_exp.add_layer("hidden", line_weight=0.25, line_type=LineType.HIDDEN)
 dxf_exp.add_layer("dims",   line_weight=0.05)
-for shape in [sv, bev, tev]:
+for shape in [sv, bev, tev, iso]:
     dxf_exp.add_shape(shape, layer="part")
-for shape in [s for s in [sv_h, bev_h, tev_h] if s]:
+for shape in [s for s in [sv_h, bev_h, tev_h, iso_h] if s]:
     dxf_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     dxf_exp.add_shape(ann, layer="dims")

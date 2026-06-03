@@ -3,7 +3,7 @@
 A4 landscape, scale 2:1.
 1-housing frame with all internal components positioned.
 
-Three views (third-angle projection):
+Four views (third-angle projection):
   Front view — looking from -X (worm entry side), shows frame length and post
   Plan view  — looking from +Z (above), shows footprint, holes, peg head
   End view   — looking from -Y (frame end), shows cross-section
@@ -87,6 +87,11 @@ tv_vis, tv_hid = asm_2x.project_to_viewport((0, y2, 200), (0, 1, 0), (0, y2, z2)
 # End: looking from -Y
 ev_vis, ev_hid = asm_2x.project_to_viewport((0, -200, z2), (0, 0, 1), (0, y2, z2))
 
+# Isometric pictorial (1:1) — front-right-above diagonal
+iso_vis, iso_hid = assembly.project_to_viewport(
+    (100, -100, 100), (0, 0, 1), (0, y_center, z_center)
+)
+
 # ── Sheet layout ───────────────────────────────────────────────────────────────
 # Full assembly bbox: X=-7..22.9 (peg head extends far +X), Y=0..36.2, Z=-11.2..6.5
 # At SCALE=2: front view 72.4mm wide × 35.4mm tall; plan view 59.6mm wide × 72.4mm tall
@@ -100,13 +105,16 @@ ev_vis, ev_hid = asm_2x.project_to_viewport((0, -200, z2), (0, 0, 1), (0, y2, z2
 FV_X, FV_Y = 195.0, 70.0
 TV_X, TV_Y = 185.0, 155.0    # above front
 EV_X, EV_Y = 40.0,  70.0     # far left of front
+ISO_X, ISO_Y = 60.0, 150.0   # isometric: above end view (1:1)
 
-fv = Compound(children=list(fv_vis)).locate(Location((FV_X, FV_Y, 0)))
-tv = Compound(children=list(tv_vis)).locate(Location((TV_X, TV_Y, 0)))
-ev = Compound(children=list(ev_vis)).locate(Location((EV_X, EV_Y, 0)))
-fv_h = (Compound(children=list(fv_hid)).locate(Location((FV_X, FV_Y, 0))) if fv_hid else None)
-tv_h = (Compound(children=list(tv_hid)).locate(Location((TV_X, TV_Y, 0))) if tv_hid else None)
-ev_h = (Compound(children=list(ev_hid)).locate(Location((EV_X, EV_Y, 0))) if ev_hid else None)
+fv  = Compound(children=list(fv_vis )).locate(Location((FV_X,  FV_Y,  0)))
+tv  = Compound(children=list(tv_vis )).locate(Location((TV_X,  TV_Y,  0)))
+ev  = Compound(children=list(ev_vis )).locate(Location((EV_X,  EV_Y,  0)))
+iso = Compound(children=list(iso_vis)).locate(Location((ISO_X, ISO_Y, 0)))
+fv_h  = (Compound(children=list(fv_hid )).locate(Location((FV_X,  FV_Y,  0))) if fv_hid  else None)
+tv_h  = (Compound(children=list(tv_hid )).locate(Location((TV_X,  TV_Y,  0))) if tv_hid  else None)
+ev_h  = (Compound(children=list(ev_hid )).locate(Location((EV_X,  EV_Y,  0))) if ev_hid  else None)
+iso_h = (Compound(children=list(iso_hid)).locate(Location((ISO_X, ISO_Y, 0))) if iso_hid else None)
 
 # ── Draft settings ─────────────────────────────────────────────────────────────
 draft = draft_preset(font_size=2.5, decimal_precision=1)
@@ -253,9 +261,9 @@ svg_exp.add_layer("hidden", line_color=hid_color,  line_weight=0.25,
                   line_type=LineType.HIDDEN)
 svg_exp.add_layer("dims",   line_color=dim_color,  fill_color=dim_color,
                   line_weight=0.05)
-for shape in [fv, tv, ev]:
+for shape in [fv, tv, ev, iso]:
     svg_exp.add_shape(shape, layer="part")
-for shape in [s for s in [fv_h, tv_h, ev_h] if s]:
+for shape in [s for s in [fv_h, tv_h, ev_h, iso_h] if s]:
     svg_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     svg_exp.add_shape(ann, layer="dims")
@@ -268,9 +276,9 @@ dxf_exp = ExportDXF()
 dxf_exp.add_layer("part",   line_weight=0.5)
 dxf_exp.add_layer("hidden", line_weight=0.25, line_type=LineType.HIDDEN)
 dxf_exp.add_layer("dims",   line_weight=0.05)
-for shape in [fv, tv, ev]:
+for shape in [fv, tv, ev, iso]:
     dxf_exp.add_shape(shape, layer="part")
-for shape in [s for s in [fv_h, tv_h, ev_h] if s]:
+for shape in [s for s in [fv_h, tv_h, ev_h, iso_h] if s]:
     dxf_exp.add_shape(shape, layer="hidden")
 for ann in all_anns:
     dxf_exp.add_shape(ann, layer="dims")
