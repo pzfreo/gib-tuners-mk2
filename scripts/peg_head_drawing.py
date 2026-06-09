@@ -5,7 +5,9 @@ Views (third-angle, 5:1 on A3 landscape):
   - End view (camera at -X, looking +X): bearing end face, M2 tap hole, ring OD
   - Front view (camera at -Y): main profile — bearing / worm / shoulder / cap /
     ring / pip, with stacked length dims and diameter leaders
-  - Isometric pictorial (no dims)
+  - Shaded pictorial (pyvista raster embedded in the SVG/PDF, omitted from the
+    DXF). An HLR line projection of the helical worm thread reads as a stack of
+    floating rings, so the pictorial is rendered shaded instead.
 
 All dimension labels are derived from the live config (worm_gear.json +
 parameters.py), so the drawing cannot drift from the geometry.
@@ -69,22 +71,19 @@ cxs, cys, czs = cx * SCALE, cy * SCALE, cz * SCALE
 look = (cxs, cys, czs)
 bbox_max = max(bb.size.X, bb.size.Y, bb.size.Z)
 DIST = bbox_max * SCALE + 100
-ID   = DIST / (3 ** 0.5)
 
-# Page positions (view centres)
+# Page positions (view centres) and pictorial image box (page mm)
 EV_X, EV_Y = 40.0, 215.0     # end view (left, third-angle: viewed from -X)
 FV_X, FV_Y = 145.0, 215.0    # front view (main)
-ISO_X, ISO_Y = 315.0, 185.0  # iso pictorial
+PIC_X, PIC_Y, PIC_W, PIC_H = 255.0, 135.0, 130.0, 100.0  # pictorial: left, bottom, size
 
 print('Projecting views (HLR)...')
 front_vis, front_hid = part_s.project_to_viewport((cxs, cys - DIST, czs), (0, 0, 1), look)
 end_vis, _ = part_s.project_to_viewport((cxs - DIST, cys, czs), (0, 0, 1), look)
-iso_vis, _ = part_s.project_to_viewport((cxs - ID, cys - ID, czs + ID), (0, 0, 1), look)
 
 front   = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 front_h = Compound(children=list(front_hid)).locate(Location((FV_X, FV_Y, 0))) if front_hid else None
 end     = Compound(children=list(end_vis)).locate(Location((EV_X, EV_Y, 0)))
-iso     = Compound(children=list(iso_vis)).locate(Location((ISO_X, ISO_Y, 0)))
 
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 def FX(x): return FV_X + (x - cx) * SCALE      # front: world_X -> page_X (+1)
@@ -176,6 +175,8 @@ notes = text_block([
     '6. DO NOT SCALE DRAWING',
 ], 130, 135)
 
+caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 30, PIC_Y - 3)
+
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     'PEG HEAD + WORM (RH)',
@@ -194,7 +195,7 @@ anns.append(tb)
 
 # ── Lint gate ─────────────────────────────────────────────────────────────────
 set_page(PAGE_W, PAGE_H, margin=10)
-view_shapes = [front, end, iso]
+view_shapes = [front, end]
 issues = lint_drawing(anns, drawing_scale=SCALE, view_shapes=view_shapes)
 if issues:
     print('Lint issues:')
@@ -213,29 +214,70 @@ svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=part_color, line_weight=0.5)
 svg.add_layer('hidden', line_color=hid_color,  line_weight=0.25, line_type=LineType.HIDDEN)
 svg.add_layer('dims',   line_color=dim_color,  fill_color=dim_color, line_weight=0.05)
-for v in (front, end, iso):
+for v in (front, end):
     svg.add_shape(v, layer='part')
 if front_h:
     svg.add_shape(front_h, layer='hidden')
-for a in anns + worm_table + notes:
+for a in anns + worm_table + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
 fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
+
+# ── Shaded pictorial (pyvista) embedded into the SVG ──────────────────────────
+# HLR of the worm thread reads as floating rings, so the pictorial is a shaded
+# raster instead. Camera looks from the worm side (-X), slightly above, so the
+# thread reads as a screw. split_sharp_edges keeps the crest edges crisp under
+# smooth shading; the fine tessellation resolves the thread profile.
+print('Rendering shaded pictorial...')
+import base64
+import gc
+import tempfile
+
+import numpy as np
+import pyvista as pv
+from build123d import export_stl
+
+with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp:
+    stl_path = tmp.name
+export_stl(part, stl_path, tolerance=0.0003, angular_tolerance=0.05)
+
+mesh = pv.read(stl_path)
+plotter = pv.Plotter(off_screen=True, window_size=(int(PIC_W) * 10, int(PIC_H) * 10))
+plotter.add_mesh(mesh, color=(0.80, 0.64, 0.32), smooth_shading=True,
+                 split_sharp_edges=True, feature_angle=35,
+                 specular=0.5, specular_power=15)
+cam = np.array([-1.0, -1.1, 0.55])
+cam = cam / np.linalg.norm(cam) * max(bb.size.X, bb.size.Y, bb.size.Z) * 2.2
+plotter.camera_position = [tuple(np.array(mesh.center) + cam), mesh.center, (0, 0, 1)]
+plotter.camera.zoom(1.5)
+png_path = stl_path.replace('.stl', '.png')
+plotter.screenshot(png_path, transparent_background=True)
+plotter.close()
+del mesh, plotter
+gc.collect()  # tear down VTK objects before interpreter shutdown noise
+
+# Insert outside the scale(1,-1) group: svg_y = -page_y_up, image anchored at top
+with open(png_path, 'rb') as f:
+    b64 = base64.b64encode(f.read()).decode()
+image_el = (f'<image x="{PIC_X}" y="{-(PIC_Y + PIC_H)}" width="{PIC_W}" height="{PIC_H}" '
+            f'preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,{b64}"/>')
+svg_text = (STEM.with_suffix('.svg')).read_text()
+svg_text = svg_text.replace('</svg>', image_el + '\n</svg>')
+(STEM.with_suffix('.svg')).write_text(svg_text)
 
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
 dxf.add_layer('hidden', line_weight=0.25)
 dxf.add_layer('dims',   line_weight=0.05)
-for v in (front, end, iso):
+for v in (front, end):
     dxf.add_shape(v, layer='part')
 if front_h:
     dxf.add_shape(front_h, layer='hidden')
-for a in anns + worm_table + notes:
+for a in anns + worm_table + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')
 
 # PDF (A3 landscape, rasterised at 200 DPI)
-import tempfile
 import resvg_py
 from fpdf import FPDF
 
