@@ -8,7 +8,7 @@
         "--allow-imports", "gib_tuners,dacite"
       ],
       "env": {
-        "PYTHONPATH": "/app/workspaces/pzfreo/gib-tuners-mk2/src"
+        "PYTHONPATH": "${CLAUDE_PROJECT_DIR:-.}/src"
       }
     }
   }
