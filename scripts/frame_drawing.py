@@ -60,8 +60,10 @@ f   = cfg.frame
 
 worm_z   = calculate_worm_z(cfg)                                 # -5.0
 cd       = cfg.gear.center_distance - cfg.gear.extra_backlash
-post_ys  = list(f.housing_centers)                               # post/housing centres
-worm_ys  = [hc + cd / 2 for hc in post_ys]                       # worm entry centres
+# Post axes sit CD/2 toward the frame datum end from each housing centre;
+# worm axes CD/2 the other way (verified against the built hole positions)
+post_ys  = [hc - cd / 2 for hc in f.housing_centers]             # post hole centres
+worm_ys  = [y + cd for y in post_ys]                             # worm/peg centres (post + CD)
 mount_ys = list(f.mounting_hole_positions)
 
 # ── Build geometry ────────────────────────────────────────────────────────────
@@ -131,7 +133,7 @@ add(Dimension((FY(f.end_length), FZ(z_bot), 0),
               (FY(f.end_length + f.housing_length), FZ(z_bot), 0),
               'below', FZ(z_bot) - TIER1, draft, label=f'{f.housing_length:.1f}'))
 add(Dimension((FY(0), FZ(z_bot), 0), (FY(post_ys[0]), FZ(z_bot), 0),
-              'below', FZ(z_bot) - TIER2, draft, label=f'{post_ys[0]:.1f}'))
+              'below', FZ(z_bot) - TIER2, draft, label=f'{post_ys[0]:.2f}'))
 add(Dimension((FY(post_ys[0]), FZ(z_bot), 0), (FY(post_ys[1]), FZ(z_bot), 0),
               'below', FZ(z_bot) - TIER2, draft, label=f'{f.tuner_pitch:.1f}'))
 add(Dimension((FY(0), FZ(z_bot), 0), (FY(f.total_length), FZ(z_bot), 0),
@@ -180,7 +182,8 @@ notes = text_block([
     'COAXIAL WITH POST BEARING',
     f'5. WORM AXIS {abs(worm_z):.1f} BELOW MOUNTING FACE (MID-HEIGHT)',
     '6. MOUNTING HOLES AT Y = ' + ' / '.join(f'{y:.1f}' for y in mount_ys),
-    '7. POST CENTRES AT Y = ' + ' / '.join(f'{y:.1f}' for y in post_ys),
+    '7. POST CENTRES AT Y = ' + ' / '.join(f'{y:.2f}' for y in post_ys)
+    + f' — WORM/PEG CENTRES {cd:.2f} (CD) FURTHER ALONG',
     f'8. TOP FACE BORDER ENGRAVING (ROPE MOTIF): {eng.depth:.1f} DEEP, '
     f'{eng.groove_width:.1f} GROOVES, BAND {eng.band_width:.1f} AT {eng.inset:.1f} INSET, '
     f'HATCH PITCH {eng.hatch_spacing:.1f}',

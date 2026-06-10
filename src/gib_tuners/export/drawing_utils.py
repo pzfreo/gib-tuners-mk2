@@ -6,9 +6,13 @@ shaded raster pictorial embedded into the exported SVG.
 """
 
 import base64
+from pathlib import Path
 
 import numpy as np
-from build123d import Align, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc
+from build123d import (
+    Align, Compound, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc,
+    Wire,
+)
 from build123d.geometry import TOLERANCE
 from build123d.topology import downcast
 from OCP.BRepAdaptor import BRepAdaptor_Surface
@@ -122,6 +126,10 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
         if abs(d.X() * view_dir[0] + d.Y() * view_dir[1] + d.Z() * view_dir[2]) > 0.999:
             centres.append(np.array(proj_fn(ax.Location())))
 
+    # Extent of the whole projection — a silhouette circle cannot exceed the
+    # part's own projected footprint (guards the degenerate-fragment case)
+    gb = Compound(children=list(edges)).bounding_box()
+
     def replacement(e):
         if e.geom_type != GeomType.BSPLINE:
             return None
@@ -145,6 +153,20 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
                     return (c2[0] + v[0], c2[1] + v[1], z)
 
                 if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
+                    span = max(np.ptp(pts[:, 0]), np.ptp(pts[:, 1]))
+                    if span > 4 * tol:
+                        # A real closed loop must span the circle it claims
+                        if abs(span - 2 * R) > 4 * tol:
+                            continue
+                    else:
+                        # Degenerate fragment (OCCT emits these where a tangent
+                        # silhouette grazes the visible/hidden boundary): accept
+                        # the circle only if it fits the projection's footprint —
+                        # a sliver matching a distant axis would otherwise become
+                        # a giant circle
+                        if (c2[0] - R < gb.min.X - 2 or c2[0] + R > gb.max.X + 2 or
+                                c2[1] - R < gb.min.Y - 2 or c2[1] + R > gb.max.Y + 2):
+                            continue
                     return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
                 try:
                     return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
@@ -158,6 +180,109 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
         out.append(rep if rep is not None else e)
         n += rep is not None
     return out, n
+
+
+def hatch_cut_faces(shape, axis_value, view_dir, proj_fn, spacing=1.5):
+    """45-degree ISO 128-44 section hatching for planar cut faces.
+
+    Finds the planar faces of `shape` whose normal is parallel to `view_dir`
+    and which lie on the cutting plane (coordinate along view_dir equal to
+    axis_value), then hatches them with 45-degree lines. Each hatch line is the
+    intersection of the face with a plane, so holes and notches in the cut
+    face clip the lines exactly.
+
+    Args:
+        shape: the sectioned solid (already scaled to drawing units)
+        axis_value: cutting-plane coordinate along view_dir (scaled units)
+        view_dir: world direction of the view axis, e.g. (0, 1, 0)
+        proj_fn: (x, y, z) world point -> (page_x, page_y)
+        spacing: hatch line spacing in page mm
+
+    Returns a list of page-plane Edges.
+    """
+    vd = np.array(view_dir, dtype=float)
+    vd /= np.linalg.norm(vd)
+    cut_faces = []
+    for f in shape.faces():
+        if f.geom_type != GeomType.PLANE:
+            continue
+        n = f.normal_at(f.center())
+        if abs(n.X * vd[0] + n.Y * vd[1] + n.Z * vd[2]) < 0.999:
+            continue
+        c = f.center()
+        if abs(np.dot([c.X, c.Y, c.Z], vd) - axis_value) < 0.05:
+            cut_faces.append(f)
+
+    # Hatch planes: contain the view axis, normal at 45 degrees in the page
+    # plane. For view_dir Y the plane x - z = d meets the cut face y = const
+    # in the 45-degree line x - z = d.
+    page_u = np.array((0, 0, 1.0)) if abs(vd[2]) < 0.9 else np.array((1.0, 0, 0))
+    page_u -= vd * np.dot(page_u, vd)
+    page_u /= np.linalg.norm(page_u)
+    page_v = np.cross(vd, page_u)
+    normal = (page_u - page_v) / np.sqrt(2)
+
+    out = []
+    for f in cut_faces:
+        fb = f.bounding_box()
+        corners = [(x, y, z) for x in (fb.min.X, fb.max.X)
+                   for y in (fb.min.Y, fb.max.Y) for z in (fb.min.Z, fb.max.Z)]
+        ds = [np.dot(c, normal) for c in corners]
+        d = min(ds) + spacing * np.sqrt(2) / 2
+        while d < max(ds):
+            plane = Plane(origin=tuple(normal * d), z_dir=tuple(normal))
+            for e in section_profile(f, plane=plane):
+                p0, p1 = e.position_at(0), e.position_at(1)
+                a, b = proj_fn(*p0), proj_fn(*p1)
+                if np.linalg.norm(np.array(a) - b) > 1e-3:
+                    out.append(Edge.make_line((*a, 0), (*b, 0)))
+            d += spacing * np.sqrt(2)
+    return out
+
+
+def balloon(tip, centre, label, draft, radius=3.0):
+    """ISO 6433 item-reference balloon: filled-arrow leader into a circled number.
+
+    The leader runs from the arrowhead at `tip` toward the circle centre and
+    stops at the circumference; the item number is centred in the circle.
+    """
+    t = np.array(tip[:2], dtype=float)
+    c = np.array(centre[:2], dtype=float)
+    u = (c - t) / np.linalg.norm(c - t)
+    perp = np.array((-u[1], u[0]))
+    head = [tuple(t) + (0,),
+            tuple(t + u * 2.0 + perp * 0.5) + (0,),
+            tuple(t + u * 2.0 - perp * 0.5) + (0,)]
+    arrow = Face(Wire.make_polygon([*head, head[0]]))
+    line = Edge.make_line((*t + u * 1.8, 0), (*c - u * radius, 0))
+    circle = Edge.make_circle(radius, Plane((c[0], c[1], 0)))
+    num = Location((c[0], c[1], 0)) * Text(
+        label, font_size=draft.font_size, align=(Align.CENTER, Align.CENTER))
+    return [arrow, line, circle, num]
+
+
+def third_angle_symbol(x, y, h=5.0):
+    """ISO 5456-2 third-angle projection symbol.
+
+    Truncated-cone side view (trapezoid, small end toward the circles) with
+    the small-end view (two concentric circles) placed on the small-end side
+    — the third-angle arrangement. (x, y) is the circles' centre; h is the
+    large diameter.
+    """
+    r, rs = h / 2, h / 4
+    gap, length = 0.4 * h, h
+    x0 = x + r + gap            # trapezoid small end
+    x1 = x0 + length            # trapezoid large end
+    out = [
+        Edge.make_circle(r, Plane((x, y, 0))),
+        Edge.make_circle(rs, Plane((x, y, 0))),
+        Edge.make_line((x0, y - rs, 0), (x0, y + rs, 0)),
+        Edge.make_line((x1, y - r, 0), (x1, y + r, 0)),
+        Edge.make_line((x0, y - rs, 0), (x1, y - r, 0)),
+        Edge.make_line((x0, y + rs, 0), (x1, y + r, 0)),
+        Edge.make_line((x - r - 1.5, y, 0), (x1 + 1.5, y, 0)),  # centreline
+    ]
+    return out
 
 
 def text_block(lines, x, y, line_h=4.5, size=2.5):
@@ -175,23 +300,38 @@ def render_shaded_pictorial(stl_path, png_path, cam_dir, dist, window_size, zoom
     HLR line projections of threads and grooves read poorly (the visible
     boundary decomposes into ring-like curves), so pictorials are rendered
     shaded. split_sharp_edges keeps crisp feature edges under smooth shading.
+
+    stl_path: a single path, or a list of paths / (path, rgb_color) tuples —
+    use one STL per part for assemblies (export_stl of a multi-part Compound
+    silently drops solids).
     """
     import gc
 
     import pyvista as pv
 
-    mesh = pv.read(stl_path)
+    if isinstance(stl_path, (str, Path)):
+        stl_path = [stl_path]
+    entries = [(e, BRASS) if isinstance(e, (str, Path)) else e for e in stl_path]
+
     plotter = pv.Plotter(off_screen=True, window_size=list(window_size))
-    plotter.add_mesh(mesh, color=BRASS, smooth_shading=True,
-                     split_sharp_edges=True, feature_angle=35,
-                     specular=0.5, specular_power=15)
+    meshes = []
+    for path, color in entries:
+        mesh = pv.read(str(path))
+        meshes.append(mesh)
+        plotter.add_mesh(mesh, color=color, smooth_shading=True,
+                         split_sharp_edges=True, feature_angle=35,
+                         specular=0.5, specular_power=15)
+    bounds = np.array([m.bounds for m in meshes])
+    centre = [(bounds[:, 0].min() + bounds[:, 1].max()) / 2,
+              (bounds[:, 2].min() + bounds[:, 3].max()) / 2,
+              (bounds[:, 4].min() + bounds[:, 5].max()) / 2]
     cam = np.array(cam_dir, dtype=float)
     cam = cam / np.linalg.norm(cam) * dist
-    plotter.camera_position = [tuple(np.array(mesh.center) + cam), mesh.center, (0, 0, 1)]
+    plotter.camera_position = [tuple(np.array(centre) + cam), centre, (0, 0, 1)]
     plotter.camera.zoom(zoom)
     plotter.screenshot(png_path, transparent_background=True)
     plotter.close()
-    del mesh, plotter
+    del meshes, plotter
     gc.collect()  # tear down VTK objects before interpreter shutdown noise
 
 
