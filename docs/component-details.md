@@ -79,15 +79,15 @@ Turned brass part. Multi-diameter shaft with cap on top. **Same part for RH and 
 | Cap | 7.5 | 1.0 | Fillet 0.25R top+bottom, 0.3 chamfer |
 | Visible post | 6.0 | 5.5 | String hole here |
 | Frame bearing | 5.0 (h7) | 1.1 | Passes through top wall |
-| DD section | 3.5 / AF 2.5 | 7.2 | Wheel interface |
+| DD section | 3.4 / AF 2.4 | 7.2 | Wheel interface (slip fit in 3.5 / AF 2.5 bore) |
 | **Total** | | **14.8** | |
 
 ### Features
 
 | Feature | Detail |
 |---------|--------|
-| String hole | 1.5 dia, cross-drilled, 2.75 from bearing shoulder |
-| DD flats | 2 flats, 0.5 deep, across-flats = 2.5 |
+| String hole | 1.7 dia, cross-drilled, 2.75 from bearing shoulder |
+| DD flats | 2 flats, 0.5 deep, across-flats = 2.4 |
 | M2 tap hole | Bottom of DD, 1.6 drill, 4.0 deep |
 | Cap grooves | 3 concentric V-grooves, 0.33 wide x 0.33 deep, outer at 6.0 dia |
 
@@ -130,8 +130,8 @@ Decorative ring with integral worm shaft. **RH and LH have opposite thread direc
 | Section | Diameter | Length | Notes |
 |---------|----------|--------|-------|
 | Worm | 7.0 tip / 4.75 root | 7.7 | Threaded |
-| Bearing | 4.5 (h7) | 1.2 | Passes through frame wall |
-| **Total shaft** | | **8.9** | |
+| Bearing | 4.5 (h7) | 1.3 | Passes through frame wall |
+| **Total shaft** | | **9.0** | |
 
 ### Features
 
