@@ -24,10 +24,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-import numpy as np
 from build123d import (
-    Align, Color, Compound, Edge, ExportDXF, ExportSVG, GeomType, LineType,
-    Location, Plane, Text, ThreePointArc,
+    Color, Compound, ExportDXF, ExportSVG, GeomType, LineType, Location, export_stl,
 )
 from OCP.BRepAdaptor import BRepAdaptor_Surface
 from OCP.GeomAbs import GeomAbs_SurfaceType as ST
@@ -37,6 +35,9 @@ from build123d_drafting import (
 )
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.peg_head import create_peg_head
+from gib_tuners.export.drawing_utils import (
+    embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
+)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 GEAR    = 'c13-10'
@@ -114,81 +115,15 @@ front_vis, front_hid = part_s.project_to_viewport((cxs, cys - DIST, czs), (0, 0,
 end_vis, _ = part_s.project_to_viewport((cxs - DIST, cys, czs), (0, 0, 1), look)
 
 
-def exactify_silhouettes(edges, view_dir, proj_fn, tol=0.12):
-    """Replace faceted silhouette polylines with exact circular arcs.
-
-    OCCT's exact HLR emits silhouette ("outline") curves on doubly-curved faces
-    as degree-1 BSplines (~15-point polylines). Any surface of revolution viewed
-    along its axis has circular silhouettes, so for each revolved face whose
-    axis is parallel to the view direction we know the silhouette circle's
-    CENTRE exactly (the projected axis). A polyline is replaced only when every
-    vertex is equidistant from such a known centre within tol (scaled mm, i.e.
-    tol/SCALE real mm) — the radius comes from the vertices, the centre is
-    never fitted. Inapplicable cases are left untouched.
-
-    tol=0.12 (24 um real at 5:1): the reference STEP's grip revolve is circular
-    to ~21 um, while genuinely non-circular silhouettes (arm profiles) measure
-    a spread of 0.9+ — the threshold sits in that gap.
-    """
-    from OCP.GeomAbs import GeomAbs_SurfaceType as ST
-
-    centres = []
-    for f in part_s.faces():
-        surf = BRepAdaptor_Surface(f.wrapped)
-        st = surf.GetType()
-        if st == ST.GeomAbs_Torus:
-            ax = surf.Torus().Position().Axis()
-        elif st == ST.GeomAbs_Sphere:
-            centres.append(np.array(proj_fn(surf.Sphere().Location())))
-            continue
-        elif st == ST.GeomAbs_SurfaceOfRevolution:
-            ax = surf.AxeOfRevolution()
-        elif st in (ST.GeomAbs_Cylinder, ST.GeomAbs_Cone):
-            ax = (surf.Cylinder() if st == ST.GeomAbs_Cylinder else surf.Cone()).Axis()
-        else:
-            continue
-        d = ax.Direction()
-        if abs(d.X() * view_dir[0] + d.Y() * view_dir[1] + d.Z() * view_dir[2]) > 0.999:
-            centres.append(np.array(proj_fn(ax.Location())))
-
-    def replacement(e):
-        if e.geom_type != GeomType.BSPLINE:
-            return None
-        sp = e.geom_adaptor().Curve().Curve()
-        if sp.Degree() != 1:
-            return None
-        tr = e.location.wrapped.Transformation()
-        pts = np.array([[p.X(), p.Y(), p.Z()] for p in
-                        (sp.Pole(i + 1).Transformed(tr) for i in range(sp.NbPoles()))])
-        for c2 in centres:
-            dist = np.linalg.norm(pts[:, :2] - c2, axis=1)
-            if dist.max() - dist.min() < tol:
-                R = dist.mean()
-                z = pts[0, 2]
-
-                def snap(p):
-                    v = p[:2] - c2
-                    v = v / np.linalg.norm(v) * R
-                    return (c2[0] + v[0], c2[1] + v[1], z)
-
-                if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
-                    return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
-                return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
-        return None
-
-    out, n = [], 0
-    for e in edges:
-        rep = replacement(e)
-        out.append(rep if rep is not None else e)
-        n += rep is not None
-    return out, n
-
-
-# Raw projected coords are centred on look_at; signs per the view_axes mappings
+# Raw projected coords are centred on look_at; signs per the view_axes mappings.
+# tol=0.12 (24 um real at 5:1): the reference STEP's grip revolve is circular
+# to ~21 um, while genuinely non-circular silhouettes (arm profiles) measure a
+# spread of 0.9+ — the threshold sits in that gap.
+faces_s = part_s.faces()
 front_vis, n_f = exactify_silhouettes(
-    list(front_vis), (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
+    list(front_vis), faces_s, (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
 end_vis, n_e = exactify_silhouettes(
-    list(end_vis), (1, 0, 0), lambda p: (-(p.Y() - cys), p.Z() - czs))
+    list(end_vis), faces_s, (1, 0, 0), lambda p: (-(p.Y() - cys), p.Z() - czs))
 print(f'  exactified silhouettes: front {n_f}, end {n_e}')
 
 front   = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
@@ -289,13 +224,6 @@ add(Leader(tip=(EY(0.57), EZ(0.57), 0), elbow=(EY(0) + 12, EZ(0) + 48, 0),
            label='M2 × 3.0 DEEP', draft=draft))
 
 # ── Text blocks (worm data + notes) ───────────────────────────────────────────
-def text_block(lines, x, y, line_h=4.5, size=2.5):
-    out = []
-    for i, line in enumerate(lines):
-        t = Text(line, font_size=size, align=(Align.MIN, Align.MAX))
-        out.append(Location((x, y - i * line_h, 0)) * t)
-    return out
-
 worm_table = text_block([
     'WORM DATA',
     f'MODULE            {w.module:.1f}',
@@ -371,44 +299,18 @@ fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 # ── Shaded pictorial (pyvista) embedded into the SVG ──────────────────────────
 # HLR of the worm thread reads as floating rings, so the pictorial is a shaded
 # raster instead. Camera looks from the worm side (-X), slightly above, so the
-# thread reads as a screw. split_sharp_edges keeps the crest edges crisp under
-# smooth shading; the fine tessellation resolves the thread profile.
+# thread reads as a screw.
 print('Rendering shaded pictorial...')
-import base64
-import gc
 import tempfile
-
-import numpy as np
-import pyvista as pv
-from build123d import export_stl
 
 with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp:
     stl_path = tmp.name
 export_stl(part, stl_path, tolerance=0.0003, angular_tolerance=0.05)
-
-mesh = pv.read(stl_path)
-plotter = pv.Plotter(off_screen=True, window_size=(int(PIC_W) * 10, int(PIC_H) * 10))
-plotter.add_mesh(mesh, color=(0.80, 0.64, 0.32), smooth_shading=True,
-                 split_sharp_edges=True, feature_angle=35,
-                 specular=0.5, specular_power=15)
-cam = np.array([-1.0, -1.1, 0.55])
-cam = cam / np.linalg.norm(cam) * max(bb.size.X, bb.size.Y, bb.size.Z) * 2.2
-plotter.camera_position = [tuple(np.array(mesh.center) + cam), mesh.center, (0, 0, 1)]
-plotter.camera.zoom(1.5)
 png_path = stl_path.replace('.stl', '.png')
-plotter.screenshot(png_path, transparent_background=True)
-plotter.close()
-del mesh, plotter
-gc.collect()  # tear down VTK objects before interpreter shutdown noise
-
-# Insert outside the scale(1,-1) group: svg_y = -page_y_up, image anchored at top
-with open(png_path, 'rb') as f:
-    b64 = base64.b64encode(f.read()).decode()
-image_el = (f'<image x="{PIC_X}" y="{-(PIC_Y + PIC_H)}" width="{PIC_W}" height="{PIC_H}" '
-            f'preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,{b64}"/>')
-svg_text = (STEM.with_suffix('.svg')).read_text()
-svg_text = svg_text.replace('</svg>', image_el + '\n</svg>')
-(STEM.with_suffix('.svg')).write_text(svg_text)
+render_shaded_pictorial(stl_path, png_path, cam_dir=(-1.0, -1.1, 0.55),
+                        dist=max(bb.size.X, bb.size.Y, bb.size.Z) * 2.2,
+                        window_size=(int(PIC_W) * 10, int(PIC_H) * 10), zoom=1.5)
+embed_png_in_svg(STEM.with_suffix('.svg'), png_path, PIC_X, PIC_Y, PIC_W, PIC_H)
 
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
