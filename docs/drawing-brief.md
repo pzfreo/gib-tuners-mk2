@@ -38,7 +38,7 @@ One A4 engineering drawing per component, plus one general arrangement (GA). Out
 | DWG-001 | Frame — 5-gang RH | scripts/drawings/frame.py |
 | DWG-002 | String Post | scripts/drawings/string_post.py |
 | DWG-003 | Worm Wheel | scripts/drawings/wheel.py |
-| DWG-004 | Peg Head (RH) | scripts/drawings/peg_head.py |
+| GIB-TUN-PH-RH | Peg Head (RH) — A3 5:1 | scripts/peg_head_drawing.py |
 | DWG-005 | General Arrangement (1-gang) | scripts/drawings/assembly_ga.py |
 | PDF | All sheets combined | scripts/drawings/make_pdf.py |
 

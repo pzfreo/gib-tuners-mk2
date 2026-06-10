@@ -6,7 +6,7 @@ then assembles pages into an A4 landscape PDF via fpdf2.
 Page order:
     DWG-001  frame.svg
     DWG-002  string_post.svg
-    DWG-003  peg_head.svg
+    GIB-TUN-PH-RH  c13-10/peg_head_rh.svg  (A3 sheet)
     DWG-004  assembly.svg
     DWG-005  worm_wheel.svg
 
@@ -28,7 +28,7 @@ DRAWINGS_DIR = Path(__file__).parent.parent.parent / "drawings"
 PAGES = [
     "frame.svg",
     "string_post.svg",
-    "peg_head.svg",
+    "c13-10/peg_head_rh.svg",   # A3 sheet (scripts/peg_head_drawing.py)
     "assembly.svg",
     "worm_wheel.svg",
 ]
@@ -37,11 +37,11 @@ PAGE_W_MM = 297.0   # A4 landscape
 PAGE_H_MM = 210.0
 
 
-def _parse_svg_geometry(svg_path: Path):
-    """Return (pdf_x, pdf_y, w_mm, h_mm) for placing the SVG on an A4 landscape page.
+def _parse_svg_geometry(svg_path: Path, page_h_mm: float = PAGE_H_MM):
+    """Return (pdf_x, pdf_y, w_mm, h_mm) for placing the SVG on a landscape page.
 
     build123d ExportSVG writes SVG with Y-up coords; the viewBox encodes where
-    the content sits on the A4 sheet.  We recover the PDF (Y-down, top-left origin)
+    the content sits on the sheet.  We recover the PDF (Y-down, top-left origin)
     placement by inverting the Y axis.
     """
     ns = {"svg": "http://www.w3.org/2000/svg"}
@@ -65,7 +65,7 @@ def _parse_svg_geometry(svg_path: Path):
     #   Drawing top of content = abs(vb_y)          (Y measured from page bottom)
     #   PDF Y (top-down)       = PAGE_H_MM - abs(vb_y)
     pdf_x = vb_x
-    pdf_y = PAGE_H_MM - abs(vb_y)
+    pdf_y = page_h_mm - abs(vb_y)
     return pdf_x, pdf_y, w_mm, h_mm
 
 
@@ -87,13 +87,19 @@ def make_pdf(output_path: Path) -> None:
         print(f"  Rasterising {svg_name} …", end="", flush=True)
         png_bytes = svg_to_png(svg_path)
         print(f" {len(png_bytes)//1024} KB")
-        pdf_x, pdf_y, w_mm, h_mm = _parse_svg_geometry(svg_path)
+
+        # A3 sheets (e.g. the peg head drawing) get an A3 page; others A4
+        ns_root = ET.parse(str(svg_path)).getroot()
+        sheet_w = float(ns_root.get("width", "297mm").replace("mm", "").strip())
+        page_format = "A3" if sheet_w > PAGE_W_MM else "A4"
+        page_h = 297.0 if page_format == "A3" else PAGE_H_MM
+        pdf_x, pdf_y, w_mm, h_mm = _parse_svg_geometry(svg_path, page_h)
 
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
             tmp.write(png_bytes)
             tmp_path = tmp.name
 
-        pdf.add_page()
+        pdf.add_page(format=page_format)
         pdf.image(tmp_path, x=pdf_x, y=pdf_y, w=w_mm, h=h_mm)
         Path(tmp_path).unlink(missing_ok=True)
         print(f"  Page {pdf.page}: {svg_name}  ({pdf_x:.1f}, {pdf_y:.1f}) {w_mm:.1f}×{h_mm:.1f}mm")
