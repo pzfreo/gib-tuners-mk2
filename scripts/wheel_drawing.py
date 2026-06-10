@@ -26,7 +26,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from build123d import (
-    Color, Compound, ExportDXF, ExportSVG, Location, export_stl,
+    Color, Compound, ExportDXF, ExportSVG, Location, Plane, export_stl,
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
@@ -35,7 +35,8 @@ from build123d_drafting import (
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.wheel import load_wheel
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
+    embed_png_in_svg, exactify_silhouettes, project_visible,
+    render_shaded_pictorial, section_profile, text_block,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -79,21 +80,23 @@ PV_X, PV_Y = 110.0, 215.0    # plan view (tooth profile + bore)
 FV_X, FV_Y = 110.0, 120.0    # front view (face width), below the plan
 PIC_X, PIC_Y, PIC_W, PIC_H = 250.0, 140.0, 120.0, 100.0  # pictorial: left, bottom, size
 
-# Hidden lines are omitted: on a 13-tooth helical gear they blanket the face
-# view in dashes and obscure the flank lines. The bore is fully described in
-# the plan view.
-print('Projecting views (HLR)...')
-plan_vis, _ = part_s.project_to_viewport((cxs, cys, czs + DIST), (0, 1, 0), look)
-front_vis, _ = part_s.project_to_viewport((cxs, cys - DIST, czs), (0, 0, 1), look)
+# The gear calculator builds each tooth from stacked surface patches, so an
+# HLR view of the wheel carries ~170 tangent seam edges that stripe every
+# flank, and a direct axial view shows both end profiles twisted by the helix.
+# Hence: the tooth-profile view is a transverse section at mid-face (single
+# clean profile), and the front view is projected with smooth seam edges
+# suppressed. Hidden lines are omitted (they blanket the face view; the bore
+# is fully described in the profile view).
+print('Projecting views (section + HLR)...')
+plan_vis = section_profile(part_s, Plane.XY.offset(czs))
+front_vis = project_visible(part_s, (cxs, cys - DIST, czs), (0, 0, 1), look,
+                            include_smooth=False)
 
-faces_s = part_s.faces()
-plan_vis, n_p = exactify_silhouettes(
-    list(plan_vis), faces_s, (0, 0, 1), lambda p: (p.X() - cxs, p.Y() - cys))
 front_vis, n_f = exactify_silhouettes(
-    list(front_vis), faces_s, (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
-print(f'  exactified silhouettes: plan {n_p}, front {n_f}')
+    list(front_vis), part_s.faces(), (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
+print(f'  exactified silhouettes: front {n_f}')
 
-plan  = Compound(children=list(plan_vis)).locate(Location((PV_X, PV_Y, 0)))
+plan  = Compound(children=list(plan_vis)).locate(Location((PV_X - cxs, PV_Y - cys, 0)))
 front = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 
 # ── Coordinate helpers ────────────────────────────────────────────────────────
@@ -159,6 +162,8 @@ notes = text_block([
 ], 215, 105)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 25, PIC_Y - 3)
+caption += text_block(['TOOTH PROFILE — TRANSVERSE SECTION AT MID-FACE'],
+                      PV_X - 35, PV_Y + r_tip * SCALE + 12)
 
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
