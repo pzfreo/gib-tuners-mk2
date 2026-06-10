@@ -2,11 +2,13 @@
 """A3 general arrangement drawing of a single tuner station (RH).
 
 Views (5:1 on A3 landscape):
-  - Front view (camera at -Y): post up, peg head + worm to the right; the
-    frame is sectioned at the post axis so the wheel and retention hardware
-    are visible
-  - Side view (camera at +X): frame length, post/worm centre distance
-  - Shaded pictorial + item balloons + BOM table
+  - SECTION A-A (camera at -Y): post up, peg head + worm to the right; the
+    frame is sectioned at the post axis (hatched, cutting plane marked on
+    the side view) so the wheel and retention hardware are visible
+  - Side view (camera at +X): frame length, post/worm centre distance,
+    cutting-plane trace A-A
+  - Shaded pictorial + ISO 6433 item balloons + BOM table
+  - Third-angle projection symbol by the title block
 
 The assembly comes from create_positioned_assembly() (the same path as
 build.py/viz.py) with num_housings=1, so positions cannot drift from the
@@ -28,17 +30,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from build123d import (
-    Box, Color, Compound, ExportDXF, ExportSVG, Location, export_stl,
+    Align, Box, Color, Compound, Edge, ExportDXF, ExportSVG, Face, Location,
+    Plane, Text, Wire, export_stl,
 )
 from build123d_drafting import (
-    Centerline, Dimension, Leader, TitleBlock,
+    Centerline, Dimension, TitleBlock,
     draft_preset, fix_svg_page_size, lint_drawing, set_page,
 )
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, exactify_silhouettes, project_visible,
-    render_shaded_pictorial, text_block,
+    balloon, embed_png_in_svg, exactify_silhouettes, hatch_cut_faces,
+    project_visible, render_shaded_pictorial, text_block, third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -111,6 +114,14 @@ print(f'  exactified silhouettes: front {n_f}')
 front = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 side  = Compound(children=list(side_vis)).locate(Location((SV_X, SV_Y, 0)))
 
+# 45-degree section hatching on the frame's cut faces (ISO 128-44). Shafts
+# and fasteners are conventionally shown unsectioned, so only the frame cut
+# is hatched.
+hatch = hatch_cut_faces(
+    frame_cut.scale(SCALE), y_post * SCALE, (0, 1, 0),
+    lambda x, y, z: (FV_X + x - cxs, FV_Y + z - czs), spacing=1.5)
+print(f'  hatch lines: {len(hatch)}')
+
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 def FXa(x): return FV_X + (x - cx) * SCALE     # front: world_X -> page_X (+1)
 def FZa(z): return FV_Y + (z - cz) * SCALE     # front: world_Z -> page_Y (+1)
@@ -133,28 +144,52 @@ add(Centerline((SY(y_worm), SZ(-10) - 3, 0), (SY(y_worm), SZ(0) + 3, 0)))
 
 # Key GA dimensions: post height above face, peg projection, centre distance
 add(Dimension((FXa(-3), FZa(0), 0), (FXa(-3), FZa(z_top), 0),
-              'left', FXa(-3) - 32, draft, label=f'{z_top:.1f}'))
+              'left', FXa(-3) - 24, draft, label=f'{z_top:.1f}'))
 add(Dimension((FXa(5), FZa(bb.min.Z), 0), (FXa(bb.max.X), FZa(bb.min.Z), 0),
               'below', FZa(bb.min.Z) - 154, draft, label=f'{bb.max.X - 5:.1f}'))
 add(Dimension((SY(y_post), SZ(z_top), 0), (SY(y_worm), SZ(z_top), 0),
               'above', 8, draft, label=f'{cd:.2f}'))
 
-# Item balloons (numbers map to the BOM table). Left-side balloons sit on a
-# vertical rail at page x~30 with short parallel leaders; top balloons clear
-# the 6.5 height dim (its line is at x~32, y 245..277)
+# Item balloons (ISO 6433: circled numbers mapping to the BOM table). The
+# circles need clear paper: left-side balloons sit on a rail at page x=16
+# (left of the view's widest extent, x=25.4), items 5/6 drop below the frame
+# (bottom edge y=160.6). Raw geometry, so collected in `marks`, not lint anns.
+marks = []
 BALLOONS = [
-    ('1', (FXa(-4.5), FZa(-9.8)), (40, 170)),        # frame
+    ('1', (FXa(-4.5), FZa(-9.8)), (16, 164)),        # frame
     ('2', (FXa(1.5), FZa(z_top)), (75, 272)),        # string post
-    ('3', (FXa(-3.7), FZa(-5.0)), (30, 180)),        # wheel, near edge
+    ('3', (FXa(-3.7), FZa(-5.0)), (16, 178)),        # wheel, near edge
     ('4', (FXa(19.5), FZa(1.2)), (158, 262)),        # peg head + worm
-    ('5', (FXa(1.8), FZa(-9.1)), (58, 162)),         # wheel washer
-    ('6', (FXa(0.8), FZa(-10.4)), (44, 154)),        # wheel screw
-    ('7', (FXa(-5.4), FZa(-2.6)), (30, 208)),        # peg washer
-    ('8', (FXa(-6.8), FZa(-5.0)), (24, 196)),        # peg screw
+    ('5', (FXa(1.8), FZa(-9.1)), (58, 150)),         # wheel washer
+    ('6', (FXa(0.8), FZa(-10.4)), (42, 150)),        # wheel screw
+    ('7', (FXa(-5.4), FZa(-2.6)), (16, 210)),        # peg washer
+    ('8', (FXa(-6.8), FZa(-5.0)), (16, 194)),        # peg screw
 ]
-for label, tip, elbow in BALLOONS:
-    add(Leader(tip=(tip[0], tip[1], 0), elbow=(elbow[0], elbow[1], 0),
-               label=label, draft=draft))
+for label, tip, centre in BALLOONS:
+    marks += balloon(tip, centre, label, draft)
+
+# Cutting-plane trace A-A on the side view (ISO 128-40): the cut runs along
+# the post axis, so the trace coincides with that centreline; thick end
+# strokes, arrows in the viewing direction (-Y camera looks +Y -> +page_X),
+# and identifying letters
+thick_marks = []
+xa = SY(y_post)
+ya_bot, ya_top = SZ(bb.min.Z) - 3, SZ(z_top) + 3
+for ye in (ya_bot, ya_top):
+    sgn = -1 if ye == ya_bot else 1
+    end = ye + sgn * 3
+    thick_marks.append(Edge.make_line((xa, ye, 0), (xa, end, 0)))
+    marks.append(Edge.make_line((xa, end, 0), (xa + 5, end, 0)))
+    marks.append(Face(Wire.make_polygon([
+        (xa + 7, end, 0), (xa + 5, end + 0.6, 0), (xa + 5, end - 0.6, 0),
+        (xa + 7, end, 0)])))                                     # arrowhead
+    marks.append(Location((xa + 8.5, end, 0)) * Text(
+        'A', font_size=3.5, align=(Align.MIN, Align.CENTER)))
+
+# Third-angle projection symbol (ISO 5456-2), left of the title block
+marks += third_angle_symbol(225, 22)
+marks.append(Location((215, 14, 0)) * Text(
+    'THIRD ANGLE PROJECTION', font_size=2.0, align=(Align.MIN, Align.CENTER)))
 
 # ── Text blocks (BOM + notes) ─────────────────────────────────────────────────
 bom = text_block([
@@ -174,13 +209,13 @@ notes = text_block([
     'NOTES',
     '1. SINGLE STATION SHOWN — FULL FRAME HAS 5 AT 27.2 PITCH (SEE GIB-TUN-FR-RH)',
     f'2. POST TO WORM CENTRE DISTANCE {cd:.2f}',
-    '3. FRONT VIEW: FRAME SECTIONED AT THE POST AXIS TO SHOW THE MECHANISM',
+    '3. SECTION A-A CUT AT THE POST AXIS — SHAFTS AND FASTENERS SHOWN UNSECTIONED',
     '4. RH SHOWN — LH UNIT IS MIRROR IMAGE',
     '5. DO NOT SCALE DRAWING',
 ], 20, 80)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 38, PIC_Y - 3)
-caption += text_block(['FRONT VIEW (FRAME SECTIONED)'], FV_X - 30, 148)
+caption += text_block(['SECTION A-A'], FV_X - 13, 148)
 caption += text_block(['SIDE VIEW'], SV_X - 11, 148)
 
 # ── Title block ───────────────────────────────────────────────────────────────
@@ -211,23 +246,45 @@ else:
 
 # ── Export SVG / DXF ──────────────────────────────────────────────────────────
 print('Exporting...')
+# Closed edges (balloon/symbol circles) on a fill layer render as solid
+# discs, so bare-Edge marks go to an unfilled 'ann' layer; arrowhead faces
+# and text keep the filled dims layer
+mark_lines = [m for m in marks if isinstance(m, Edge)]
+mark_fill  = [m for m in marks if not isinstance(m, Edge)]
+
 svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=Color(0, 0, 0), line_weight=0.5)
+svg.add_layer('hatch',  line_color=Color(0, 0, 0), line_weight=0.18)
+svg.add_layer('ann',    line_color=Color(0, 0.2, 0.7), line_weight=0.18)
 svg.add_layer('dims',   line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
 for v in (front, side):
     svg.add_shape(v, layer='part')
-for a in anns + bom + notes + caption:
+for e in hatch:
+    svg.add_shape(e, layer='hatch')
+for t in thick_marks:
+    svg.add_shape(t, layer='part')
+for e in mark_lines:
+    svg.add_shape(e, layer='ann')
+for a in anns + mark_fill + bom + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
 fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
+dxf.add_layer('hatch',  line_weight=0.18)
+dxf.add_layer('ann',    line_weight=0.18)
 dxf.add_layer('dims',   line_weight=0.05)
 for v in (front, side):
     dxf.add_shape(v, layer='part')
-for a in anns + bom + notes + caption:
+for e in hatch:
+    dxf.add_shape(e, layer='hatch')
+for t in thick_marks:
+    dxf.add_shape(t, layer='part')
+for e in mark_lines:
+    dxf.add_shape(e, layer='ann')
+for a in anns + mark_fill + bom + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')
 
