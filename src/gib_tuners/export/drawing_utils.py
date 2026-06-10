@@ -6,6 +6,7 @@ shaded raster pictorial embedded into the exported SVG.
 """
 
 import base64
+from pathlib import Path
 
 import numpy as np
 from build123d import Align, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc
@@ -175,23 +176,38 @@ def render_shaded_pictorial(stl_path, png_path, cam_dir, dist, window_size, zoom
     HLR line projections of threads and grooves read poorly (the visible
     boundary decomposes into ring-like curves), so pictorials are rendered
     shaded. split_sharp_edges keeps crisp feature edges under smooth shading.
+
+    stl_path: a single path, or a list of paths / (path, rgb_color) tuples —
+    use one STL per part for assemblies (export_stl of a multi-part Compound
+    silently drops solids).
     """
     import gc
 
     import pyvista as pv
 
-    mesh = pv.read(stl_path)
+    if isinstance(stl_path, (str, Path)):
+        stl_path = [stl_path]
+    entries = [(e, BRASS) if isinstance(e, (str, Path)) else e for e in stl_path]
+
     plotter = pv.Plotter(off_screen=True, window_size=list(window_size))
-    plotter.add_mesh(mesh, color=BRASS, smooth_shading=True,
-                     split_sharp_edges=True, feature_angle=35,
-                     specular=0.5, specular_power=15)
+    meshes = []
+    for path, color in entries:
+        mesh = pv.read(str(path))
+        meshes.append(mesh)
+        plotter.add_mesh(mesh, color=color, smooth_shading=True,
+                         split_sharp_edges=True, feature_angle=35,
+                         specular=0.5, specular_power=15)
+    bounds = np.array([m.bounds for m in meshes])
+    centre = [(bounds[:, 0].min() + bounds[:, 1].max()) / 2,
+              (bounds[:, 2].min() + bounds[:, 3].max()) / 2,
+              (bounds[:, 4].min() + bounds[:, 5].max()) / 2]
     cam = np.array(cam_dir, dtype=float)
     cam = cam / np.linalg.norm(cam) * dist
-    plotter.camera_position = [tuple(np.array(mesh.center) + cam), mesh.center, (0, 0, 1)]
+    plotter.camera_position = [tuple(np.array(centre) + cam), centre, (0, 0, 1)]
     plotter.camera.zoom(zoom)
     plotter.screenshot(png_path, transparent_background=True)
     plotter.close()
-    del mesh, plotter
+    del meshes, plotter
     gc.collect()  # tear down VTK objects before interpreter shutdown noise
 
 

@@ -39,7 +39,7 @@ One A4 engineering drawing per component, plus one general arrangement (GA). Out
 | GIB-TUN-SP | String Post — A3 10:1 | scripts/string_post_drawing.py |
 | GIB-TUN-WW-RH | Worm Wheel — A3 10:1 | scripts/wheel_drawing.py |
 | GIB-TUN-PH-RH | Peg Head (RH) — A3 5:1 | scripts/peg_head_drawing.py |
-| DWG-005 | General Arrangement (1-gang) | scripts/drawings/assembly_ga.py |
+| GIB-TUN-GA-RH | General Arrangement (1 station) — A3 5:1 | scripts/assembly_drawing.py |
 | PDF | All sheets combined | scripts/drawings/make_pdf.py |
 
 **Output directory:** `drawings/`
