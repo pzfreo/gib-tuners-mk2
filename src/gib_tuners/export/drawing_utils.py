@@ -8,11 +8,78 @@ shaded raster pictorial embedded into the exported SVG.
 import base64
 
 import numpy as np
-from build123d import Align, Edge, GeomType, Location, Plane, Text, ThreePointArc
+from build123d import Align, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc
+from build123d.geometry import TOLERANCE
+from build123d.topology import downcast
 from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.BRepAlgoAPI import BRepAlgoAPI_Section
+from OCP.BRepLib import BRepLib
 from OCP.GeomAbs import GeomAbs_SurfaceType as ST
+from OCP.gp import gp_Ax1, gp_Ax2, gp_Dir, gp_Pnt
+from OCP.HLRAlgo import HLRAlgo_Projector
+from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
+from OCP.TopAbs import TopAbs_ShapeEnum
+from OCP.TopExp import TopExp_Explorer
 
 BRASS = (0.80, 0.64, 0.32)
+
+
+def project_visible(shape, viewport_origin, viewport_up, look_at, include_smooth=True):
+    """Visible-edge HLR projection with optional smooth-edge suppression.
+
+    Same projection as build123d's project_to_viewport, but the Rg1 class
+    (tangent-continuous "regular" edges) can be dropped. Lofted/patched
+    geometry — e.g. gear teeth from the external gear calculator — carries
+    tangent seam edges between surface patches; HLR draws every one, striping
+    each flank. Sharp edges and silhouettes are unaffected.
+
+    Returns a list of visible Edges in raw viewport coordinates.
+    """
+    algo = HLRBRep_Algo()
+    algo.Add(shape.wrapped)
+    direction = (np.array(viewport_origin, dtype=float) - np.array(look_at, dtype=float))
+    direction /= np.linalg.norm(direction)
+    ax = gp_Ax2()
+    ax.SetAxis(gp_Ax1(gp_Pnt(*viewport_origin), gp_Dir(*direction)))
+    ax.SetYDirection(gp_Dir(*viewport_up))
+    algo.Projector(HLRAlgo_Projector(ax))
+    algo.Update()
+    algo.Hide()
+    hlr = HLRBRep_HLRToShape(algo)
+    compounds = [hlr.VCompound(), hlr.OutLineVCompound()]
+    if include_smooth:
+        compounds.append(hlr.Rg1LineVCompound())
+    edges = []
+    for comp in compounds:
+        if comp.IsNull():
+            continue
+        BRepLib.BuildCurves3d_s(comp, TOLERANCE)
+        ex = TopExp_Explorer(comp, TopAbs_ShapeEnum.TopAbs_EDGE)
+        while ex.More():
+            edges.append(Edge(downcast(ex.Current())))
+            ex.Next()
+    return edges
+
+
+def section_profile(shape, plane=Plane.XY, size=1000):
+    """Edges of the shape's cross-section on the given plane.
+
+    Uses BRepAlgoAPI_Section, so it works on shells (e.g. imported gear STEPs)
+    as well as solids. The returned edges lie in world coordinates on the
+    section plane — for an XY section they are already page-plane (x, y, 0)
+    curves. A transverse mid-face section is the conventional way to show a
+    helical gear's tooth profile: a direct axial HLR view shows both end
+    profiles twisted by the helix advance.
+    """
+    plane_face = Face.make_rect(size, size, plane)
+    sec = BRepAlgoAPI_Section(shape.wrapped, plane_face.wrapped)
+    sec.Build()
+    edges = []
+    ex = TopExp_Explorer(sec.Shape(), TopAbs_ShapeEnum.TopAbs_EDGE)
+    while ex.More():
+        edges.append(Edge(downcast(ex.Current())))
+        ex.Next()
+    return edges
 
 
 def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
@@ -61,6 +128,8 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
         sp = e.geom_adaptor().Curve().Curve()
         if sp.Degree() != 1:
             return None
+        if sp.NbPoles() < 4:
+            return None  # too short to be a faceted silhouette; arc would degenerate
         tr = e.location.wrapped.Transformation()
         pts = np.array([[p.X(), p.Y(), p.Z()] for p in
                         (sp.Pole(i + 1).Transformed(tr) for i in range(sp.NbPoles()))])
@@ -77,7 +146,10 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
 
                 if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
                     return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
-                return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
+                try:
+                    return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
+                except Exception:
+                    return None  # degenerate (collinear/coincident) — keep the polyline
         return None
 
     out, n = [], 0
