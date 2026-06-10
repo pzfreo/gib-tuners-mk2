@@ -4,7 +4,7 @@ Rasterises each SVG to PNG at 200 DPI (2339×1654 px) using resvg-py,
 then assembles pages into an A4 landscape PDF via fpdf2.
 
 Page order:
-    DWG-001  frame.svg
+    GIB-TUN-FR-RH  c13-10/frame_rh.svg  (A3 sheet)
     GIB-TUN-SP  c13-10/string_post.svg  (A3 sheet)
     GIB-TUN-PH-RH  c13-10/peg_head_rh.svg  (A3 sheet)
     DWG-004  assembly.svg
@@ -26,7 +26,7 @@ from fpdf import FPDF
 DRAWINGS_DIR = Path(__file__).parent.parent.parent / "drawings"
 
 PAGES = [
-    "frame.svg",
+    "c13-10/frame_rh.svg",      # A3 sheet (scripts/frame_drawing.py)
     "c13-10/string_post.svg",   # A3 sheet (scripts/string_post_drawing.py)
     "c13-10/peg_head_rh.svg",   # A3 sheet (scripts/peg_head_drawing.py)
     "assembly.svg",
