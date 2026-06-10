@@ -2,8 +2,9 @@
 """A3 general arrangement drawing of a single tuner station (RH).
 
 Views (5:1 on A3 landscape):
-  - Front view (camera at -Y): post up, peg head + worm to the right, with
-    the wheel and its retention hardware shown dashed inside the housing
+  - Front view (camera at -Y): post up, peg head + worm to the right; the
+    frame is sectioned at the post axis so the wheel and retention hardware
+    are visible
   - Side view (camera at +X): frame length, post/worm centre distance
   - Shaded pictorial + item balloons + BOM table
 
@@ -27,7 +28,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from build123d import (
-    Color, Compound, ExportDXF, ExportSVG, LineType, Location, export_stl,
+    Box, Color, Compound, ExportDXF, ExportSVG, Location, export_stl,
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
@@ -36,7 +37,8 @@ from build123d_drafting import (
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, project_visible, render_shaded_pictorial, text_block,
+    embed_png_in_svg, exactify_silhouettes, project_visible,
+    render_shaded_pictorial, text_block,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -60,9 +62,6 @@ print('Building single-station assembly...')
 asm = create_positioned_assembly(cfg, wheel_step_path=gp.wheel_step,
                                  worm_step_path=gp.worm_step)
 parts = asm['all_parts']
-internal_names = ('wheel_1', 'wheel_washer_1', 'wheel_screw_1')
-visible_parts  = [p for n, p in parts.items() if n not in internal_names]
-internal_parts = [parts[n] for n in internal_names]
 
 whole = Compound(children=list(parts.values()))
 bb = whole.bounding_box()
@@ -75,8 +74,18 @@ y_worm = y_post + cd
 z_top  = parts['string_post_1'].bounding_box().max.Z   # post cap top
 
 # ── Project views ─────────────────────────────────────────────────────────────
-vis_s = Compound(children=visible_parts).scale(SCALE)
-int_s = Compound(children=internal_parts).scale(SCALE)
+# Front view: the frame is sectioned at the post axis (everything between the
+# viewer and that plane removed) so the wheel and retention hardware are
+# actually visible — fully hidden parts read as missing on a GA. The wheel is
+# projected separately with smooth seam edges suppressed (its lofted tooth
+# patches stripe otherwise); everything else keeps smooth edges, which the
+# peg head ring needs for its bore line work.
+frame_cut = parts['frame'] - Location((0, y_post - 50, -5)) * Box(40, 100, 40)
+front_parts = [frame_cut] + [p for n, p in parts.items()
+                             if n not in ('frame', 'wheel_1')]
+front_s = Compound(children=front_parts).scale(SCALE)
+wheel_s = parts['wheel_1'].scale(SCALE)
+side_s  = Compound(children=[p for n, p in parts.items() if n != 'wheel_1']).scale(SCALE)
 cxs, cys, czs = cx * SCALE, cy * SCALE, cz * SCALE
 look = (cxs, cys, czs)
 DIST = max(bb.size.X, bb.size.Y, bb.size.Z) * SCALE + 100
@@ -85,19 +94,22 @@ FV_X, FV_Y = 100.0, 205.0    # front view (post up, peg right)
 SV_X, SV_Y = 280.0, 205.0    # side view (frame length)
 PIC_X, PIC_Y, PIC_W, PIC_H = 240.0, 45.0, 150.0, 95.0
 
-# Seam-suppressed projection: the worm thread and wheel teeth carry tangent
-# patch edges that would stripe the views
 print('Projecting views (HLR, this is the slow part)...')
-front_vis = project_visible(vis_s, (cxs, cys - DIST, czs), (0, 0, 1), look,
-                            include_smooth=False)
-front_int = project_visible(int_s, (cxs, cys - DIST, czs), (0, 0, 1), look,
-                            include_smooth=False)
-side_vis = project_visible(vis_s, (cxs + DIST, cys, czs), (0, 0, 1), look,
+front_cam = (cxs, cys - DIST, czs)
+front_vis = project_visible(front_s, front_cam, (0, 0, 1), look)
+front_vis += project_visible(wheel_s, front_cam, (0, 0, 1), look,
+                             include_smooth=False)
+side_vis = project_visible(side_s, (cxs + DIST, cys, czs), (0, 0, 1), look,
                            include_smooth=False)
 
-front   = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
-front_h = Compound(children=list(front_int)).locate(Location((FV_X, FV_Y, 0)))
-side    = Compound(children=list(side_vis)).locate(Location((SV_X, SV_Y, 0)))
+# Exact circles for the axis-aligned silhouettes (peg ring bore, cap blends)
+front_faces = list(front_s.faces()) + list(wheel_s.faces())
+front_vis, n_f = exactify_silhouettes(
+    list(front_vis), front_faces, (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
+print(f'  exactified silhouettes: front {n_f}')
+
+front = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
+side  = Compound(children=list(side_vis)).locate(Location((SV_X, SV_Y, 0)))
 
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 def FXa(x): return FV_X + (x - cx) * SCALE     # front: world_X -> page_X (+1)
@@ -160,13 +172,13 @@ notes = text_block([
     'NOTES',
     '1. SINGLE STATION SHOWN — FULL FRAME HAS 5 AT 27.2 PITCH (SEE GIB-TUN-FR-RH)',
     f'2. POST TO WORM CENTRE DISTANCE {cd:.2f}',
-    '3. ITEMS 3 / 5 / 6 SHOWN DASHED — INSIDE HOUSING',
+    '3. FRONT VIEW: FRAME SECTIONED AT THE POST AXIS TO SHOW THE MECHANISM',
     '4. RH SHOWN — LH UNIT IS MIRROR IMAGE',
     '5. DO NOT SCALE DRAWING',
 ], 20, 80)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 38, PIC_Y - 3)
-caption += text_block(['FRONT VIEW'], FV_X - 12, 148)
+caption += text_block(['FRONT VIEW (FRAME SECTIONED)'], FV_X - 30, 148)
 caption += text_block(['SIDE VIEW'], SV_X - 11, 148)
 
 # ── Title block ───────────────────────────────────────────────────────────────
@@ -199,13 +211,10 @@ else:
 print('Exporting...')
 svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=Color(0, 0, 0), line_weight=0.5)
-svg.add_layer('hidden', line_color=Color(0.45, 0.45, 0.45), line_weight=0.25,
-              line_type=LineType.HIDDEN)
 svg.add_layer('dims',   line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
 for v in (front, side):
     svg.add_shape(v, layer='part')
-svg.add_shape(front_h, layer='hidden')
 for a in anns + bom + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
@@ -213,11 +222,9 @@ fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
-dxf.add_layer('hidden', line_weight=0.25)
 dxf.add_layer('dims',   line_weight=0.05)
 for v in (front, side):
     dxf.add_shape(v, layer='part')
-dxf.add_shape(front_h, layer='hidden')
 for a in anns + bom + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')

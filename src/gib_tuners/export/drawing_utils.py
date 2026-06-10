@@ -9,7 +9,9 @@ import base64
 from pathlib import Path
 
 import numpy as np
-from build123d import Align, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc
+from build123d import (
+    Align, Compound, Edge, Face, GeomType, Location, Plane, Text, ThreePointArc,
+)
 from build123d.geometry import TOLERANCE
 from build123d.topology import downcast
 from OCP.BRepAdaptor import BRepAdaptor_Surface
@@ -123,6 +125,10 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
         if abs(d.X() * view_dir[0] + d.Y() * view_dir[1] + d.Z() * view_dir[2]) > 0.999:
             centres.append(np.array(proj_fn(ax.Location())))
 
+    # Extent of the whole projection — a silhouette circle cannot exceed the
+    # part's own projected footprint (guards the degenerate-fragment case)
+    gb = Compound(children=list(edges)).bounding_box()
+
     def replacement(e):
         if e.geom_type != GeomType.BSPLINE:
             return None
@@ -146,6 +152,20 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
                     return (c2[0] + v[0], c2[1] + v[1], z)
 
                 if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
+                    span = max(np.ptp(pts[:, 0]), np.ptp(pts[:, 1]))
+                    if span > 4 * tol:
+                        # A real closed loop must span the circle it claims
+                        if abs(span - 2 * R) > 4 * tol:
+                            continue
+                    else:
+                        # Degenerate fragment (OCCT emits these where a tangent
+                        # silhouette grazes the visible/hidden boundary): accept
+                        # the circle only if it fits the projection's footprint —
+                        # a sliver matching a distant axis would otherwise become
+                        # a giant circle
+                        if (c2[0] - R < gb.min.X - 2 or c2[0] + R > gb.max.X + 2 or
+                                c2[1] - R < gb.min.Y - 2 or c2[1] + R > gb.max.Y + 2):
+                            continue
                     return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
                 try:
                     return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
