@@ -7,8 +7,8 @@ Page order:
     GIB-TUN-FR-RH  c13-10/frame_rh.svg  (A3 sheet)
     GIB-TUN-SP  c13-10/string_post.svg  (A3 sheet)
     GIB-TUN-PH-RH  c13-10/peg_head_rh.svg  (A3 sheet)
-    GIB-TUN-GA-RH  c13-10/assembly_ga_rh.svg  (A3 sheet)
     GIB-TUN-WW-RH  c13-10/wheel_rh.svg  (A3 sheet)
+    GIB-TUN-GA-RH  c13-10/assembly_ga_rh.svg  (A3 sheet)
 
 Run:
     uv run python scripts/drawings/make_pdf.py
@@ -29,8 +29,8 @@ PAGES = [
     "c13-10/frame_rh.svg",      # A3 sheet (scripts/frame_drawing.py)
     "c13-10/string_post.svg",   # A3 sheet (scripts/string_post_drawing.py)
     "c13-10/peg_head_rh.svg",   # A3 sheet (scripts/peg_head_drawing.py)
-    "c13-10/assembly_ga_rh.svg", # A3 sheet (scripts/assembly_drawing.py)
     "c13-10/wheel_rh.svg",      # A3 sheet (scripts/wheel_drawing.py)
+    "c13-10/assembly_ga_rh.svg", # A3 sheet (scripts/assembly_drawing.py)
 ]
 
 PAGE_W_MM = 297.0   # A4 landscape

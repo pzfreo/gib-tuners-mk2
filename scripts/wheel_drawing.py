@@ -205,7 +205,7 @@ tb = TitleBlock(
     'WORM WHEEL (RH)',
     'GIB-TUN-WW-RH',
     drawing_scale=SCALE,
-    material='PHOS BRONZE PB102',
+    material='PB102 BRONZE',
     general_tolerance='ISO 2768-f',
     designed_by='P. Fremantle',
     date='2026-06-10',
@@ -270,10 +270,11 @@ with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp:
     stl_path = tmp.name
 export_stl(part, stl_path, tolerance=0.0003, angular_tolerance=0.05)
 png_path = stl_path.replace('.stl', '.png')
-# Camera low enough that the tooth helix is visible on the flanks
-render_shaded_pictorial(stl_path, png_path, cam_dir=(1.0, -1.0, 0.5),
+# Camera raised so the top face and DD bore read clearly while the helix
+# still shows on the flanks; zoom < 1 keeps the bottom clear of the caption
+render_shaded_pictorial(stl_path, png_path, cam_dir=(1.0, -1.0, 1.2),
                         dist=max(bb.size.X, bb.size.Y, bb.size.Z) * 2.6,
-                        window_size=(int(PIC_W) * 10, int(PIC_H) * 10), zoom=1.1)
+                        window_size=(int(PIC_W) * 10, int(PIC_H) * 10), zoom=0.95)
 embed_png_in_svg(STEM.with_suffix('.svg'), png_path, PIC_X, PIC_Y, PIC_W, PIC_H)
 
 # ── PDF (A3 landscape, rasterised at 200 DPI) ─────────────────────────────────
