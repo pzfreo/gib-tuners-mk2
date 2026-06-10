@@ -6,6 +6,7 @@ Views (third-angle, 10:1 on A3 landscape):
     cap, with a chained height stack, string hole, and diameter leaders
   - Bottom view (camera at -Z, below the front view): DD flats, across-flats
     dim, and the M2 tap hole
+  - Cap top view (removed view, labelled): the three engraved V-grooves
   - Shaded pictorial (pyvista raster, embedded in the SVG/PDF; omitted from
     the DXF)
 
@@ -71,6 +72,12 @@ z_hole      = z_bear_top + sp.string_hole_position              # 11.05
 dd_dia      = sp.dd_cut.diameter - sp.dd_shaft_clearance        # 3.4
 dd_af       = sp.dd_cut.across_flats - sp.dd_shaft_clearance    # 2.4
 
+# Groove centre radii — mirrors the placement in create_string_post():
+# evenly spaced from min_r 0.75 to the outermost groove centre
+groove_outer_r = sp.cap_groove_outer_od / 2 - sp.cap_groove_width / 2   # 2.835
+groove_rs = [0.75 + i * (groove_outer_r - 0.75) / (sp.cap_groove_count - 1)
+             for i in range(sp.cap_groove_count)]
+
 # ── Project views ─────────────────────────────────────────────────────────────
 part_s = part.scale(SCALE)
 cxs, cys, czs = cx * SCALE, cy * SCALE, cz * SCALE
@@ -80,11 +87,13 @@ DIST = max(bb.size.X, bb.size.Y, bb.size.Z) * SCALE + 100
 # Page positions (view centres) and pictorial image box (page mm)
 FV_X, FV_Y = 110.0, 190.0    # front view (main)
 BV_X, BV_Y = 110.0, 60.0     # bottom view (third-angle: below the front view)
+TV_X, TV_Y = 195.0, 55.0     # cap top view (removed view, labelled)
 PIC_X, PIC_Y, PIC_W, PIC_H = 250.0, 140.0, 120.0, 100.0  # pictorial: left, bottom, size
 
 print('Projecting views (HLR)...')
 front_vis, front_hid = part_s.project_to_viewport((cxs, cys - DIST, czs), (0, 0, 1), look)
 bot_vis, _ = part_s.project_to_viewport((cxs, cys, czs - DIST), (0, 1, 0), look)
+top_vis, _ = part_s.project_to_viewport((cxs, cys, czs + DIST), (0, 1, 0), look)
 
 # Raw projected coords are centred on look_at; signs per the view_axes mappings
 faces_s = part_s.faces()
@@ -92,17 +101,22 @@ front_vis, n_f = exactify_silhouettes(
     list(front_vis), faces_s, (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
 bot_vis, n_b = exactify_silhouettes(
     list(bot_vis), faces_s, (0, 0, 1), lambda p: (-(p.X() - cxs), p.Y() - cys))
-print(f'  exactified silhouettes: front {n_f}, bottom {n_b}')
+top_vis, n_t = exactify_silhouettes(
+    list(top_vis), faces_s, (0, 0, 1), lambda p: (p.X() - cxs, p.Y() - cys))
+print(f'  exactified silhouettes: front {n_f}, bottom {n_b}, top {n_t}')
 
 front   = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 front_h = Compound(children=list(front_hid)).locate(Location((FV_X, FV_Y, 0))) if front_hid else None
 bot     = Compound(children=list(bot_vis)).locate(Location((BV_X, BV_Y, 0)))
+top     = Compound(children=list(top_vis)).locate(Location((TV_X, TV_Y, 0)))
 
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 def FX(x): return FV_X + (x - cx) * SCALE      # front:  world_X -> page_X (+1)
 def FZ(z): return FV_Y + (z - cz) * SCALE      # front:  world_Z -> page_Y (+1)
 def BX(x): return BV_X - (x - cx) * SCALE      # bottom: world_X -> page_X (-1)
 def BY(y): return BV_Y + (y - cy) * SCALE      # bottom: world_Y -> page_Y (+1)
+def TX(x): return TV_X + (x - cx) * SCALE      # top:    world_X -> page_X (+1)
+def TY(y): return TV_Y + (y - cy) * SCALE      # top:    world_Y -> page_Y (+1)
 
 # ── Annotations ───────────────────────────────────────────────────────────────
 draft = draft_preset(font_size=2.5, decimal_precision=1)
@@ -156,11 +170,20 @@ add(Leader(tip=(FX(sp.bearing_diameter / 2), FZ((z_dd_top + z_bear_top) / 2), 0)
 # Bottom view: DD across-flats, DD diameter, M2 tap hole
 add(Dimension((BX(-dd_af / 2), BY(0), 0), (BX(dd_af / 2), BY(0), 0),
               'below', BY(0) - 16, draft, label=f'{dd_af:.1f} A/F'))
-add(Leader(tip=(BX(-dd_dia / 2 * 0.707), BY(dd_dia / 2 * 0.707), 0),
-           elbow=(168, 90, 0), label=f'ø{dd_dia:.1f} DD', draft=draft))
-add(Leader(tip=(BX(-0.8 * 0.707), BY(-0.8 * 0.707), 0),
-           elbow=(168, 78, 0),
+# Leaders routed left so they clear the cap top view to the right
+add(Leader(tip=(BX(dd_dia / 2 * 0.707), BY(dd_dia / 2 * 0.707), 0),
+           elbow=(48, 92, 0), label=f'ø{dd_dia:.1f} DD', draft=draft))
+add(Leader(tip=(BX(0.57), BY(-0.57), 0),
+           elbow=(42, 40, 0),
            label=f'M2 × {sp.thread_length:.1f} DEEP', draft=draft))
+
+# Cap top view: crosshair, groove label, view caption
+add(Centerline((TX(-sp.cap_diameter / 2) - 2, TY(0), 0), (TX(sp.cap_diameter / 2) + 2, TY(0), 0)))
+add(Centerline((TX(0), TY(-sp.cap_diameter / 2) - 2, 0), (TX(0), TY(sp.cap_diameter / 2) + 2, 0)))
+add(Leader(tip=(TX(-groove_rs[-1] * 0.707), TY(groove_rs[-1] * 0.707), 0),
+           elbow=(150, 105, 0),
+           label=f'{sp.cap_groove_count} × V-GROOVES '
+                 f'{sp.cap_groove_width:.2f} × {sp.cap_groove_depth:.2f}', draft=draft))
 
 # ── Text blocks (notes) ───────────────────────────────────────────────────────
 notes = text_block([
@@ -171,13 +194,16 @@ notes = text_block([
     f'(ø{sp.dd_cut.diameter:.1f} / {sp.dd_cut.across_flats:.1f})',
     f'4. M2 TAP HOLE: ø{sp.tap_bore_diameter:.1f} DRILL × {sp.thread_length:.1f} DEEP, TAP M2 × 0.4',
     f'5. STRING HOLE: CHAMFER {sp.string_hole_chamfer:.1f} BOTH ENDS',
-    f'6. CAP: {sp.cap_groove_count} CONCENTRIC V-GROOVES {sp.cap_groove_width:.2f} × '
-    f'{sp.cap_groove_depth:.2f}, OUTER AT ø{sp.cap_groove_outer_od:.1f}',
+    f'6. CAP: {sp.cap_groove_count} CONCENTRIC V-GROOVES {sp.cap_groove_width:.2f} WIDE × '
+    f'{sp.cap_groove_depth:.2f} DEEP, CENTRES AT '
+    + ', '.join(f'ø{2 * r:.2f}' for r in groove_rs)
+    + f' (OUTER EDGE ø{sp.cap_groove_outer_od:.1f})',
     f'7. CAP EDGES: FILLET R{sp.cap_fillet:.2f} TOP AND BOTTOM, {sp.cap_chamfer:.1f} CHAMFER',
     '8. DO NOT SCALE DRAWING',
 ], 215, 130)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 25, PIC_Y - 3)
+caption += text_block(['CAP TOP VIEW'], TV_X - 11, TV_Y - sp.cap_diameter / 2 * SCALE - 4)
 
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
@@ -197,7 +223,7 @@ anns.append(tb)
 
 # ── Lint gate ─────────────────────────────────────────────────────────────────
 set_page(PAGE_W, PAGE_H, margin=10)
-issues = lint_drawing(anns, drawing_scale=SCALE, view_shapes=[front, bot])
+issues = lint_drawing(anns, drawing_scale=SCALE, view_shapes=[front, bot, top])
 if issues:
     print('Lint issues:')
     for iss in issues:
@@ -213,7 +239,7 @@ svg.add_layer('hidden', line_color=Color(0.45, 0.45, 0.45), line_weight=0.25,
               line_type=LineType.HIDDEN)
 svg.add_layer('dims',   line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
-for v in (front, bot):
+for v in (front, bot, top):
     svg.add_shape(v, layer='part')
 if front_h:
     svg.add_shape(front_h, layer='hidden')
@@ -226,7 +252,7 @@ dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
 dxf.add_layer('hidden', line_weight=0.25)
 dxf.add_layer('dims',   line_weight=0.05)
-for v in (front, bot):
+for v in (front, bot, top):
     dxf.add_shape(v, layer='part')
 if front_h:
     dxf.add_shape(front_h, layer='hidden')
