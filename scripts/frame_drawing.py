@@ -5,7 +5,7 @@ Views (third-angle, 2:1 on A3 landscape):
   - Plan view (camera at +Z): post bearing and mounting holes along the length
   - Front view (camera at +X, the worm-entry side): housing layout with the
     chained length stack and worm entry holes
-  - End view at 5:1 (removed view, labelled): box section and wall thickness
+  - End view (right of the front view, same 2:1 scale): box section and wall
   - Shaded pictorial (pyvista raster, embedded in the SVG/PDF; omitted from
     the DXF)
 
@@ -49,8 +49,7 @@ OUT_DIR = Path(__file__).parent.parent / 'drawings' / GEAR
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 STEM    = OUT_DIR / 'frame_rh'
 
-SCALE     = 2.0
-END_SCALE = 5.0   # removed end view
+SCALE = 2.0
 PAGE_W = 420.0    # A3 landscape
 PAGE_H = 297.0
 TB_W   = 150.0
@@ -81,17 +80,14 @@ DIST = max(bb.size.X, bb.size.Y, bb.size.Z) * SCALE + 100
 # Page positions (view centres) and pictorial image box (page mm)
 PV_X, PV_Y = 195.0, 252.0    # plan view (top)
 FV_X, FV_Y = 195.0, 207.0    # front view (worm-entry side)
-EV_X, EV_Y = 380.0, 207.0    # end view (removed, 5:1)
+EV_X, EV_Y = 372.0, 207.0    # end view (right of front, same scale)
 PIC_X, PIC_Y, PIC_W, PIC_H = 240.0, 55.0, 150.0, 90.0
 
 print('Projecting views (HLR)...')
 plan_vis, _ = part_s.project_to_viewport((cxs, cys, czs + DIST), (-1, 0, 0), look)
 front_vis, _ = part_s.project_to_viewport((cxs + DIST, cys, czs), (0, 0, 1), look)
 
-part_e = part.scale(END_SCALE)
-ce = (cx * END_SCALE, cy * END_SCALE, cz * END_SCALE)
-end_vis, _ = part_e.project_to_viewport(
-    (ce[0], ce[1] + DIST * 3, ce[2]), (0, 0, 1), ce)
+end_vis, _ = part_s.project_to_viewport((cxs, cys + DIST, czs), (0, 0, 1), look)
 
 faces_s = part_s.faces()
 plan_vis, n_p = exactify_silhouettes(
@@ -109,8 +105,8 @@ def FY(y): return FV_X + (y - cy) * SCALE      # front: world_Y -> page_X (+1)
 def FZ(z): return FV_Y + (z - cz) * SCALE      # front: world_Z -> page_Y (+1)
 def PYp(y): return PV_X + (y - cy) * SCALE     # plan:  world_Y -> page_X (+1)
 def PXp(x): return PV_Y - (x - cx) * SCALE     # plan:  world_X -> page_Y (-1)
-def EX(x): return EV_X - (x - cx) * END_SCALE  # end:   world_X -> page_X (-1)
-def EZ(z): return EV_Y + (z - cz) * END_SCALE  # end:   world_Z -> page_Y (+1)
+def EX(x): return EV_X - (x - cx) * SCALE      # end:   world_X -> page_X (-1)
+def EZ(z): return EV_Y + (z - cz) * SCALE      # end:   world_Z -> page_Y (+1)
 
 # ── Annotations ───────────────────────────────────────────────────────────────
 draft = draft_preset(font_size=2.5, decimal_precision=1)
@@ -158,14 +154,18 @@ add(Leader(tip=(FY(worm_ys[0]), FZ(worm_z) + f.worm_entry_hole * SCALE / 2, 0),
            elbow=(120, 228, 0),
            label=f'{len(worm_ys)} × ø{f.worm_entry_hole:.2f} +0.1 WORM ENTRY (THIS SIDE)',
            draft=draft))
+# Worm exit / peg bearing on the far wall — visible through the entry holes
+add(Leader(tip=(FY(worm_ys[2]), FZ(worm_z) + f.peg_bearing_hole * SCALE / 2, 0),
+           elbow=(230, 232, 0),
+           label=f'{len(worm_ys)} × ø{f.peg_bearing_hole:.2f} H7 WORM EXIT / PEG BEARING (FAR WALL)',
+           draft=draft))
 eng = f.engraving
 add(Leader(tip=(PYp(cy + 30), PXp(f.box_outer / 2 - eng.inset - eng.band_width / 2), 0),
            elbow=(290, 274, 0), label='BORDER ENGRAVING — SEE NOTE 8', draft=draft))
 
-# End view: box section + wall (leader only — view is 5:1, dims would trip
-# the drawing_scale=2 lint check)
+# End view: box section + wall
 add(Leader(tip=(EX(-(f.box_outer / 2 - f.wall_thickness / 2)), EZ(worm_z), 0),
-           elbow=(368, 240, 0),
+           elbow=(366, 236, 0),
            label=f'BOX {f.box_outer:.0f} × {f.box_outer:.0f} — WALL {f.wall_thickness:.1f}',
            draft=draft))
 
@@ -189,7 +189,7 @@ notes = text_block([
 ], 20, 150)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 38, PIC_Y - 3)
-caption += text_block([f'END VIEW — SCALE {END_SCALE:.0f}:1'], EV_X - 22, EV_Y - 32)
+caption += text_block(['END VIEW'], EV_X - 8, EV_Y - 15)
 
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
