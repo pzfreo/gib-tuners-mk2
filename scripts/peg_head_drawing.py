@@ -37,6 +37,7 @@ from gib_tuners.config.defaults import create_default_config, resolve_gear_confi
 from gib_tuners.components.peg_head import create_peg_head
 from gib_tuners.export.drawing_utils import (
     embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
+    third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -250,6 +251,11 @@ notes = text_block([
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 30, PIC_Y - 3)
 
+# Third-angle projection symbol (ISO 5456-2), left of the title block.
+# Unfilled circles must avoid the filled dims layer, hence the 'ann' layer.
+symbol = third_angle_symbol(225, 22)
+caption += text_block(['THIRD ANGLE PROJECTION'], 214, 15.5, size=2.0)
+
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     'PEG HEAD + WORM (RH)',
@@ -286,11 +292,14 @@ dim_color  = Color(0, 0.2, 0.7)
 svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=part_color, line_weight=0.5)
 svg.add_layer('hidden', line_color=hid_color,  line_weight=0.25, line_type=LineType.HIDDEN)
+svg.add_layer('ann',    line_color=dim_color,  line_weight=0.18)
 svg.add_layer('dims',   line_color=dim_color,  fill_color=dim_color, line_weight=0.05)
 for v in (front, end):
     svg.add_shape(v, layer='part')
 if front_h:
     svg.add_shape(front_h, layer='hidden')
+for e in symbol:
+    svg.add_shape(e, layer='ann')
 for a in anns + worm_table + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
@@ -315,11 +324,14 @@ embed_png_in_svg(STEM.with_suffix('.svg'), png_path, PIC_X, PIC_Y, PIC_W, PIC_H)
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
 dxf.add_layer('hidden', line_weight=0.25)
+dxf.add_layer('ann',    line_weight=0.18)
 dxf.add_layer('dims',   line_weight=0.05)
 for v in (front, end):
     dxf.add_shape(v, layer='part')
 if front_h:
     dxf.add_shape(front_h, layer='hidden')
+for e in symbol:
+    dxf.add_shape(e, layer='ann')
 for a in anns + worm_table + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')

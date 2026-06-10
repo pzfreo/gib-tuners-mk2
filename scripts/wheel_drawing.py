@@ -2,9 +2,10 @@
 """A3 engineering drawing of the worm wheel (RH) using build123d_drafting.
 
 Views (third-angle, 10:1 on A3 landscape):
-  - Plan view (camera at +Z, above): tooth profile, DD bore with across-flats
-    dim and bore/tip leaders
-  - Front view (camera at -Y, below the plan): face width
+  - SECTION A-A (above): transverse section at mid-face — tooth profile, DD
+    bore with across-flats dim and bore/tip leaders, ISO 128-44 hatching
+  - Front view (camera at -Y, below the section): face width, with the A-A
+    cutting-plane trace
   - Shaded pictorial (pyvista raster, embedded in the SVG/PDF; omitted from
     the DXF) — HLR line art of helical teeth reads poorly, hence shaded
 
@@ -26,7 +27,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
 from build123d import (
-    Color, Compound, ExportDXF, ExportSVG, Location, Plane, export_stl,
+    Color, Compound, Edge, ExportDXF, ExportSVG, Face, Location, Plane, Wire,
+    export_stl,
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
@@ -35,8 +37,9 @@ from build123d_drafting import (
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.wheel import load_wheel
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, exactify_silhouettes, project_visible,
-    render_shaded_pictorial, section_profile, text_block,
+    embed_png_in_svg, exactify_silhouettes, hatch_cut_faces, project_visible,
+    render_shaded_pictorial, section_profile, section_trace, text_block,
+    third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -99,6 +102,18 @@ print(f'  exactified silhouettes: front {n_f}')
 plan  = Compound(children=list(plan_vis)).locate(Location((PV_X - cxs, PV_Y - cys, 0)))
 front = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 
+# Section hatching (ISO 128-44): the plan profile is a true section, so the
+# cut material is hatched. The section face is rebuilt from the profile's
+# closed loops (outer tooth profile + DD bore) — the gear STEP behaves as a
+# shell, so a boolean cut would not yield a cap face to hatch.
+sec_wires = sorted(Wire.combine(plan_vis),
+                   key=lambda w: w.bounding_box().size.X, reverse=True)
+sec_face = Face(sec_wires[0], inner_wires=list(sec_wires[1:]))
+hatch = hatch_cut_faces(
+    sec_face, czs, (0, 0, 1),
+    lambda x, y, z: (PV_X + x - cxs, PV_Y + y - cys), spacing=2.0)
+print(f'  hatch lines: {len(hatch)}')
+
 # ── Coordinate helpers ────────────────────────────────────────────────────────
 def PX(x): return PV_X + (x - cx) * SCALE      # plan:  world_X -> page_X (+1)
 def PY(y): return PV_Y + (y - cy) * SCALE      # plan:  world_Y -> page_Y (+1)
@@ -135,6 +150,15 @@ add(Leader(tip=(PX(r_tip * 0.643), PY(r_tip * 0.766), 0),
 add(Dimension((FX(-r_tip), FZ(bb.min.Z), 0), (FX(-r_tip), FZ(bb.max.Z), 0),
               'left', FX(-r_tip) - 58, draft, label=f'{wh.face_width:.1f}'))
 
+# Cutting plane A-A on the front view (ISO 128-40): the plan profile is the
+# section at mid-face. Viewing direction is -Z (from above), which maps to
+# -page_Y on the front view, so the arrows point down; letters sit beside
+# the arrowheads, clear of the face-width witness lines.
+xa0, xa1 = FX(-r_tip) - 3, FX(r_tip) + 3
+add(Centerline((xa0, FV_Y, 0), (xa1, FV_Y, 0)))
+trace_thick, trace_marks = section_trace(
+    (xa0, FV_Y), (xa1, FV_Y), (0, -1), 'A', letter_offset=(-3.5, 1))
+
 # ── Text blocks (wheel data + notes) ──────────────────────────────────────────
 wheel_table = text_block([
     'WHEEL DATA',
@@ -162,15 +186,26 @@ notes = text_block([
 ], 215, 105)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 25, PIC_Y - 3)
-caption += text_block(['TOOTH PROFILE — TRANSVERSE SECTION AT MID-FACE'],
-                      PV_X - 35, PV_Y + r_tip * SCALE + 12)
+caption += text_block(['SECTION A-A — TOOTH PROFILE AT MID-FACE'],
+                      PV_X - 30, PV_Y + r_tip * SCALE + 12)
+
+# Third-angle projection symbol (ISO 5456-2), left of the title block.
+# Unfilled circles need the 'ann' layer (no fill).
+symbol = third_angle_symbol(225, 22)
+caption += text_block(['THIRD ANGLE PROJECTION'], 214, 15.5, size=2.0)
+
+# Raw mark geometry: bare edges (arrow lines, symbol) go on the unfilled
+# 'ann' layer; arrowhead faces and letters keep the filled dims layer
+marks = trace_marks + symbol
+mark_lines = [m for m in marks if isinstance(m, Edge)]
+mark_fill  = [m for m in marks if not isinstance(m, Edge)]
 
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     'WORM WHEEL (RH)',
     'GIB-TUN-WW-RH',
     drawing_scale=SCALE,
-    material='PHOS BRONZE PB102',
+    material='PB102 BRONZE',
     general_tolerance='ISO 2768-f',
     designed_by='P. Fremantle',
     date='2026-06-10',
@@ -195,21 +230,37 @@ else:
 print('Exporting...')
 svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=Color(0, 0, 0), line_weight=0.5)
+svg.add_layer('hatch',  line_color=Color(0, 0, 0), line_weight=0.18)
+svg.add_layer('ann',    line_color=Color(0, 0.2, 0.7), line_weight=0.18)
 svg.add_layer('dims',   line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
 for v in (plan, front):
     svg.add_shape(v, layer='part')
-for a in anns + wheel_table + notes + caption:
+for e in hatch:
+    svg.add_shape(e, layer='hatch')
+for t in trace_thick:
+    svg.add_shape(t, layer='part')
+for e in mark_lines:
+    svg.add_shape(e, layer='ann')
+for a in anns + mark_fill + wheel_table + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
 fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
+dxf.add_layer('hatch',  line_weight=0.18)
+dxf.add_layer('ann',    line_weight=0.18)
 dxf.add_layer('dims',   line_weight=0.05)
 for v in (plan, front):
     dxf.add_shape(v, layer='part')
-for a in anns + wheel_table + notes + caption:
+for e in hatch:
+    dxf.add_shape(e, layer='hatch')
+for t in trace_thick:
+    dxf.add_shape(t, layer='part')
+for e in mark_lines:
+    dxf.add_shape(e, layer='ann')
+for a in anns + mark_fill + wheel_table + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')
 
@@ -219,10 +270,11 @@ with tempfile.NamedTemporaryFile(suffix='.stl', delete=False) as tmp:
     stl_path = tmp.name
 export_stl(part, stl_path, tolerance=0.0003, angular_tolerance=0.05)
 png_path = stl_path.replace('.stl', '.png')
-# Camera low enough that the tooth helix is visible on the flanks
-render_shaded_pictorial(stl_path, png_path, cam_dir=(1.0, -1.0, 0.5),
+# Camera raised so the top face and DD bore read clearly while the helix
+# still shows on the flanks; zoom < 1 keeps the bottom clear of the caption
+render_shaded_pictorial(stl_path, png_path, cam_dir=(1.0, -1.0, 1.2),
                         dist=max(bb.size.X, bb.size.Y, bb.size.Z) * 2.6,
-                        window_size=(int(PIC_W) * 10, int(PIC_H) * 10), zoom=1.1)
+                        window_size=(int(PIC_W) * 10, int(PIC_H) * 10), zoom=0.95)
 embed_png_in_svg(STEM.with_suffix('.svg'), png_path, PIC_X, PIC_Y, PIC_W, PIC_H)
 
 # ── PDF (A3 landscape, rasterised at 200 DPI) ─────────────────────────────────

@@ -37,6 +37,7 @@ from gib_tuners.config.defaults import create_default_config, resolve_gear_confi
 from gib_tuners.components.string_post import create_string_post
 from gib_tuners.export.drawing_utils import (
     embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
+    third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -205,6 +206,11 @@ notes = text_block([
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 25, PIC_Y - 3)
 caption += text_block(['CAP TOP VIEW'], TV_X - 11, TV_Y - sp.cap_diameter / 2 * SCALE - 4)
 
+# Third-angle projection symbol (ISO 5456-2), between the cap top view and
+# the title block. Unfilled circles need the 'ann' layer (no fill).
+symbol = third_angle_symbol(240, 20)
+caption += text_block(['THIRD ANGLE PROJECTION'], 229, 13.5, size=2.0)
+
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     'STRING POST',
@@ -237,12 +243,15 @@ svg = ExportSVG(margin=10)
 svg.add_layer('part',   line_color=Color(0, 0, 0), line_weight=0.5)
 svg.add_layer('hidden', line_color=Color(0.45, 0.45, 0.45), line_weight=0.25,
               line_type=LineType.HIDDEN)
+svg.add_layer('ann',    line_color=Color(0, 0.2, 0.7), line_weight=0.18)
 svg.add_layer('dims',   line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
 for v in (front, bot, top):
     svg.add_shape(v, layer='part')
 if front_h:
     svg.add_shape(front_h, layer='hidden')
+for e in symbol:
+    svg.add_shape(e, layer='ann')
 for a in anns + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
@@ -251,11 +260,14 @@ fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 dxf = ExportDXF()
 dxf.add_layer('part',   line_weight=0.5)
 dxf.add_layer('hidden', line_weight=0.25)
+dxf.add_layer('ann',    line_weight=0.18)
 dxf.add_layer('dims',   line_weight=0.05)
 for v in (front, bot, top):
     dxf.add_shape(v, layer='part')
 if front_h:
     dxf.add_shape(front_h, layer='hidden')
+for e in symbol:
+    dxf.add_shape(e, layer='ann')
 for a in anns + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')
