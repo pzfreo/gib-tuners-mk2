@@ -5,7 +5,7 @@ then assembles pages into an A4 landscape PDF via fpdf2.
 
 Page order:
     DWG-001  frame.svg
-    DWG-002  string_post.svg
+    GIB-TUN-SP  c13-10/string_post.svg  (A3 sheet)
     GIB-TUN-PH-RH  c13-10/peg_head_rh.svg  (A3 sheet)
     DWG-004  assembly.svg
     DWG-005  worm_wheel.svg
@@ -27,7 +27,7 @@ DRAWINGS_DIR = Path(__file__).parent.parent.parent / "drawings"
 
 PAGES = [
     "frame.svg",
-    "string_post.svg",
+    "c13-10/string_post.svg",   # A3 sheet (scripts/string_post_drawing.py)
     "c13-10/peg_head_rh.svg",   # A3 sheet (scripts/peg_head_drawing.py)
     "assembly.svg",
     "worm_wheel.svg",
