@@ -61,6 +61,8 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
         sp = e.geom_adaptor().Curve().Curve()
         if sp.Degree() != 1:
             return None
+        if sp.NbPoles() < 4:
+            return None  # too short to be a faceted silhouette; arc would degenerate
         tr = e.location.wrapped.Transformation()
         pts = np.array([[p.X(), p.Y(), p.Z()] for p in
                         (sp.Pole(i + 1).Transformed(tr) for i in range(sp.NbPoles()))])
@@ -77,7 +79,10 @@ def exactify_silhouettes(edges, faces, view_dir, proj_fn, tol=0.12):
 
                 if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
                     return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
-                return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
+                try:
+                    return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
+                except Exception:
+                    return None  # degenerate (collinear/coincident) — keep the polyline
         return None
 
     out, n = [], 0
