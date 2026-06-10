@@ -261,6 +261,43 @@ def balloon(tip, centre, label, draft, radius=3.0):
     return [arrow, line, circle, num]
 
 
+def section_trace(p0, p1, arrow_dir, letter, letter_offset=None, font_size=3.5):
+    """ISO 128-40 cutting-plane indication at the ends of a trace line.
+
+    The trace itself (a chain line from p0 to p1) is drawn by the caller —
+    typically an existing Centerline. This adds 3 mm thick end strokes
+    extending beyond p0/p1, arrows in the viewing direction `arrow_dir`,
+    and the identifying letter at each end.
+
+    letter_offset: page-mm (dx, dy) of the letter from each arrowhead;
+    default is 1.5 mm beyond the head along arrow_dir.
+
+    Returns (thick_edges, marks): thick_edges belong on the part-weight
+    layer, marks (arrow lines, filled heads, letters) on annotation layers.
+    """
+    a = np.array(p0[:2], dtype=float)
+    b = np.array(p1[:2], dtype=float)
+    u = (b - a) / np.linalg.norm(b - a)
+    d = np.array(arrow_dir[:2], dtype=float)
+    d /= np.linalg.norm(d)
+    perp = np.array((-d[1], d[0]))
+    thick, marks = [], []
+    for end_pt, sgn in ((a, -1.0), (b, 1.0)):
+        stroke_end = end_pt + sgn * u * 3
+        thick.append(Edge.make_line((*end_pt, 0), (*stroke_end, 0)))
+        arr_end = stroke_end + d * 5
+        marks.append(Edge.make_line((*stroke_end, 0), (*arr_end, 0)))
+        head = arr_end + d * 2
+        marks.append(Face(Wire.make_polygon(
+            [(*head, 0), (*arr_end + perp * 0.6, 0),
+             (*arr_end - perp * 0.6, 0), (*head, 0)])))
+        lbl = head + (np.array(letter_offset, dtype=float)
+                      if letter_offset is not None else d * 1.5)
+        marks.append(Location((lbl[0], lbl[1], 0)) * Text(
+            letter, font_size=font_size, align=(Align.CENTER, Align.CENTER)))
+    return thick, marks
+
+
 def third_angle_symbol(x, y, h=5.0):
     """ISO 5456-2 third-angle projection symbol.
 

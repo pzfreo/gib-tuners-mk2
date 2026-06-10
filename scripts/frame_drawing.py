@@ -41,6 +41,7 @@ from gib_tuners.config.defaults import (
 from gib_tuners.components.frame import create_frame
 from gib_tuners.export.drawing_utils import (
     embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
+    third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -194,6 +195,11 @@ notes = text_block([
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 38, PIC_Y - 3)
 caption += text_block(['END VIEW'], EV_X - 8, EV_Y - 15)
 
+# Third-angle projection symbol (ISO 5456-2), left of the title block.
+# Unfilled circles need the 'ann' layer (no fill).
+symbol = third_angle_symbol(225, 22)
+caption += text_block(['THIRD ANGLE PROJECTION'], 214, 15.5, size=2.0)
+
 # ── Title block ───────────────────────────────────────────────────────────────
 tb = TitleBlock(
     'FRAME — 5-GANG (RH)',
@@ -224,10 +230,13 @@ else:
 print('Exporting...')
 svg = ExportSVG(margin=10)
 svg.add_layer('part', line_color=Color(0, 0, 0), line_weight=0.5)
+svg.add_layer('ann',  line_color=Color(0, 0.2, 0.7), line_weight=0.18)
 svg.add_layer('dims', line_color=Color(0, 0.2, 0.7), fill_color=Color(0, 0.2, 0.7),
               line_weight=0.05)
 for v in (plan, front, end):
     svg.add_shape(v, layer='part')
+for e in symbol:
+    svg.add_shape(e, layer='ann')
 for a in anns + notes + caption:
     svg.add_shape(a, layer='dims')
 svg.write(str(STEM) + '.svg')
@@ -235,9 +244,12 @@ fix_svg_page_size(str(STEM) + '.svg', PAGE_W, PAGE_H)
 
 dxf = ExportDXF()
 dxf.add_layer('part', line_weight=0.5)
+dxf.add_layer('ann',  line_weight=0.18)
 dxf.add_layer('dims', line_weight=0.05)
 for v in (plan, front, end):
     dxf.add_shape(v, layer='part')
+for e in symbol:
+    dxf.add_shape(e, layer='ann')
 for a in anns + notes + caption:
     dxf.add_shape(a, layer='dims')
 dxf.write(str(STEM) + '.dxf')
