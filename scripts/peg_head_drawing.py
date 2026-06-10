@@ -24,9 +24,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
+import numpy as np
 from build123d import (
-    Align, Color, Compound, ExportDXF, ExportSVG, LineType, Location, Text,
+    Align, Color, Compound, Edge, ExportDXF, ExportSVG, GeomType, LineType,
+    Location, Plane, Text, ThreePointArc,
 )
+from OCP.BRepAdaptor import BRepAdaptor_Surface
+from OCP.GeomAbs import GeomAbs_SurfaceType as ST
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
     draft_preset, fix_svg_page_size, lint_drawing, set_page,
@@ -65,6 +69,34 @@ x_worm_end   = x_bear_worm + w.length                          # 0.0
 overall      = bb.max.X - bb.min.X                             # 28.0
 x_ring       = bb.max.X - ph.pip_length - ph.pip_stalk_length - ph.ring_od / 2
 
+# Shoulder length: extent of the ø7.0 cylinder face (axis along X)
+sh_x = []
+for f in part.faces():
+    surf = BRepAdaptor_Surface(f.wrapped)
+    if surf.GetType() != ST.GeomAbs_Cylinder:
+        continue
+    cyl = surf.Cylinder()
+    if abs(cyl.Position().Direction().X()) > 0.999 and \
+            abs(cyl.Radius() - ph.shoulder_diameter / 2) < 0.05:
+        fb = f.bounding_box()
+        sh_x += [fb.min.X, fb.max.X]
+x_shoulder_end = max(sh_x)                                     # 1.2
+
+# Relief groove at worm run-out: concave torus (axis along X, small minor radius)
+for f in part.faces():
+    surf = BRepAdaptor_Surface(f.wrapped)
+    if surf.GetType() != ST.GeomAbs_Torus:
+        continue
+    t = surf.Torus()
+    if abs(t.Position().Direction().X()) > 0.999 and t.MinorRadius() < 1.0 \
+            and -2 < t.Position().Location().X() < 1:
+        fb = f.bounding_box()
+        groove_dia   = 2 * (t.MajorRadius() - t.MinorRadius())  # 4.05
+        groove_width = fb.max.X - fb.min.X                      # 0.7
+        groove_r     = t.MinorRadius()                          # 0.35
+        x_groove     = t.Position().Location().X()              # -0.35
+        break
+
 # ── Project views ─────────────────────────────────────────────────────────────
 part_s = part.scale(SCALE)
 cxs, cys, czs = cx * SCALE, cy * SCALE, cz * SCALE
@@ -80,6 +112,84 @@ PIC_X, PIC_Y, PIC_W, PIC_H = 255.0, 135.0, 130.0, 100.0  # pictorial: left, bott
 print('Projecting views (HLR)...')
 front_vis, front_hid = part_s.project_to_viewport((cxs, cys - DIST, czs), (0, 0, 1), look)
 end_vis, _ = part_s.project_to_viewport((cxs - DIST, cys, czs), (0, 0, 1), look)
+
+
+def exactify_silhouettes(edges, view_dir, proj_fn, tol=0.12):
+    """Replace faceted silhouette polylines with exact circular arcs.
+
+    OCCT's exact HLR emits silhouette ("outline") curves on doubly-curved faces
+    as degree-1 BSplines (~15-point polylines). Any surface of revolution viewed
+    along its axis has circular silhouettes, so for each revolved face whose
+    axis is parallel to the view direction we know the silhouette circle's
+    CENTRE exactly (the projected axis). A polyline is replaced only when every
+    vertex is equidistant from such a known centre within tol (scaled mm, i.e.
+    tol/SCALE real mm) — the radius comes from the vertices, the centre is
+    never fitted. Inapplicable cases are left untouched.
+
+    tol=0.12 (24 um real at 5:1): the reference STEP's grip revolve is circular
+    to ~21 um, while genuinely non-circular silhouettes (arm profiles) measure
+    a spread of 0.9+ — the threshold sits in that gap.
+    """
+    from OCP.GeomAbs import GeomAbs_SurfaceType as ST
+
+    centres = []
+    for f in part_s.faces():
+        surf = BRepAdaptor_Surface(f.wrapped)
+        st = surf.GetType()
+        if st == ST.GeomAbs_Torus:
+            ax = surf.Torus().Position().Axis()
+        elif st == ST.GeomAbs_Sphere:
+            centres.append(np.array(proj_fn(surf.Sphere().Location())))
+            continue
+        elif st == ST.GeomAbs_SurfaceOfRevolution:
+            ax = surf.AxeOfRevolution()
+        elif st in (ST.GeomAbs_Cylinder, ST.GeomAbs_Cone):
+            ax = (surf.Cylinder() if st == ST.GeomAbs_Cylinder else surf.Cone()).Axis()
+        else:
+            continue
+        d = ax.Direction()
+        if abs(d.X() * view_dir[0] + d.Y() * view_dir[1] + d.Z() * view_dir[2]) > 0.999:
+            centres.append(np.array(proj_fn(ax.Location())))
+
+    def replacement(e):
+        if e.geom_type != GeomType.BSPLINE:
+            return None
+        sp = e.geom_adaptor().Curve().Curve()
+        if sp.Degree() != 1:
+            return None
+        tr = e.location.wrapped.Transformation()
+        pts = np.array([[p.X(), p.Y(), p.Z()] for p in
+                        (sp.Pole(i + 1).Transformed(tr) for i in range(sp.NbPoles()))])
+        for c2 in centres:
+            dist = np.linalg.norm(pts[:, :2] - c2, axis=1)
+            if dist.max() - dist.min() < tol:
+                R = dist.mean()
+                z = pts[0, 2]
+
+                def snap(p):
+                    v = p[:2] - c2
+                    v = v / np.linalg.norm(v) * R
+                    return (c2[0] + v[0], c2[1] + v[1], z)
+
+                if np.linalg.norm(pts[0, :2] - pts[-1, :2]) < tol:
+                    return Edge.make_circle(R, Plane((c2[0], c2[1], z)))
+                return ThreePointArc(snap(pts[0]), snap(pts[len(pts) // 2]), snap(pts[-1]))
+        return None
+
+    out, n = [], 0
+    for e in edges:
+        rep = replacement(e)
+        out.append(rep if rep is not None else e)
+        n += rep is not None
+    return out, n
+
+
+# Raw projected coords are centred on look_at; signs per the view_axes mappings
+front_vis, n_f = exactify_silhouettes(
+    list(front_vis), (0, 1, 0), lambda p: (p.X() - cxs, p.Z() - czs))
+end_vis, n_e = exactify_silhouettes(
+    list(end_vis), (1, 0, 0), lambda p: (-(p.Y() - cys), p.Z() - czs))
+print(f'  exactified silhouettes: front {n_f}, end {n_e}')
 
 front   = Compound(children=list(front_vis)).locate(Location((FV_X, FV_Y, 0)))
 front_h = Compound(children=list(front_hid)).locate(Location((FV_X, FV_Y, 0))) if front_hid else None
@@ -106,16 +216,34 @@ add(Centerline((FX(x_ring), FZ(-ph.ring_od / 2) - 5, 0), (FX(x_ring), FZ(ph.ring
 add(Centerline((EY(ph.cap_diameter / 2) - 2, EZ(0), 0), (EY(-ph.cap_diameter / 2) + 5, EZ(0), 0)))
 add(Centerline((EY(0), EZ(-ph.ring_od / 2) - 5, 0), (EY(0), EZ(ph.ring_od / 2) + 5, 0)))
 
-# Stacked length dims below front view — all dim lines land on common tiers
-TIER1, TIER2 = 174.0, 164.0
+# Bore cylinder face (axis along Y, ring region) — used for the ring position
+# dim and the bore leader; values track the geometry
+bore_cyls = []
+for f in part.faces():
+    if f.geom_type == GeomType.CYLINDER and f.center().X > 4.5:
+        cyl = BRepAdaptor_Surface(f.wrapped).Cylinder()
+        if abs(cyl.Position().Direction().Y()) > 0.999:
+            bore_cyls.append(cyl)
+bore = min(bore_cyls, key=lambda c: c.Radius())
+x_bore, z_bore, r_bore = bore.Position().Location().X(), bore.Position().Location().Z(), bore.Radius()
+
+# Stacked length dims below front view — all dim lines land on common tiers.
+# Tier 1 chains bearing | worm | shoulder; tier 2 locates the ring bore centre;
+# tier 3 is the overall length.
+TIER1, TIER2, TIER3 = 176.0, 168.0, 160.0
 r_bear = ph.shaft_diameter / 2
 r_worm = w.tip_diameter / 2
+r_sh   = ph.shoulder_diameter / 2
 add(Dimension((FX(x_bear_end), FZ(-r_bear), 0), (FX(x_bear_worm), FZ(-r_bear), 0),
               'below', FZ(-r_bear) - TIER1, draft, label=f'{bearing_len:.1f}'))
 add(Dimension((FX(x_bear_worm), FZ(-r_worm), 0), (FX(x_worm_end), FZ(-r_worm), 0),
               'below', FZ(-r_worm) - TIER1, draft, label=f'{w.length:.1f}'))
+add(Dimension((FX(x_worm_end), FZ(-r_sh), 0), (FX(x_shoulder_end), FZ(-r_sh), 0),
+              'below', FZ(-r_sh) - TIER1, draft, label=f'{x_shoulder_end - x_worm_end:.1f}'))
+add(Dimension((FX(x_bear_end), FZ(-r_bear), 0), (FX(x_bore), FZ(-r_bear), 0),
+              'below', FZ(-r_bear) - TIER2, draft, label=f'{x_bore - x_bear_end:.1f}'))
 add(Dimension((FX(x_bear_end), FZ(-r_bear), 0), (FX(bb.max.X), FZ(-r_bear), 0),
-              'below', FZ(-r_bear) - TIER2, draft, label=f'{overall:.1f}'))
+              'below', FZ(-r_bear) - TIER3, draft, label=f'{overall:.1f}'))
 
 # Ring OD — vertical dim on the end view, left side
 add(Dimension((EY(0), EZ(-ph.ring_od / 2), 0), (EY(0), EZ(ph.ring_od / 2), 0),
@@ -138,6 +266,22 @@ add(Leader(tip=(FX(x_worm_end + 1.6), FZ(ph.cap_diameter / 2), 0),
 add(Leader(tip=(FX(bb.max.X - 0.7), FZ(ph.pip_diameter / 2), 0),
            elbow=(FX(bb.max.X) + 8, FZ(0) + 24, 0),
            label=f'PIP ø{ph.pip_diameter:.1f} × {ph.pip_length:.1f}', draft=draft))
+
+# Ring bore — centre and radius taken from the bore cylinder face itself
+# (axis along Y, in the ring region), so the label tracks the geometry
+add(Leader(tip=(FX(x_bore + r_bore * 0.707), FZ(z_bore + r_bore * 0.707), 0),
+           elbow=(FX(bb.max.X) + 2, FZ(0) + 33, 0),
+           label=f'ø{2 * r_bore:.1f} BORE', draft=draft))
+
+# Relief groove at the worm run-out
+add(Leader(tip=(FX(x_groove), FZ(groove_dia / 2), 0),
+           elbow=(FX(x_groove) + 2, FZ(0) + 61, 0),
+           label=f'RELIEF ø{groove_dia:.2f} × {groove_width:.1f} R{groove_r:.2f}', draft=draft))
+
+# Ring axial width — on the end view, above the ring bar
+add(Dimension((EY(ph.ring_width_top / 2), EZ(ph.ring_od / 2), 0),
+              (EY(-ph.ring_width_top / 2), EZ(ph.ring_od / 2), 0),
+              'above', 8, draft, label=f'{ph.ring_width_top:.1f}'))
 
 # M2 tap hole — on the end view where it is visible; elbow up-right so the
 # label lands in the clear band above the views
@@ -172,7 +316,8 @@ notes = text_block([
     '3. BREAK ALL EDGES: 0.3 CHAMFER',
     '4. M2 TAP HOLE: ø1.6 DRILL × 3.0 DEEP, TAP M2 × 0.4',
     '5. LH VARIANT: MIRROR IMAGE, LEFT-HAND THREAD',
-    '6. DO NOT SCALE DRAWING',
+    f'6. RING BORE OFFSET {ph.bore_offset:.2f} FROM RING OD CENTRE, TOWARD PIP',
+    '7. DO NOT SCALE DRAWING',
 ], 130, 135)
 
 caption = text_block(['SHADED PICTORIAL — NOT TO SCALE'], PIC_X + 30, PIC_Y - 3)
