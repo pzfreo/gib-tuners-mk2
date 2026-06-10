@@ -139,16 +139,18 @@ add(Dimension((FXa(5), FZa(bb.min.Z), 0), (FXa(bb.max.X), FZa(bb.min.Z), 0),
 add(Dimension((SY(y_post), SZ(z_top), 0), (SY(y_worm), SZ(z_top), 0),
               'above', 8, draft, label=f'{cd:.2f}'))
 
-# Item balloons (numbers map to the BOM table)
+# Item balloons (numbers map to the BOM table). Left-side balloons sit on a
+# vertical rail at page x~30 with short parallel leaders; top balloons clear
+# the 6.5 height dim (its line is at x~32, y 245..277)
 BALLOONS = [
-    ('1', (FXa(-4.5), FZa(-9.8)), (40, 170)),    # frame
-    ('2', (FXa(0.0), FZa(z_top) - 1, ), (70, 262)),   # string post
-    ('3', (FXa(3.0), FZa(-4.0)), (146, 240)),    # wheel (dashed)
-    ('4', (FXa(19.5), FZa(1.2)), (158, 262)),    # peg head + worm
-    ('5', (FXa(1.8), FZa(-9.1)), (58, 162)),     # wheel washer (dashed)
-    ('6', (FXa(0.8), FZa(-10.4)), (44, 154)),    # wheel screw (dashed)
-    ('7', (FXa(-5.4), FZa(-2.6)), (38, 240)),    # peg washer
-    ('8', (FXa(-6.8), FZa(-5.0)), (30, 226)),    # peg screw
+    ('1', (FXa(-4.5), FZa(-9.8)), (40, 170)),        # frame
+    ('2', (FXa(1.5), FZa(z_top)), (75, 272)),        # string post
+    ('3', (FXa(-3.7), FZa(-5.0)), (30, 180)),        # wheel, near edge
+    ('4', (FXa(19.5), FZa(1.2)), (158, 262)),        # peg head + worm
+    ('5', (FXa(1.8), FZa(-9.1)), (58, 162)),         # wheel washer
+    ('6', (FXa(0.8), FZa(-10.4)), (44, 154)),        # wheel screw
+    ('7', (FXa(-5.4), FZa(-2.6)), (30, 208)),        # peg washer
+    ('8', (FXa(-6.8), FZa(-5.0)), (24, 196)),        # peg screw
 ]
 for label, tip, elbow in BALLOONS:
     add(Leader(tip=(tip[0], tip[1], 0), elbow=(elbow[0], elbow[1], 0),
