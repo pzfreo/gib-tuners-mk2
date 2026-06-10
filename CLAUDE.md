@@ -183,7 +183,7 @@ For refactoring or restructuring tasks: Run the full application/test suite afte
 | Parameter | Value | Description |
 |-----------|-------|-------------|
 | Frame outer | 10.0mm | Square tube dimension |
-| Wall thickness | 1.1mm | Tube wall (**FIXED** - manufacturing constraint) |
+| Wall thickness | 1.0mm | Tube wall (c13-10 value from `tuner_config.json`; stock constraint) |
 | Housing length | 16.2mm | Each rigid box section |
 | End length | 10.0mm | Frame end to housing edge |
 | Num housings | 5 (default) | Tuning stations (1 to N) |
@@ -198,11 +198,11 @@ For refactoring or restructuring tasks: Run the full application/test suite afte
 
 ## Manufacturing Constraints
 
-**Wall thickness is fixed at 1.1mm** - this is determined by the brass box section stock used in manufacturing. Never change this value.
+**Wall thickness is fixed at 1.0mm for the c13-10 production profile** (set in `config/c13-10/tuner_config.json`; `parameters.py` default is 1.1). It is determined by the brass box section stock — do not change it without confirming the stock.
 
 To create axial play for rotating assemblies, we extend the shafts:
-- String post bearing section = `wall_thickness + post_bearing_axial_play` (1.2mm)
-- Peg head bearing section = `wall_thickness + peg_bearing_axial_play` (1.3mm)
+- String post bearing section = `wall_thickness + post_bearing_axial_play` (1.1mm)
+- Peg head bearing section = constant 1.3mm (worm shoulder to outer face + protrusion; see `get_bearing_wall`)
 
 This allows the frame to "float" between the clamping surfaces, enabling free rotation.
 

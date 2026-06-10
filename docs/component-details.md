@@ -60,7 +60,7 @@ Square brass tube with machined openings. 5 rigid box sections connected by a fl
 | Wheel inlet | Bottom | 5.1 | +0.1 |
 | Worm entry | Right side (RH) | 7.05 | +0.1 |
 | Peg bearing | Left side (RH) | 4.55 | H7 (reamed) |
-| Mounting | Bottom plate | 3.0 | +0.1 |
+| Mounting | Bottom plate | 3.2 | +0.1 |
 
 Mounting holes: 6 total, in gaps between housings and at ends.
 

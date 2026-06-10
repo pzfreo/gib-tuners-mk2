@@ -152,14 +152,14 @@ After rotation: shaft along +X, head at -X.
 | Parameter | Value | Source |
 |-----------|-------|--------|
 | Frame outer | 10.0 mm | `cfg.frame.box_outer` |
-| Wall thickness | 1.1 mm | `cfg.frame.wall_thickness` (**fixed**) |
+| Wall thickness | 1.0 mm | `cfg.frame.wall_thickness` (c13-10, via tuner_config.json) |
 | Total length (5-gang) | 145.0 mm | `cfg.frame.total_length` |
 | Housing length | 16.2 mm | `cfg.frame.housing_length` |
 | End length | 10.0 mm | `cfg.frame.end_length` |
 | Tuner pitch | 27.2 mm | `cfg.frame.tuner_pitch` |
 | Post bearing hole | 5.05 mm | `cfg.frame.post_bearing_hole` |
 | Worm entry hole | ~7.2 mm | `cfg.frame.worm_entry_hole` |
-| Peg bearing hole | ~4.05 mm | `cfg.frame.peg_bearing_hole` |
+| Peg bearing hole | 4.55 mm | `cfg.frame.peg_bearing_hole` |
 | Mounting hole | 3.2 mm | `cfg.frame.mounting_hole` |
 | Worm Z (c13-10) | -5.0 mm | `calculate_worm_z(cfg)` (centred) |
 | Cap diameter (post) | 7.5 mm | `cfg.string_post.cap_diameter` |
