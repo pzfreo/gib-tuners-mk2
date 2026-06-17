@@ -31,8 +31,9 @@ from OCP.BRepAdaptor import BRepAdaptor_Surface
 from OCP.GeomAbs import GeomAbs_SurfaceType as ST
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
-    draft_preset, fix_svg_page_size, lint_drawing, set_page,
+    draft_preset, lint_drawing, set_page,
 )
+from draftwright import fix_svg_page_size
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.peg_head import create_peg_head
 from gib_tuners.export.drawing_utils import (

@@ -96,14 +96,14 @@ wheels = [
 
 [[package]]
 name = "build123d-drafting-helpers"
-version = "0.3.0"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "build123d" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ed/a4/313fb3ff8f3b6e419fad5abdabcb60bf376473a918b378bceb505b0ae7f6/build123d_drafting_helpers-0.3.0.tar.gz", hash = "sha256:b5e3a2052e1c744fa6e75647167cf89d59693ed10c9c3b00c030dcd76f8db9c3", size = 61111, upload-time = "2026-06-02T18:30:01.207Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5b/7d/25d5149e90728ee01d50c33f3848cb4046643789c6540688c3943114bc0e/build123d_drafting_helpers-0.10.0.tar.gz", hash = "sha256:d0634bfb434cbea0bd2d76bc8cfb23c7d3f99b6e674c01860c2d32c314d28216", size = 106909, upload-time = "2026-06-14T08:52:11.73Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/79/0f57a4603c4bc0aa73f1d1fbe3c9e62d763ba30deb0e16d919b6724c9e96/build123d_drafting_helpers-0.3.0-py3-none-any.whl", hash = "sha256:33c4b8973b0dde415375f5299333988cfe99cf85810537e84e8f818fd4e4bcbc", size = 38537, upload-time = "2026-06-02T18:29:59.969Z" },
+    { url = "https://files.pythonhosted.org/packages/33/f5/8069370d2f813f7d0affa53d04733161bfe5a2ad9a87d0fbe388110d6550/build123d_drafting_helpers-0.10.0-py3-none-any.whl", hash = "sha256:5d5c97cacbc07a7ad4e2379a5fbb1d0d44bf032e4d1b0515abf558ecbb5bc2d9", size = 60270, upload-time = "2026-06-14T08:52:10.55Z" },
 ]
 
 [[package]]
@@ -778,6 +778,20 @@ wheels = [
 ]
 
 [[package]]
+name = "draftwright"
+version = "0.1.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "build123d" },
+    { name = "build123d-drafting-helpers" },
+    { name = "kiwisolver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cf/79/f21042635042be1d299cc5f1cad167e0d04fb1e34fc9516009d738935891/draftwright-0.1.9.tar.gz", hash = "sha256:c066dbb5383cd32b0d11229e5b1283191ee3bc24017054415b9229249d1d1faf", size = 1751706, upload-time = "2026-06-16T22:50:30.608Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/50/88b160ad91ae51ecd52f16bf2ba11ad41cb149fc176d585af2219da86c42/draftwright-0.1.9-py3-none-any.whl", hash = "sha256:999e2d5e5eb70fcc747c41164dfc3d61928ffb60f8a30c07ed61cfeca2873281", size = 89125, upload-time = "2026-06-16T22:50:29.361Z" },
+]
+
+[[package]]
 name = "embreex"
 version = "4.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -984,7 +998,7 @@ wheels = [
 
 [[package]]
 name = "gib-tuners"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "build123d" },
@@ -1002,6 +1016,12 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
 ]
+drawings = [
+    { name = "draftwright" },
+    { name = "fpdf2" },
+    { name = "pyvista" },
+    { name = "resvg-py" },
+]
 mesh-repair = [
     { name = "pymeshfix" },
     { name = "pyvista" },
@@ -1017,18 +1037,22 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "build123d", specifier = ">=0.10.0" },
-    { name = "build123d-drafting-helpers", specifier = ">=0.3.0" },
+    { name = "build123d-drafting-helpers", specifier = ">=0.10.0" },
     { name = "dacite", specifier = ">=1.8.0" },
+    { name = "draftwright", marker = "extra == 'drawings'", specifier = ">=0.1.9" },
+    { name = "fpdf2", marker = "extra == 'drawings'", specifier = ">=2.8.7" },
     { name = "networkx", specifier = ">=3.0" },
     { name = "ocp-vscode", specifier = ">=2.0.0" },
     { name = "pymeshfix", marker = "extra == 'mesh-repair'", specifier = ">=0.17.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "pyvista", marker = "extra == 'drawings'", specifier = ">=0.40.0" },
     { name = "pyvista", marker = "extra == 'mesh-repair'", specifier = ">=0.40.0" },
+    { name = "resvg-py", marker = "extra == 'drawings'", specifier = ">=0.3.2" },
     { name = "trimesh", extras = ["easy"], specifier = ">=4.0.0" },
     { name = "xxhash", specifier = ">=3.0" },
 ]
-provides-extras = ["dev", "mesh-repair"]
+provides-extras = ["dev", "mesh-repair", "drawings"]
 
 [package.metadata.requires-dev]
 dev = [

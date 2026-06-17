@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "build123d>=0.10.0",
-    "build123d-drafting-helpers>=0.4.2",
+    "build123d-drafting-helpers>=0.10.0",
     "ocp-vscode>=2.0.0",
     "trimesh[easy]>=4.0.0",
     "networkx>=3.0",
@@ -24,6 +24,7 @@ mesh-repair = [
     "pyvista>=0.40.0",
 ]
 drawings = [
+    "draftwright>=0.1.9",
     "fpdf2>=2.8.7",
     "resvg-py>=0.3.2",
     "pyvista>=0.40.0",

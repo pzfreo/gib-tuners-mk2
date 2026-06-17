@@ -31,8 +31,9 @@ from build123d import (
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
-    draft_preset, fix_svg_page_size, lint_drawing, set_page,
+    draft_preset, lint_drawing, set_page,
 )
+from draftwright import fix_svg_page_size
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.string_post import create_string_post
 from gib_tuners.export.drawing_utils import (
