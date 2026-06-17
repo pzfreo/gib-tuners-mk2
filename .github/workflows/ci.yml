@@ -78,16 +78,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[drawings]"
 
-      - name: Generate drawing sheets
-        run: |
-          python scripts/frame_drawing.py
-          python scripts/string_post_drawing.py
-          python scripts/peg_head_drawing.py
-          python scripts/wheel_drawing.py
-          python scripts/assembly_drawing.py
-
-      - name: Assemble combined pack
-        run: python scripts/drawings/make_pdf.py
+      - name: Generate drawing sheets and combined pack
+        run: bash scripts/drawings/generate_all.sh
 
       - name: Upload drawings
         uses: actions/upload-artifact@v7
