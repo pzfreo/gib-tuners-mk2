@@ -6,6 +6,7 @@ shaded raster pictorial embedded into the exported SVG.
 """
 
 import base64
+import re
 from pathlib import Path
 
 import numpy as np
@@ -384,3 +385,24 @@ def embed_png_in_svg(svg_path, png_path, x, y_bottom, w, h):
                 f'preserveAspectRatio="xMidYMid meet" href="data:image/png;base64,{b64}"/>')
     svg_text = svg_path.read_text()
     svg_path.write_text(svg_text.replace('</svg>', image_el + '\n</svg>'))
+
+
+def fix_svg_page_size(svg_path, page_w, page_h):
+    """Rewrite the SVG width/height/viewBox to match the full ISO page size.
+
+    build123d's ExportSVG crops to the content bounding box; this expands it to
+    the declared page so the rendering fills the correct A-series sheet. Inlined
+    here because build123d_drafting moved this out to the separate ``draftwright``
+    package (so it is no longer importable from build123d_drafting).
+    """
+    path = Path(svg_path)
+    data = path.read_text(encoding='utf-8')
+    data = re.sub(r'width="[^"]*"', f'width="{page_w:.3f}mm"', data, count=1)
+    data = re.sub(r'height="[^"]*"', f'height="{page_h:.3f}mm"', data, count=1)
+    data = re.sub(
+        r'viewBox="[^"]*"',
+        f'viewBox="0 -{page_h:.3f} {page_w:.3f} {page_h:.3f}"',
+        data,
+        count=1,
+    )
+    path.write_text(data, encoding='utf-8')

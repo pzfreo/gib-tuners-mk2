@@ -32,12 +32,13 @@ from build123d import (
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
-    draft_preset, fix_svg_page_size, lint_drawing, set_page,
+    draft_preset, lint_drawing, set_page,
 )
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.components.wheel import load_wheel
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, exactify_silhouettes, hatch_cut_faces, project_visible,
+    embed_png_in_svg, exactify_silhouettes, fix_svg_page_size, hatch_cut_faces,
+    project_visible,
     render_shaded_pictorial, section_profile, section_trace, text_block,
     third_angle_symbol,
 )
