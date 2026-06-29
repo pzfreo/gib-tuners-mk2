@@ -30,6 +30,7 @@ from build123d import (
     import_step,
 )
 
+from ..config.defaults import REFERENCE_DIR
 from ..config.parameters import BuildConfig
 from ..utils.validation import check_shape_quality
 
@@ -98,8 +99,7 @@ def _heal_shape(shape, tolerance: float = 0.01):
 
     return healed
 
-# Reference STEP file locations
-REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
+# Reference STEP file locations (REFERENCE_DIR resolves for checkout and wheel)
 PEG_HEAD_STEP = REFERENCE_DIR / "peghead7mm.step"
 
 # Default worm STEP (used if not provided via config)

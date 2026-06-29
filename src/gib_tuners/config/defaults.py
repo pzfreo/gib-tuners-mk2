@@ -2,7 +2,9 @@
 
 import json
 import math
+import os
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
@@ -23,8 +25,31 @@ from .parameters import (
 from .tolerances import get_tolerance
 
 # Directory paths
-CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
-REFERENCE_DIR = Path(__file__).parent.parent.parent.parent / "reference"
+#
+# Data (gear configs, reference STEP files) is resolved in three tiers so the
+# package works both from a source checkout and when installed as a wheel:
+#   1. $GIB_TUNERS_DATA_DIR override (a dir containing config/ and reference/)
+#   2. data shipped inside the installed package (gib_tuners/data/, see the
+#      hatch force-include mappings in pyproject.toml)
+#   3. repo-root fallback for running from a source checkout
+def _resolve_data_dir(subdir: str) -> Path:
+    """Locate a data subdirectory ('config' or 'reference')."""
+    env_root = os.environ.get("GIB_TUNERS_DATA_DIR")
+    if env_root:
+        return Path(env_root) / subdir
+
+    try:
+        packaged = files("gib_tuners") / "data" / subdir
+        if packaged.is_dir():
+            return Path(str(packaged))
+    except (ModuleNotFoundError, FileNotFoundError, NotADirectoryError):
+        pass
+
+    return Path(__file__).parent.parent.parent.parent / subdir
+
+
+CONFIG_DIR = _resolve_data_dir("config")
+REFERENCE_DIR = _resolve_data_dir("reference")
 
 # Default gear parameters JSON - single source of truth for gear geometry
 DEFAULT_GEAR_JSON = CONFIG_DIR / "worm_gear.json"
