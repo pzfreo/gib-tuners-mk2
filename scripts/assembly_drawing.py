@@ -35,13 +35,14 @@ from build123d import (
 )
 from build123d_drafting import (
     Centerline, Dimension, TitleBlock,
-    draft_preset, fix_svg_page_size, lint_drawing, set_page,
+    draft_preset, lint_drawing, set_page,
 )
 from gib_tuners.config.defaults import create_default_config, resolve_gear_config
 from gib_tuners.assembly.gang_assembly import create_positioned_assembly
 from gib_tuners.export.drawing_utils import (
-    balloon, embed_png_in_svg, exactify_silhouettes, hatch_cut_faces,
-    project_visible, render_shaded_pictorial, text_block, third_angle_symbol,
+    balloon, embed_png_in_svg, exactify_silhouettes, fix_svg_page_size,
+    hatch_cut_faces, project_visible, render_shaded_pictorial, text_block,
+    third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────

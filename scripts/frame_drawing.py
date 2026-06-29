@@ -33,15 +33,15 @@ from build123d import (
 )
 from build123d_drafting import (
     Centerline, Dimension, Leader, TitleBlock,
-    draft_preset, fix_svg_page_size, lint_drawing, set_page,
+    draft_preset, lint_drawing, set_page,
 )
 from gib_tuners.config.defaults import (
     calculate_worm_z, create_default_config, resolve_gear_config,
 )
 from gib_tuners.components.frame import create_frame
 from gib_tuners.export.drawing_utils import (
-    embed_png_in_svg, exactify_silhouettes, render_shaded_pictorial, text_block,
-    third_angle_symbol,
+    embed_png_in_svg, exactify_silhouettes, fix_svg_page_size,
+    render_shaded_pictorial, text_block, third_angle_symbol,
 )
 
 # ── Config ────────────────────────────────────────────────────────────────────
