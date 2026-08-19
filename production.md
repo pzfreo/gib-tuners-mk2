@@ -51,6 +51,12 @@ The script checks each component against the `sent/ptype/` baseline:
 
 Expected output: `RESULT: PASS — all checks passed`
 
+Interactively, `WARN` (a check flagged something) and `SKIP` (a component's file
+was missing, so nothing was compared) both exit 0 — they are advisory. Pass
+`--strict` to exit non-zero on either, which is how the release workflow gates:
+a labelled-frame build surfaces as `WARN`, and a build that emitted no files
+surfaces as `SKIP`, and neither may ship.
+
 ## Gear Profile: c13-10
 
 Located in `config/c13-10/`. Key parameters:
@@ -78,3 +84,37 @@ Located in `config/c13-10/`. Key parameters:
 | Pip stalk reinforcement 1.0mm → 1.5mm | PR #76 | `peg_head_*.step` slightly larger |
 | String hole 1.5mm → 1.7mm + chamfers | PR (Mar 2026) | `string_post.step` larger |
 | Mounting holes 3.0mm → 3.2mm | PR (Mar 2026) | `frame_*.step` slightly changed |
+
+## Cutting a Release
+
+`.github/workflows/release.yml` packages the production geometry and the drawing
+suite into a GitHub release. Push a version tag to run it:
+
+```bash
+git tag -a v0.2.1 -m "Production pack"
+git push origin v0.2.1
+```
+
+The workflow runs the test suite, then in parallel:
+
+| Job | Does |
+|-----|------|
+| `build` | Production build (STEP + STL), asserts every expected file exists, then `check_production.py --strict` against the `sent/ptype` baseline |
+| `drawings` | The 5 A3 sheets + `tuner_drawings.pdf` + `drawings_dxf_svg.zip` |
+| `release` | Flattens both artifact sets and creates the release (24 assets) |
+
+The release is created as a **draft** so the notes can be reviewed first. Publish it with:
+
+```bash
+gh release edit v0.2.1 --draft=false
+```
+
+Boilerplate notes live in `.github/release-notes.md`; `--generate-notes` appends
+the commit/PR list since the previous tag. To publish automatically instead, drop
+the `--draft` flag from the workflow's final step.
+
+`workflow_dispatch` runs the same build and validation from any branch but skips
+the release step — use it to dry-run the asset pack before tagging.
+
+The workflow warns (but does not fail) if the tag does not match `version` in
+`pyproject.toml`, so bump that in the release commit.

@@ -260,10 +260,14 @@ def main() -> int:
                         help="Baseline directory (default: sent/ptype/)")
     parser.add_argument("--new", type=Path, default=Path("output"),
                         help="New build directory (default: output/)")
+    parser.add_argument("--strict", action="store_true",
+                        help="Exit non-zero on warnings or skipped components "
+                             "(for release gating, where WARN must not ship)")
     args = parser.parse_args()
 
     all_pass = True
     any_fail = False
+    any_skip = False
 
     # Sanity check: LH and RH frames in new build must be same file size
     lh = args.new / "frame_lh_5gang.step"
@@ -282,9 +286,11 @@ def main() -> int:
 
         if not baseline_path.exists():
             print(f"\n{name}: SKIP (baseline not found: {baseline_path})")
+            any_skip = True
             continue
         if not new_path.exists():
             print(f"\n{name}: SKIP (new file not found: {new_path})")
+            any_skip = True
             continue
 
         print(f"\n{name}")
@@ -310,7 +316,14 @@ def main() -> int:
         return 1
     elif not all_pass:
         print("RESULT: WARN — passed with warnings, review above")
-        return 0
+        # A warning is advisory interactively, but the LH/RH size mismatch that
+        # catches a labelled-frame build lands here — it must block a release.
+        return 1 if args.strict else 0
+    elif any_skip:
+        print("RESULT: SKIP — some components were not checked, review above")
+        # Nothing was validated for those components; only a build that emitted
+        # no files gets here, which must not read as a pass when gating.
+        return 1 if args.strict else 0
     else:
         print("RESULT: PASS — all checks passed")
         return 0
