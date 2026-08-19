@@ -51,6 +51,12 @@ The script checks each component against the `sent/ptype/` baseline:
 
 Expected output: `RESULT: PASS — all checks passed`
 
+Interactively, `WARN` (a check flagged something) and `SKIP` (a component's file
+was missing, so nothing was compared) both exit 0 — they are advisory. Pass
+`--strict` to exit non-zero on either, which is how the release workflow gates:
+a labelled-frame build surfaces as `WARN`, and a build that emitted no files
+surfaces as `SKIP`, and neither may ship.
+
 ## Gear Profile: c13-10
 
 Located in `config/c13-10/`. Key parameters:
@@ -93,7 +99,7 @@ The workflow runs the test suite, then in parallel:
 
 | Job | Does |
 |-----|------|
-| `build` | Production build (STEP + STL), then `check_production.py` against the `sent/ptype` baseline |
+| `build` | Production build (STEP + STL), asserts every expected file exists, then `check_production.py --strict` against the `sent/ptype` baseline |
 | `drawings` | The 5 A3 sheets + `tuner_drawings.pdf` + `drawings_dxf_svg.zip` |
 | `release` | Flattens both artifact sets and creates the release (24 assets) |
 
